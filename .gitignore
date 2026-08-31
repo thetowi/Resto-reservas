@@ -1,0 +1,19 @@
+# --- .NET (api/) ---
+api/**/bin/
+api/**/obj/
+api/**/*.user
+api/**/appsettings.Production.json
+
+# --- Node / Next.js (web/) ---
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+web/*.tsbuildinfo
+web/next-env.d.ts
+
+# --- Editor / OS ---
+.vs/
+.vscode/
+.idea/
+.DS_Store
