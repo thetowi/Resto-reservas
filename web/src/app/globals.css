@@ -1,0 +1,272 @@
+@import "tailwindcss";
+
+:root {
+  --color-tinta: #1f1b16;
+  --color-tinta-suave: #55504a;
+  --color-arena: #caa381;
+  --color-arena-suave: #f3e9df;
+  --color-fondo: #faf7f3;
+  --color-borde: #e7ded3;
+
+  --color-superficie: #ffffff;
+  --color-marca: #1f1b16;
+
+  --color-libre: #eef1ec;
+  --color-ocupada: #c00000;
+  --color-ocupada-suave: #fdeaea;
+  --color-asistio: #93c47d;
+  --color-asistio-suave: #eaf5e4;
+  /* Mesa ocupada por un walk-in (no una reserva real): un azul calmo,
+     bien distinguible del rojo de "ocupada" a simple vista. */
+  --color-walkin: #4f7ea8;
+  --color-walkin-suave: #e6eef4;
+  /* Mesa "pedida" (reserva con "Pidió mesa" tildado): anillo pulsante en el
+     mismo tono arena de la marca, mas marcado que la version anterior, mas
+     un punto fijo en la esquina (.chip-pedida) para que se note incluso en
+     el instante mas tenue del pulso. El rgb es para poder variarle el alpha
+     en la animacion (ver .anillo-pedida / .chip-pedida). */
+  --color-pedida: #b8722c;
+  --color-pedida-rgb: 184, 114, 44;
+  /* Aviso de sobreventa (80% de la capacidad del salon): un ambar de
+     atencion, distinto tanto del rojo de "ocupada/error" como del verde de
+     "asistio", para que se lea como "atencion" y no como "algo salio mal". */
+  --color-aviso: #8a5a00;
+  --color-aviso-suave: #fbf0d9;
+}
+
+@theme inline {
+  --color-tinta: var(--color-tinta);
+  --color-tinta-suave: var(--color-tinta-suave);
+  --color-arena: var(--color-arena);
+  --color-arena-suave: var(--color-arena-suave);
+  --color-fondo: var(--color-fondo);
+  --color-borde: var(--color-borde);
+  --color-superficie: var(--color-superficie);
+  --color-marca: var(--color-marca);
+  --color-libre: var(--color-libre);
+  --color-ocupada: #e0001a;
+  --color-ocupada-suave: #fdeaea;
+  --color-asistio: var(--color-asistio);
+  --color-asistio-suave: var(--color-asistio-suave);
+  --color-walkin: var(--color-walkin);
+  --color-walkin-suave: var(--color-walkin-suave);
+  --color-pedida: var(--color-pedida);
+  --color-aviso: var(--color-aviso);
+  --color-aviso-suave: var(--color-aviso-suave);
+}
+
+/* Anillo pulsante + resplandor para marcar una mesa "pedida" sin taparle el
+   color de ocupacion real (rojo/azul/libre) con un bloque solido. Version
+   reforzada: mas grosor, mas contraste y un glow ademas del anillo, para
+   que se distinga a simple vista sin resultar un color solido chillon. */
+@keyframes pedida-pulso {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(var(--color-pedida-rgb), 0.55),
+      0 0 8px 2px rgba(var(--color-pedida-rgb), 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(var(--color-pedida-rgb), 0.9),
+      0 0 13px 3px rgba(var(--color-pedida-rgb), 0.55);
+  }
+}
+
+.anillo-pedida {
+  animation: pedida-pulso 1.8s ease-in-out infinite;
+  border-color: var(--color-pedida) !important;
+}
+
+/* Punto fijo en la esquina de la mesa "pedida": complementa el anillo para
+   que se note incluso en el instante mas tenue del pulso, y para que se
+   distinga igual de bien sobre cualquier color de fondo (libre/ocupada/
+   walk-in). Necesita que el contenedor de la mesa tenga position:relative
+   (o sea position:absolute, como las cajas del plano). */
+@keyframes chip-pedida-pulso {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.chip-pedida {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--color-ocupada);
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  animation: chip-pedida-pulso 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anillo-pedida {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(var(--color-pedida-rgb), 0.75);
+  }
+  .chip-pedida {
+    animation: none;
+  }
+}
+
+body {
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+}
+
+.celda {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--color-tinta);
+  font-family: inherit;
+}
+
+.celda:focus {
+  border-color: var(--color-arena);
+  background: var(--color-superficie);
+  outline: none;
+}
+
+/* Placeholders (el "hh:mm", "Ej: 4", "Nombre", etc.) con un color propio,
+   mas tenue que el texto real (--color-tinta-suave en vez de --color-tinta)
+   y con un poco de opacidad extra — asi se distinguen del texto de una
+   reserva cargada en los dos temas, no solo en el claro (el gris por
+   default del navegador no esta pensado para nuestra paleta y en modo
+   oscuro terminaba pareciendose al texto real). */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-tinta-suave);
+  opacity: 0.75;
+}
+
+/* Los placeholders de la grilla de reservas (.celda) quedan ocultos por
+   defecto y solo aparecen al pasar el mouse o al enfocar el campo — con
+   26 filas por turno mostrando "hh:mm"/"Ej: 4"/etc. a la vez, tenerlos
+   siempre visibles generaba ruido y costaba distinguirlos del texto real
+   de una reserva cargada, sobre todo en modo oscuro. Esta regla es mas
+   especifica que la de arriba (una clase le gana a un selector de
+   elemento), asi que la pisa solo para estos inputs. */
+.celda::placeholder {
+  color: var(--color-tinta-suave);
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.celda:hover::placeholder,
+.celda:focus::placeholder {
+  opacity: 0.75;
+}
+
+input[type="date"].celda,
+select.celda {
+  cursor: pointer;
+}
+
+/* Reporte de impresion (ver ReporteImpresion.tsx): oculto en pantalla
+   (Tailwind "hidden print:block" ya lo maneja), pero ademas normalizamos
+   margenes/tamaño de pagina aca porque @page no tiene equivalente en
+   utilidades de Tailwind. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+}
+/* Modo oscuro: se activa poniendo data-theme="dark" en <html> (lo hace
+   ThemeToggle.tsx + el script de layout.tsx). Como casi todos los colores
+   de la app ya son variables, alcanza con redefinirlas aca — el resto de
+   los componentes se re-tematiza solo, sin tocar ningun otro archivo. */
+:root[data-theme="dark"] {
+  --color-fondo: #1b1815;
+  --color-superficie: #252019;
+  --color-tinta: #f3ece2;
+  --color-tinta-suave: #b6aa9c;
+  --color-borde: #3c352c;
+  --color-libre: #2b2620;
+  --color-arena-suave: #362d20;
+  --color-ocupada-suave: #3a1216;
+  --color-asistio-suave: #1c2b16;
+  --color-walkin-suave: #17232f;
+  --color-aviso: #e0a942;
+  --color-aviso-suave: #362a10;
+  /* --color-marca NO se redefine a proposito: los botones solidos
+     (Guardar, Salir, etc.) tienen que seguir siendo oscuros con texto
+     blanco en los dos temas, no invertirse. */
+}
+
+/* La impresion tiene que verse siempre igual (tinta oscura sobre papel
+   blanco), sin importar si la pantalla estaba en modo oscuro al apretar
+   Imprimir — si no, el encabezado/bordes de ReporteImpresion podrian
+   imprimirse en un color claro casi invisible sobre el papel. */
+@media print {
+  :root {
+    --color-tinta: #1f1b16;
+    --color-tinta-suave: #55504a;
+    --color-borde: #e7ded3;
+  }
+}
+
+
+/* Boton de modo claro/oscuro con icono animado sol<->luna. */
+.dark-mode-toggle {
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.dark-mode-toggle:hover {
+  background: var(--color-arena-suave);
+}
+
+.dark-mode-toggle__icon {
+  width: 44px;
+  height: 44px;
+  color: #f2c94c;
+  transition: color 0.2s linear;
+}
+
+.dark-mode-toggle__icon--moon {
+  color: #e7e2d8;
+  opacity: 0.85;
+  transition:
+    opacity 0.2s linear,
+    color 0.2s linear;
+}
+
+.dark-mode-toggle__rays {
+  transition: opacity 0.2s linear 0.2s;
+}
+
+.dark-mode-toggle__icon--moon .dark-mode-toggle__rays {
+  transition: opacity 0.2s linear;
+  opacity: 0;
+}
+
+.dark-mode-toggle__cut-out {
+  transition: transform 0.5s cubic-bezier(0.54, -0.42, 0.29, 1.3);
+}
+
+.dark-mode-toggle__icon--moon .dark-mode-toggle__cut-out {
+  transform: translateX(-30%);
+  transition: transform 0.5s cubic-bezier(0.21, 0.17, 0.43, 1.43);
+}
