@@ -17,7 +17,8 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
         "Falta la connection string de Postgres (ConnectionStrings:Default o DATABASE_URL).");
 
 builder.Services.AddDbContext<BarrancasDbContext>(options =>
-    options.UseNpgsql(NormalizarConnectionString(connectionString)));
+    options.UseNpgsql(NormalizarConnectionString(connectionString), npgsqlOptions =>
+        npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorCodesToAdd: null)));
 
 // --- Servicios de dominio ---
 builder.Services.AddScoped<DiaService>();
@@ -154,6 +155,12 @@ static string NormalizarConnectionString(string raw)
         Database = uri.AbsolutePath.TrimStart('/'),
         SslMode = Npgsql.SslMode.Require,
         TrustServerCertificate = true,
+        // La imagen de Linux que usa Railway no trae libgssapi_krb5 (Kerberos),
+        // y Npgsql 10 por defecto intenta negociar esa autenticacion en cada
+        // conexion. Como no la usamos para nada, la desactivamos directamente
+        // para que ni lo intente — si no, la negociacion fallida corrompe la
+        // conexion y cada query termina en EndOfStreamException.
+        GssEncryptionMode = Npgsql.GssEncryptionMode.Disable,
     };
     return builder.ConnectionString;
 }
