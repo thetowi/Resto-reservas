@@ -28,6 +28,11 @@ builder.Services.AddScoped<TokenService>();
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? throw new InvalidOperationException("Falta configurar Jwt:Secret / JWT_SECRET");
+// TokenService lee "Jwt:Secret" directo de la configuracion (sin este mismo
+// fallback a la variable de entorno), asi que lo normalizamos aca para que
+// quede disponible bajo esa clave tambien cuando solo vino como JWT_SECRET
+// (como en Railway) y no como Jwt:Secret / Jwt__Secret.
+builder.Configuration["Jwt:Secret"] = jwtSecret;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "barrancas-api";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "barrancas-web";
 
