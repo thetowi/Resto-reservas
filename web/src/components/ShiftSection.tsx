@@ -101,7 +101,7 @@ export default function ShiftSection({
   return (
     <section>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
-                <div className="rounded-2xl border border-borde bg-superficie p-4.5 shadow-sm">
+        <div className="rounded-2xl border border-borde bg-superficie p-4.5 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2 border-l-4 border-arena pl-2.5">
             <h2 className="text-base tracking-wide uppercase">{titulo}</h2>
             {admin && (

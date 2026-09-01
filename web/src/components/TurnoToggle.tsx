@@ -14,7 +14,7 @@ export default function TurnoToggle({ turno, onCambiar }: Props) {
         onClick={() => onCambiar("almuerzo")}
         aria-pressed={turno === "almuerzo"}
         className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-          turno === "almuerzo" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
+            turno === "almuerzo" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
         }`}
       >
         Almuerzo
@@ -23,7 +23,7 @@ export default function TurnoToggle({ turno, onCambiar }: Props) {
         onClick={() => onCambiar("cena")}
         aria-pressed={turno === "cena"}
         className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-          turno === "cena" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
+            turno === "cena" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
         }`}
       >
         Cena

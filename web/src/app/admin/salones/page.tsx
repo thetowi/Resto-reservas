@@ -120,7 +120,7 @@ export default function AdminSalonesPage() {
       {cargando ? (
         <div className="p-10 text-center text-tinta-suave">Cargando…</div>
       ) : (
-        <div className="rounded-2xl border border-borde bg-white shadow-sm">
+        <div className="rounded-2xl border border-borde bg-superficie shadow-sm">
           <div className="divide-y divide-borde">
             {salones.map((salon) => (
               <FilaSalon key={salon.id} salon={salon} onRenombrar={onRenombrar} onBorrar={onBorrar} />

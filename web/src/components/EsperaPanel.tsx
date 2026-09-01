@@ -19,7 +19,7 @@ interface Props {
 // Tailwind pierde contra el width:100% de .celda), así que estos definen su
 // propio ancho en vez de heredarlo.
 const campoClase =
-  "rounded-md border px-1 py-0.5 text-xs text-tinta focus:border-arena focus:bg-superficie focus:outline-none";
+    "rounded-md border px-1 py-0.5 text-xs text-tinta focus:border-arena focus:bg-superficie focus:outline-none";
 
 export default function EsperaPanel({ fecha, turno, salonId, lista, onListaActualizada }: Props) {
   const [error, setError] = useState<string | null>(null);

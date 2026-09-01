@@ -289,7 +289,7 @@ export default function PlanoSalon({ mesas, salonId, onMoverMesa, soloLectura = 
           Walk-in
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <i className="anillo-pedida inline-block h-2.5 w-2.5 rounded-full border border-borde bg-superficie" />
+                    <i className="anillo-pedida inline-block h-2.5 w-2.5 rounded-full border border-borde bg-libre" />
           Pedida
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -359,7 +359,7 @@ function MesaCaja({ mesa, x, y, tamano, ocupada, walkIn, pedida, onMover, soloLe
     ? "border-ocupada bg-ocupada text-white"
     : walkIn
       ? "border-walkin bg-walkin text-white"
-      : "border-borde bg-superficie text-tinta";
+      : "border-borde bg-libre text-tinta";
 
   const estado = ocupada
     ? `ocupada${pedida ? ", pedida puntualmente" : ""}`
@@ -492,7 +492,7 @@ function ElementoCaja({ elemento, onMover, onRedimensionar, onRenombrar, onBorra
         onChange={(e) => setEtiqueta(e.target.value)}
         onPointerDown={(e) => e.stopPropagation()}
         onBlur={() => onRenombrar(elemento, etiqueta.trim() || "Nuevo")}
-        className="w-full truncate rounded border-none bg-transparent text-center text-[11px] font-medium text-tinta-suave focus:bg-superficie focus:outline-none"
+                className="w-full truncate rounded border-none bg-transparent text-center text-[11px] font-medium text-tinta-suave focus:bg-superficie focus:outline-none"
       />
       <div
         onPointerDown={onPointerDownRedimensionar}

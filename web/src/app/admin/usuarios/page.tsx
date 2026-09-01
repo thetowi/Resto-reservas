@@ -103,7 +103,7 @@ function PanelCuentas() {
   if (cargando) return <div className="p-10 text-center text-tinta-suave">Cargando…</div>;
 
   return (
-    <div className="rounded-2xl border border-borde bg-white shadow-sm">
+    <div className="rounded-2xl border border-borde bg-superficie shadow-sm">
       {error && (
         <div className="m-3.5 rounded-lg bg-ocupada-suave px-3 py-2 text-sm text-ocupada">{error}</div>
       )}

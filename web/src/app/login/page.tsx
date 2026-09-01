@@ -31,10 +31,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl border border-borde bg-superficie p-8 shadow-sm"
+            className="w-full max-w-sm rounded-2xl border border-borde bg-superficie p-8 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-tinta text-lg font-bold text-arena">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-marca text-lg font-bold text-arena">
             B
           </div>
           <div>
@@ -45,7 +45,7 @@ export default function LoginPage() {
 
         <label className="mb-1 block text-xs font-medium text-tinta-suave">Usuario</label>
         <input
-          className="mb-4 w-full rounded-lg border border-borde px-3 py-2 text-sm"
+          className="mb-4 w-full rounded-lg border border-borde bg-superficie px-3 py-2 text-sm text-tinta"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoFocus
@@ -55,7 +55,7 @@ export default function LoginPage() {
         <label className="mb-1 block text-xs font-medium text-tinta-suave">Contraseña</label>
         <input
           type="password"
-          className="mb-5 w-full rounded-lg border border-borde px-3 py-2 text-sm"
+          className="mb-5 w-full rounded-lg border border-borde bg-superficie px-3 py-2 text-sm text-tinta"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -69,7 +69,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={cargando}
-          className="w-full rounded-lg bg-tinta py-2.5 text-sm text-white disabled:opacity-60"
+          className="w-full rounded-lg bg-marca py-2.5 text-sm text-white disabled:opacity-60"
         >
           {cargando ? "Ingresando…" : "Ingresar"}
         </button>

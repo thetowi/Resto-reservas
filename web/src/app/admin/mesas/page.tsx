@@ -199,7 +199,7 @@ export default function AdminMesasPage() {
           onClick={() => setVista("lista")}
           aria-pressed={vista === "lista"}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            vista === "lista" ? "bg-tinta text-white" : "text-tinta-suave hover:bg-superficie"
+            vista === "lista" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
           }`}
         >
           Lista
@@ -208,7 +208,7 @@ export default function AdminMesasPage() {
           onClick={() => setVista("plano")}
           aria-pressed={vista === "plano"}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            vista === "plano" ? "bg-tinta text-white" : "text-tinta-suave hover:bg-superficie"
+              vista === "plano" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
           }`}
         >
           Plano
@@ -226,7 +226,7 @@ export default function AdminMesasPage() {
       ) : vista === "plano" && salonId !== null ? (
         <PlanoSalon mesas={mesas} salonId={salonId} onMoverMesa={onMoverMesa} />
       ) : (
-        <div className="rounded-2xl border border-borde bg-white shadow-sm">
+        <div className="rounded-2xl border border-borde bg-superficie shadow-sm">
           <div className="divide-y divide-borde">
             {bases.map(({ base, divisiones }) => (
               <MesaGrupo
