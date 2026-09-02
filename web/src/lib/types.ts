@@ -13,6 +13,7 @@ export interface Salon {
   orden: number;
 }
 
+// después
 export interface Mesa {
   id: number;
   codigo: string;
@@ -21,10 +22,11 @@ export interface Mesa {
   orden: number;
   posX: number | null;
   posY: number | null;
-  // A qué salón pertenece esta mesa (ver Salon arriba). El código solo es
-  // único dentro de un mismo salón, así que hay que filtrar por este campo
-  // antes de mostrar/usar la lista de mesas en cualquier pantalla.
   salonId: number;
+  // true = mesa hija temporal creada por una división "por turno" (ver
+  // MesasPanel.tsx). false = mesa estructural del plano permanente, la
+  // que se administra desde /admin/mesas.
+  esTemporal: boolean;
 }
 
 export interface Meta {
@@ -91,8 +93,14 @@ export interface TurnoData {
   // Si este turno esta cerrado para este salon: no se pueden cargar
   // reservas nuevas ni editar las existentes hasta reabrirlo (ver
   // ShiftSection.tsx). motivoCierre es el texto opcional cargado al cerrarlo.
+  // después
   estaCerrado: boolean;
   motivoCierre: string | null;
+  // Mesas que ve ESTE turno puntual: si hubo una división por turno, acá
+  // aparecen las dos mitades temporales en vez de la mesa base entera.
+  // Reemplaza a la lista global de Meta.mesas para pintar el panel
+  // "Mesas disponibles" (ver MesasPanel.tsx / page.tsx).
+  mesas: Mesa[];
 }
 
 // Elemento de referencia del plano visual (no es una mesa): un cartel de

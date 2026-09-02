@@ -2,10 +2,12 @@ using Barrancas.Api.Data;
 using Barrancas.Api.Dtos;
 using Barrancas.Api.Hubs;
 using Barrancas.Api.Models;
+using Barrancas.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Barrancas.Api.Controllers;
 
@@ -35,11 +37,13 @@ public class MesasController : ControllerBase
 {
     private readonly BarrancasDbContext _db;
     private readonly IHubContext<ReservasHub> _hub;
+    private readonly DiaService _diaService;
 
-    public MesasController(BarrancasDbContext db, IHubContext<ReservasHub> hub)
+    public MesasController(BarrancasDbContext db, IHubContext<ReservasHub> hub, DiaService diaService)
     {
         _db = db;
         _hub = hub;
+        _diaService = diaService;
     }
 
     [HttpPost]
@@ -188,6 +192,114 @@ public class MesasController : ControllerBase
 
         return Ok(await BroadcastMesasAsync());
     }
+    /// <summary>
+    /// Division temporal desde "Mesas disponibles" (pantalla de reservas): a
+    /// diferencia de <see cref="Dividir"/> (permanente, define el default del
+    /// salon desde /admin/mesas), esta division vale SOLO para la fecha+turno
+    /// indicada — cualquier otro turno o dia sigue viendo la mesa entera. Pide
+    /// cuantos pax van a cada mitad (no reparte al medio solo): las dos tienen
+    /// que sumar exactamente la capacidad de la mesa base, para no crear ni
+    /// perder pax. Abierta a Admin y Staff (ver comentario de la clase).
+    /// </summary>
+    [HttpPost("{id:int}/dividir-turno")]
+    public async Task<ActionResult> DividirPorTurno(int id, DividirPorTurnoRequest req)
+    {
+        var padre = await _db.Mesas.FirstOrDefaultAsync(m => m.Id == id);
+        if (padre is null) return NotFound(new { error = "la mesa indicada no existe" });
+        if (padre.MesaPadreId is not null)
+        {
+            return BadRequest(new { error = "una division no se puede volver a dividir" });
+        }
+        if (req.PaxA < 1 || req.PaxB < 1)
+        {
+            return BadRequest(new { error = "cada mitad necesita al menos 1 pax" });
+        }
+        if (req.PaxA + req.PaxB != padre.Capacidad)
+        {
+            return BadRequest(new { error = $"las dos mitades tienen que sumar {padre.Capacidad} pax (la capacidad de la mesa)" });
+        }
+
+        var yaDividida = await _db.DivisionesMesaTurno.AnyAsync(d =>
+            d.Fecha == req.Fecha && d.Turno == req.Turno && d.MesaBaseId == padre.Id);
+        if (yaDividida)
+        {
+            return BadRequest(new { error = "esta mesa ya esta dividida en este turno" });
+        }
+
+        await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
+
+        var hijaA = new Mesa
+        {
+            Codigo = $"{padre.Codigo}a",
+            Capacidad = req.PaxA,
+            Orden = padre.Orden + 1,
+            SalonId = padre.SalonId,
+            MesaPadreId = padre.Id,
+            EsTemporal = true,
+        };
+        var hijaB = new Mesa
+        {
+            Codigo = $"{padre.Codigo}b",
+            Capacidad = req.PaxB,
+            Orden = padre.Orden + 2,
+            SalonId = padre.SalonId,
+            MesaPadreId = padre.Id,
+            EsTemporal = true,
+        };
+        _db.Mesas.AddRange(hijaA, hijaB);
+        await _db.SaveChangesAsync();
+
+        _db.DivisionesMesaTurno.Add(new DivisionMesaTurno
+        {
+            Fecha = req.Fecha,
+            Turno = req.Turno,
+            SalonId = padre.SalonId,
+            MesaBaseId = padre.Id,
+            MesaHijaAId = hijaA.Id,
+            MesaHijaBId = hijaB.Id,
+        });
+        await _db.SaveChangesAsync();
+
+        await BroadcastMesasAsync();
+        await BroadcastTurnoAsync(req.Fecha, req.Turno, padre.SalonId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deshace una division temporal (ver DividirPorTurno): borra las dos
+    /// mesas hijas y el registro de division, asi ese turno vuelve a ver la
+    /// mesa base entera. Bloqueada si alguna de las dos mitades ya tiene una
+    /// reserva o un walk-in real encima — primero hay que reasignar eso a otra
+    /// mesa (mismo criterio que ya se usa para no poder borrar una mesa con
+    /// reservas).
+    /// </summary>
+    [HttpPost("{id:int}/unir-turno")]
+    public async Task<ActionResult> UnirPorTurno(int id, UnirPorTurnoRequest req)
+    {
+        var division = await _db.DivisionesMesaTurno.FirstOrDefaultAsync(d =>
+            d.Fecha == req.Fecha && d.Turno == req.Turno && d.MesaBaseId == id);
+        if (division is null)
+        {
+            return NotFound(new { error = "esta mesa no esta dividida en este turno" });
+        }
+
+        var hijaIds = new[] { division.MesaHijaAId, division.MesaHijaBId };
+        var enUso = await _db.ReservaMesas.AnyAsync(rm => hijaIds.Contains(rm.MesaId))
+            || await _db.WalkIns.AnyAsync(w => hijaIds.Contains(w.MesaId));
+        if (enUso)
+        {
+            return BadRequest(new { error = "una de las dos mitades tiene una reserva o walk-in: reasignala a otra mesa antes de unir" });
+        }
+
+        var hijas = await _db.Mesas.Where(m => hijaIds.Contains(m.Id)).ToListAsync();
+        _db.DivisionesMesaTurno.Remove(division);
+        _db.Mesas.RemoveRange(hijas);
+        await _db.SaveChangesAsync();
+
+        await BroadcastMesasAsync();
+        await BroadcastTurnoAsync(req.Fecha, req.Turno, division.SalonId);
+        return NoContent();
+    }
 
     [HttpPatch("{id:int}")]
     [Authorize(Roles = "Admin")]
@@ -273,10 +385,20 @@ public class MesasController : ControllerBase
     {
         var mesas = await _db.Mesas
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
             .ToListAsync();
-
         await _hub.Clients.All.SendAsync("MesasActualizado", mesas);
         return mesas;
+    }
+
+    // Mismo patron que ReservasController.BroadcastTurnoAsync: recalcula
+    // el turno completo (con la lista de mesas ya resuelta segun si hay una
+    // division por turno activa) y lo empuja al grupo fecha:turno:salon,
+    // para que la pantalla de reservas se actualice en vivo sin recargar.
+    private async Task BroadcastTurnoAsync(DateOnly fecha, Turno turno, int salonId)
+    {
+        var data = await _diaService.GetTurnoAsync(fecha, turno, salonId);
+        var grupo = ReservasHub.GrupoDe(fecha.ToString("yyyy-MM-dd"), turno.ToString().ToLowerInvariant(), salonId);
+        await _hub.Clients.Group(grupo).SendAsync("TurnoActualizado", data);
     }
 }

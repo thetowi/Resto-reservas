@@ -6,6 +6,7 @@ import type { Espera, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
 import EsperaPanel from "./EsperaPanel";
 import MesasPanel from "./MesasPanel";
 import ReservaRow from "./ReservaRow";
+import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
   titulo: string;
@@ -32,6 +33,7 @@ export default function ShiftSection({
   admin,
   onEsperaActualizada,
 }: Props) {
+  const { confirmar, preguntar } = useConfirm();
   const { reservas, totalPax, totalAsistio, mesasOcupadas } = data;
   const [enviandoCierre, setEnviandoCierre] = useState(false);
 
@@ -43,15 +45,18 @@ export default function ShiftSection({
   const cercaDeLlenarse = capacidadSalon > 0 && totalPax / capacidadSalon >= 0.8;
 
   async function onCerrar() {
-    const motivo = window.prompt(`¿Por qué se cierra "${titulo}"? (opcional, dejá vacío si no hace falta)`);
-    if (motivo === null) return; // canceló el prompt
+    const motivo = await preguntar(
+      `¿Por qué se cierra "${titulo}"? (opcional, dejá vacío si no hace falta)`,
+    );
+    if (motivo === null) return; // canceló
 
     const otrosSalones = salones.filter((s) => s.id !== salonId);
     const cerrarTodos =
       otrosSalones.length > 0 &&
-      window.confirm(
+      (await confirmar(
         `¿Cerrar "${titulo}" también en los demás salones (${otrosSalones.map((s) => s.nombre).join(", ")})?`,
-      );
+        { textoConfirmar: "Sí", textoCancelar: "No" },
+      ));
 
     setEnviandoCierre(true);
     try {
@@ -65,7 +70,7 @@ export default function ShiftSection({
   }
 
   async function onReabrir() {
-    if (!window.confirm(`¿Reabrir "${titulo}"? Vuelve a aceptar reservas.`)) return;
+    if (!(await confirmar(`¿Reabrir "${titulo}"? Vuelve a aceptar reservas.`))) return;
     setEnviandoCierre(true);
     try {
       await toggleCierre(fecha, turno, salonId);

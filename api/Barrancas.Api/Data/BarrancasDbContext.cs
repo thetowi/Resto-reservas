@@ -16,6 +16,7 @@ public class BarrancasDbContext : DbContext
     public DbSet<ElementoPlano> ElementosPlano => Set<ElementoPlano>();
     public DbSet<WalkIn> WalkIns => Set<WalkIn>();
     public DbSet<CierreTurno> CierresTurno => Set<CierreTurno>();
+    public DbSet<DivisionMesaTurno> DivisionesMesaTurno => Set<DivisionMesaTurno>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -123,5 +124,26 @@ public class BarrancasDbContext : DbContext
         });
 
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<DivisionMesaTurno>(e =>
+        {
+            // Una sola division activa por mesa base y turno puntual.
+            e.HasIndex(x => new { x.Fecha, x.Turno, x.MesaBaseId }).IsUnique();
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.MesaBase)
+                .WithMany()
+                .HasForeignKey(x => x.MesaBaseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.MesaHijaA)
+                .WithMany()
+                .HasForeignKey(x => x.MesaHijaAId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.MesaHijaB)
+                .WithMany()
+                .HasForeignKey(x => x.MesaHijaBId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }

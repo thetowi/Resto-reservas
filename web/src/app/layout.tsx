@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { ConfirmProvider } from "@/components/ConfirmProvider";
+
 export const metadata: Metadata = {
   title: "Barrancas · Reservas",
   description: "Sistema de reservas de Barrancas Restaurant",
@@ -33,7 +35,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: TEMA_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-fondo text-tinta antialiased">
-        {children}
+        <ConfirmProvider>{children}</ConfirmProvider>
       </body>
     </html>
   );

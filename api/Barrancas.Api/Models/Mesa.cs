@@ -18,6 +18,7 @@ public class Mesa
     public string Codigo { get; set; } = string.Empty;
     public int Capacidad { get; set; } = 2;
     public int Orden { get; set; }
+    public bool EsTemporal { get; set; } = false;
 
     // A que salon pertenece esta mesa (Restaurant, Bar, Aqua Bar, etc — ver
     // Models/Salon.cs). El codigo solo tiene que ser unico DENTRO de un

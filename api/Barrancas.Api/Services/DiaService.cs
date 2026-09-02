@@ -76,9 +76,28 @@ public class DiaService
             .Select(w => w.MesaId)
             .ToListAsync();
 
+        // Mesas que ve ESTE turno puntual: las estructurales del salon (bases y
+        // divisiones permanentes de /admin/mesas), salvo las que estan
+        // divididas temporalmente para esta fecha+turno (esas se ocultan, se
+        // muestran sus dos mitades en su lugar); mas las mitades temporales que
+        // SI pertenecen a esta fecha+turno.
+        var divisiones = await _db.DivisionesMesaTurno
+            .Where(d => d.Fecha == fecha && d.Turno == turno && d.SalonId == salonId)
+            .ToListAsync();
+        var basesDivididas = divisiones.Select(d => d.MesaBaseId).ToHashSet();
+        var hijasActivas = divisiones.SelectMany(d => new[] { d.MesaHijaAId, d.MesaHijaBId }).ToHashSet();
+
+        var mesas = await _db.Mesas
+            .Where(m => m.SalonId == salonId)
+            .Where(m => !m.EsTemporal || hijasActivas.Contains(m.Id))
+            .Where(m => !basesDivididas.Contains(m.Id))
+            .OrderBy(m => m.Orden)
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
+            .ToListAsync();
+
         return new TurnoDataDto(
             fecha, turno, salonId, reservas, totalPax, totalAsistio, mesasOcupadas, mesasPedidas, mesasWalkIn,
-            cierre is not null, cierre?.Motivo);
+            cierre is not null, cierre?.Motivo, mesas);
     }
 
     public async Task<DiaDto> GetDiaAsync(DateOnly fecha, int salonId)

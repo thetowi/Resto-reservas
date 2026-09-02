@@ -152,6 +152,28 @@ export function dividirMesa(mesaId: number, codigo: string, capacidad: number) {
 // disponible durante el servicio.
 export function dividirMesaRapido(mesaId: number) {
   return request<Mesa[]>(`/api/mesas/${mesaId}/dividir-en-dos`, { method: "POST" });
+  
+}
+
+
+// División temporal desde "Mesas disponibles" (ver MesasPanel.tsx): a
+// diferencia de dividirMesa/dividirMesaRapido (permanentes, definen el
+// default del salón), esta división vale solo para fecha+turno — pide
+// cuántos pax van a cada mitad.
+export function dividirMesaPorTurno(fecha: string, turno: Turno, mesaId: number, paxA: number, paxB: number) {
+  return request<void>(`/api/mesas/${mesaId}/dividir-turno`, {
+    method: "POST",
+    body: JSON.stringify({ fecha, turno, paxA, paxB }),
+  });
+}
+
+// Deshace una división temporal (ver dividirMesaPorTurno): se pide con el
+// Id de la mesa BASE, no de ninguna de las dos mitades.
+export function unirMesaPorTurno(fecha: string, turno: Turno, mesaBaseId: number) {
+  return request<void>(`/api/mesas/${mesaBaseId}/unir-turno`, {
+    method: "POST",
+    body: JSON.stringify({ fecha, turno }),
+  });
 }
 
 export function patchMesa(

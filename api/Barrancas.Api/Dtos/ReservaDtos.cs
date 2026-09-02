@@ -21,40 +21,26 @@ public record ReservaDto(
     DateTime UpdatedAt
 );
 
+// después
 public record TurnoDataDto(
     DateOnly Fecha,
     Turno Turno,
-    // A que salon pertenece este turno (ver Models/Salon.cs): cada salon
-    // tiene su propia lista de reservas/mesas ocupadas independiente, asi
-    // que quien escucha el broadcast de SignalR necesita este dato para
-    // filtrar (igual criterio que Fecha/Turno).
     int SalonId,
     List<ReservaDto> Reservas,
     int TotalPax,
     int TotalAsistio,
     List<int> MesasOcupadas,
-    // Subconjunto de MesasOcupadas donde la reserva que la ocupa tiene
-    // "Pidio mesa" tildado: el frontend las resalta con un color distinto
-    // en el panel de mesas para avisar que esa mesa fue pedida puntualmente
-    // y no conviene reasignarla a otro grupo.
     List<int> MesasPedidas,
-    // Mesas marcadas como ocupadas por un walk-in (ver Models/WalkIn.cs):
-    // a proposito NO son parte de MesasOcupadas/Reservas — un walk-in no
-    // genera fila en la grilla, solo pinta la mesa de otro color en el
-    // panel. Nunca se solapa con MesasOcupadas: una mesa esta en una lista
-    // o en la otra, nunca en las dos.
     List<int> MesasWalkIn,
-    // Si este turno esta cerrado para este salon (ver Models/CierreTurno.cs):
-    // no se toman reservas nuevas ni se editan las existentes hasta
-    // reabrirlo (ver ReservasController). El frontend reemplaza la grilla
-    // por un aviso cuando esto es true.
     bool EstaCerrado,
-    string? MotivoCierre
+    string? MotivoCierre,
+    List<MesaDto> Mesas
 );
 
 public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena);
 
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId);
+// después
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual

@@ -45,7 +45,7 @@ export default function CambiarPasswordPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl border border-borde bg-white p-8 shadow-sm"
+        className="w-full max-w-sm rounded-2xl border border-borde bg-superficie p-8 shadow-sm"
       >
         <h1 className="mb-1 text-base font-semibold">Cambiar contraseña</h1>
         <p className="mb-5 text-sm text-tinta-suave">

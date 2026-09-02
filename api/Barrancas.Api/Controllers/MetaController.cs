@@ -25,8 +25,9 @@ public class MetaController : ControllerBase
         // filtra por SalonId localmente, asi evita tener que volver a pedir
         // /api/meta cada vez que se cambia de salon con el selector.
         var mesas = await _db.Mesas
+            .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
             .ToListAsync();
 
         var salones = await _db.Salones

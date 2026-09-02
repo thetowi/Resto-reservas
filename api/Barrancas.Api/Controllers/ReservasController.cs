@@ -16,14 +16,14 @@ namespace Barrancas.Api.Controllers;
 public class ReservasController : ControllerBase
 {
     private readonly BarrancasDbContext _db;
-    private readonly DiaService _diaService;
     private readonly IHubContext<ReservasHub> _hub;
+    private readonly DiaService _diaService;
 
-    public ReservasController(BarrancasDbContext db, DiaService diaService, IHubContext<ReservasHub> hub)
+    public ReservasController(BarrancasDbContext db, IHubContext<ReservasHub> hub, DiaService diaService)
     {
         _db = db;
-        _diaService = diaService;
         _hub = hub;
+        _diaService = diaService;
     }
 
     [HttpPost]
@@ -81,7 +81,7 @@ public class ReservasController : ControllerBase
 
         if (req.Pax.IsSet) reserva.Pax = req.Pax.Value;
 
-                if (req.MesaIds is not null)
+        if (req.MesaIds is not null)
         {
             // Con "Pidio mesa" tildado el conjunto de mesas queda bloqueado:
             // hay que destildarlo para poder reasignarlas. Mismo criterio

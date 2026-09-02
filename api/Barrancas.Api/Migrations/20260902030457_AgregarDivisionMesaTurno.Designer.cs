@@ -3,6 +3,7 @@ using System;
 using Barrancas.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Barrancas.Api.Migrations
 {
     [DbContext(typeof(BarrancasDbContext))]
-    partial class BarrancasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902030457_AgregarDivisionMesaTurno")]
+    partial class AgregarDivisionMesaTurno
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

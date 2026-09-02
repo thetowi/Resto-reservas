@@ -263,9 +263,12 @@ export default function HomePage() {
 
   if (!listo) return null;
 
-  // Mesas del salon elegido nada mas: el resto de la pantalla (grilla de
-  // reservas, panel de mesas disponibles, aviso de sobreventa) tiene que
-  // trabajar solo con las mesas de ESTE salon.
+  // Mesas del salon elegido nada mas: se usa como fallback para el reporte
+  // impreso (que necesita los dos turnos juntos y no tiene sentido pedirle
+  // que resuelva divisiones puntuales). La grilla de reservas y el panel de
+  // "Mesas disponibles" usan, en cambio, la lista propia de cada turno
+  // (dia.almuerzo.mesas / dia.cena.mesas), que ya viene resuelta por el
+  // backend con las mitades temporales si hubo una division por turno.
   const mesasDelSalon = meta?.mesas.filter((m) => m.salonId === salonId) ?? [];
   const salonActual = meta?.salones.find((s) => s.id === salonId) ?? null;
 
@@ -298,7 +301,6 @@ export default function HomePage() {
           <SalonSelector salones={meta.salones} salonId={salonId} onCambiar={setSalonId} />
         )}
         <TurnoToggle turno={turno} onCambiar={setTurno} />
-        <ThemeToggle />
         <div className="flex items-center gap-3 text-sm text-tinta-suave">
           {nombre && <span>Hola, {nombre}</span>}
           {admin ? (
@@ -308,6 +310,12 @@ export default function HomePage() {
                 className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
               >
                 Mesas
+              </Link>
+              <Link
+                href="/plano"
+                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+              >
+                Mapa del salón
               </Link>
               <Link
                 href="/admin/salones"
@@ -348,6 +356,8 @@ export default function HomePage() {
         </div>
       </header>
 
+      <ThemeToggle />
+
       {error && (
         <div className="mx-7 mt-4 rounded-xl bg-ocupada-suave px-4 py-2.5 text-sm text-ocupada">
           {error}
@@ -366,7 +376,7 @@ export default function HomePage() {
               salonId={salonId}
               salones={meta.salones}
               data={dia.almuerzo}
-              mesas={mesasDelSalon}
+              mesas={dia.almuerzo.mesas}
               espera={espera}
               admin={admin}
               onEsperaActualizada={setEspera}
@@ -379,7 +389,7 @@ export default function HomePage() {
               salonId={salonId}
               salones={meta.salones}
               data={dia.cena}
-              mesas={mesasDelSalon}
+              mesas={dia.cena.mesas}
               espera={espera}
               admin={admin}
               onEsperaActualizada={setEspera}

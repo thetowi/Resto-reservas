@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --color-tinta: #1f1b16;
-  --color-tinta-suave: #55504a;
-  --color-arena: #caa381;
-  --color-arena-suave: #f3e9df;
-  --color-fondo: #faf7f3;
-  --color-borde: #e7ded3;
+  --color-tinta: #241a1c;
+  --color-tinta-suave: #6b565a;
+  --color-arena: #7a2e3a;
+  --color-arena-suave: #f4e4e6;
+  --color-fondo: #faf6f5;
+  --color-borde: #e8dcda;
 
   --color-superficie: #ffffff;
-  --color-marca: #1f1b16;
+  --color-marca: #5c2430;
 
   --color-libre: #eef1ec;
   --color-ocupada: #c00000;
@@ -191,13 +191,13 @@ select.celda {
    de la app ya son variables, alcanza con redefinirlas aca — el resto de
    los componentes se re-tematiza solo, sin tocar ningun otro archivo. */
 :root[data-theme="dark"] {
-  --color-fondo: #1b1815;
-  --color-superficie: #252019;
-  --color-tinta: #f3ece2;
-  --color-tinta-suave: #b6aa9c;
-  --color-borde: #3c352c;
+  --color-fondo: #1c1517;
+  --color-superficie: #241b1d;
+  --color-tinta: #f3e8e9;
+  --color-tinta-suave: #b9a4a6;
+  --color-borde: #3d2c2f;
   --color-libre: #2b2620;
-  --color-arena-suave: #362d20;
+  --color-arena-suave: #3a2226;
   --color-ocupada-suave: #3a1216;
   --color-asistio-suave: #1c2b16;
   --color-walkin-suave: #17232f;
@@ -207,7 +207,6 @@ select.celda {
      (Guardar, Salir, etc.) tienen que seguir siendo oscuros con texto
      blanco en los dos temas, no invertirse. */
 }
-
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar
    Imprimir — si no, el encabezado/bordes de ReporteImpresion podrian
@@ -222,6 +221,7 @@ select.celda {
 
 
 /* Boton de modo claro/oscuro con icono animado sol<->luna. */
+/* después */
 .dark-mode-toggle {
   border: 0;
   background: transparent;
@@ -232,6 +232,10 @@ select.celda {
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 60;
 }
 
 .dark-mode-toggle:hover {

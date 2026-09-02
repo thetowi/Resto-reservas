@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { patchReserva, borrarReserva } from "@/lib/api";
 import type { Mesa, Reserva } from "@/lib/types";
+import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
   reserva: Reserva;
@@ -40,6 +41,7 @@ function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
 }
 
 export default function ReservaRow({ reserva, mesas, impar }: Props) {
+  const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
 
@@ -184,8 +186,8 @@ export default function ReservaRow({ reserva, mesas, impar }: Props) {
         <button
           title="Quitar fila"
           className="text-tinta-suave opacity-40 hover:text-ocupada hover:opacity-100"
-          onClick={() => {
-            if (!window.confirm("¿Seguro que querés quitar esta fila?")) return;
+          onClick={async () => {
+            if (!(await confirmar("¿Seguro que querés quitar esta fila?"))) return;
             borrarReserva(reserva.id).catch(() => {});
           }}
         >
@@ -212,6 +214,8 @@ interface MesaSelectorProps {
 // bloquear la carga — es solo una ayuda visual para el mozo/host.
 function MesaSelector({ mesas, seleccionadas, bloqueada, pax, onCambiar }: MesaSelectorProps) {
   const [abierto, setAbierto] = useState(false);
+  const [estilo, setEstilo] = useState<React.CSSProperties | null>(null);
+  const botonRef = useRef<HTMLButtonElement>(null);
 
   // Una base ya dividida al toque (ver MesasPanel.tsx) queda en 0 pax
   // propios: no tiene sentido ofrecerla como opción, toda su capacidad pasó
@@ -237,17 +241,42 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, onCambiar }: MesaS
     onCambiar(nuevas);
   }
 
+  // Al abrir, medimos dónde está el botón en la pantalla (no en la tabla) y
+  // decidimos si el popover entra hacia abajo o si conviene abrirlo hacia
+  // arriba — así una fila cerca del borde inferior (típicamente la última)
+  // no queda con las opciones recortadas/invisibles. position:fixed hace
+  // que el popover no dependa del contenedor con scroll de la tabla.
+  function alTocarBoton() {
+    if (abierto) {
+      setAbierto(false);
+      return;
+    }
+    const rect = botonRef.current?.getBoundingClientRect();
+    if (rect) {
+      const ALTO_ESTIMADO = 230; // ~ max-h-56 (224px) + margen
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const hayEspacioAbajo = espacioAbajo >= ALTO_ESTIMADO || espacioAbajo >= rect.top;
+      setEstilo(
+        hayEspacioAbajo
+          ? { top: rect.bottom + 4, left: rect.left }
+          : { bottom: window.innerHeight - rect.top + 4, left: rect.left },
+      );
+    }
+    setAbierto(true);
+  }
+
   return (
     <div className="relative">
       <button
+        ref={botonRef}
         type="button"
         disabled={bloqueada}
         title={titulo}
-        onClick={() => setAbierto((v) => !v)}
+        onClick={alTocarBoton}
         onKeyDown={alPresionarTecla}
         className={`selector-mesas celda flex w-full items-center justify-between gap-1 text-left disabled:cursor-not-allowed disabled:opacity-60 ${
-          capacidadInsuficiente ? "text-ocupada" : ""
-        }`}
+          bloqueada ? "anillo-pedida" : ""
+        } ${capacidadInsuficiente ? "text-ocupada" : ""}`}
       >
         <span className="truncate">{codigos.length > 0 ? codigos.join(", ") : "—"}</span>
         {capacidadInsuficiente && <span aria-hidden="true">⚠</span>}
@@ -262,19 +291,22 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, onCambiar }: MesaS
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setAbierto(false)}
           />
-          <div className="absolute top-full left-0 z-50 mt-1 max-h-56 w-36 overflow-auto rounded-lg border border-borde bg-superficie p-1 text-left shadow-lg">
+          <div
+            className="fixed z-50 max-h-56 w-36 overflow-auto rounded-lg border border-borde bg-superficie p-1 text-left shadow-lg"
+            style={estilo ?? undefined}
+          >
             {mesasUsables.map((m) => (
               <label
                 key={m.id}
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs hover:bg-arena-suave"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-arena-suave"
               >
                 <input
                   type="checkbox"
-                  className="h-3.5 w-3.5 cursor-pointer"
+                  className="h-4 w-4 cursor-pointer"
                   checked={seleccionadasSet.has(m.id)}
                   onChange={() => toggle(m.id)}
                 />
-                {m.codigo} <span className="text-tinta-suave">({m.capacidad}p)</span>
+                {m.codigo}
               </label>
             ))}
             {seleccionadas.length > 0 && (

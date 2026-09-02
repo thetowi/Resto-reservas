@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { borrarEspera, crearEspera, patchEspera, ApiError } from "@/lib/api";
 import type { Espera, Turno } from "@/lib/types";
+import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
   fecha: string;
@@ -22,6 +23,7 @@ const campoClase =
     "rounded-md border px-1 py-0.5 text-xs text-tinta focus:border-arena focus:bg-superficie focus:outline-none";
 
 export default function EsperaPanel({ fecha, turno, salonId, lista, onListaActualizada }: Props) {
+  const { confirmar } = useConfirm();
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
   const [habTel, setHabTel] = useState("");
@@ -54,7 +56,11 @@ export default function EsperaPanel({ fecha, turno, salonId, lista, onListaActua
   }
 
   async function onQuitar(entrada: Espera) {
-    if (!window.confirm("¿Ya se le asignó mesa (o se retiró)? Se va a sacar de la lista de espera.")) {
+    if (
+      !(await confirmar(
+        "¿Ya se le asignó mesa (o se retiró)? Se va a sacar de la lista de espera.",
+      ))
+    ) {
       return;
     }
     try {
@@ -235,7 +241,7 @@ export default function EsperaPanel({ fecha, turno, salonId, lista, onListaActua
           <button
             disabled={enviando || (!nombre.trim() && !habTel.trim())}
             onClick={onAgregar}
-            className="flex-1 rounded-lg bg-tinta px-2 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            className="flex-1 rounded-lg bg-marca px-2 py-1.5 text-xs font-medium text-white disabled:opacity-40"
           >
             + Agregar
           </button>
