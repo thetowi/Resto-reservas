@@ -8,6 +8,7 @@ import { useConfirm } from "./ConfirmProvider";
 interface Props {
   reserva: Reserva;
   mesas: Mesa[];
+  reservas: Reserva[];
   impar: boolean;
 }
 
@@ -40,10 +41,19 @@ function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
   enfocarSiguienteCampo(e.currentTarget);
 }
 
-export default function ReservaRow({ reserva, mesas, impar }: Props) {
+export default function ReservaRow({ reserva, mesas, reservas, impar }: Props) {
   const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
+
+  // Mesas ya asignadas a OTRA reserva de este mismo turno: no tiene sentido
+  // ofrecerlas como opcion en el selector de esta fila, porque una mesa no
+  // puede estar en dos reservas a la vez. Se excluye la propia reserva del
+  // calculo (comparando por Id), para no bloquearse a si misma las mesas
+  // que ya tiene elegidas.
+  const ocupadasPorOtros = new Set(
+    reservas.filter((r) => r.id !== reserva.id).flatMap((r) => r.mesaIds),
+  );
 
   useEffect(() => {
     setLocal((prev) => {
@@ -104,6 +114,7 @@ export default function ReservaRow({ reserva, mesas, impar }: Props) {
           seleccionadas={local.mesaIds}
           bloqueada={local.pidioMesa}
           pax={local.pax}
+          ocupadasPorOtros={ocupadasPorOtros}
           onCambiar={onCambiarMesas}
         />
       </td>
@@ -203,6 +214,7 @@ interface MesaSelectorProps {
   seleccionadas: number[];
   bloqueada: boolean;
   pax: number | null;
+  ocupadasPorOtros: Set<number>;
   onCambiar: (ids: number[]) => void;
 }
 
@@ -212,15 +224,22 @@ interface MesaSelectorProps {
 // un popover con un checkbox por mesa. Si la capacidad sumada de lo elegido
 // no alcanza para los pax cargados, se ve un aviso (⚠, en rojo) sin
 // bloquear la carga — es solo una ayuda visual para el mozo/host.
-function MesaSelector({ mesas, seleccionadas, bloqueada, pax, onCambiar }: MesaSelectorProps) {
+function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, onCambiar }: MesaSelectorProps) {
   const [abierto, setAbierto] = useState(false);
   const [estilo, setEstilo] = useState<React.CSSProperties | null>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
 
-  // Una base ya dividida al toque (ver MesasPanel.tsx) queda en 0 pax
-  // propios: no tiene sentido ofrecerla como opción, toda su capacidad pasó
-  // a sus dos mitades. Mismo filtro que usaba el <select> anterior.
-  const mesasUsables = mesas.filter((m) => !(m.mesaPadreId === null && m.capacidad === 0));
+  // Dos filtros sobre las opciones a mostrar:
+  // 1) Una base ya dividida al toque (ver MesasPanel.tsx) queda en 0 pax
+  //    propios: no tiene sentido ofrecerla, toda su capacidad pasó a sus
+  //    dos mitades. Mismo filtro que usaba el <select> anterior.
+  // 2) Una mesa ya asignada a OTRA reserva de este turno tampoco se
+  //    ofrece: evita elegir por error una mesa que ya está ocupada por
+  //    otro grupo. La propia mesa de ESTA fila nunca cae acá (ver cómo se
+  //    calcula ocupadasPorOtros en ReservaRow), así que se sigue viendo.
+  const mesasUsables = mesas.filter(
+    (m) => !(m.mesaPadreId === null && m.capacidad === 0) && !ocupadasPorOtros.has(m.id),
+  );
   const seleccionadasSet = new Set(seleccionadas);
   const elegidas = mesasUsables.filter((m) => seleccionadasSet.has(m.id));
   const codigos = elegidas.map((m) => m.codigo);

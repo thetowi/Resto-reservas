@@ -8,7 +8,7 @@ import { getDia, getEspera, getMeta, ApiError } from "@/lib/api";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
-import type { Dia, Espera, Mesa, Meta, Salon, Turno, TurnoData } from "@/lib/types";
+import type { Dia, Espera, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
 import SalonSelector from "@/components/SalonSelector";
@@ -16,11 +16,27 @@ import ShiftSection from "@/components/ShiftSection";
 import ThemeToggle from "@/components/ThemeToggle";
 import TurnoToggle from "@/components/TurnoToggle";
 
-// Antes de las 18hs mostramos Almuerzo por defecto, de ahi en mas Cena. Es
+// Una fila de reserva "vacía" (autogenerada al abrir el turno, con solo la
+// hora default de esa franja) no cuenta como una reserva real cargada —
+// para el aviso de "hay algo en otro salón" solo nos interesan las filas
+// donde el staff efectivamente completó algún dato.
+function tieneDatosCargados(r: Reserva): boolean {
+  return (
+    r.mesaIds.length > 0 ||
+    r.pax !== null ||
+    !!r.nombre?.trim() ||
+    !!r.habTel?.trim() ||
+    !!r.comentarios?.trim() ||
+    r.asistio ||
+    r.pidioMesa
+  );
+}
+
+// Antes de las 16hs mostramos Almuerzo por defecto, de ahi en mas Cena. Es
 // solo un valor inicial: el usuario lo puede cambiar libremente con el
 // selector, y siempre queda uno de los dos elegido.
 function turnoPorDefecto(): Turno {
-  return new Date().getHours() < 18 ? "almuerzo" : "cena";
+  return new Date().getHours() < 16 ? "almuerzo" : "cena";
 }
 
 export default function HomePage() {
@@ -35,6 +51,14 @@ export default function HomePage() {
   const [salonId, setSalonId] = useState<number | null>(null);
   const [dia, setDia] = useState<Dia | null>(null);
   const [espera, setEspera] = useState<Espera[]>([]);
+  // Cuántas reservas tiene cada salón (Almuerzo/Cena) en la fecha elegida,
+  // para poder avisar en el selector si HAY algo cargado en otro salón
+  // distinto al que estás mirando ahora. Se recalcula por fecha (no por
+  // turno: un solo getDia trae los dos turnos juntos), y no se toca al
+  // cambiar de salón para no repetir pedidos de más.
+  const [resumenSalones, setResumenSalones] = useState<Record<number, { almuerzo: number; cena: number }>>(
+    {},
+  );
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState<string | null>(null);
@@ -100,6 +124,34 @@ export default function HomePage() {
       setSalonId(meta.salones[0].id);
     }
   }, [meta, salonId]);
+
+  // Resumen de reservas de TODOS los salones para la fecha elegida (no solo
+  // el que está en pantalla): sirve para avisar en el SalonSelector cuando
+  // otro salón tiene algo cargado. Depende de "meta.salones" (no de "meta"
+  // entero) para no repetirse cada vez que llega un broadcast de mesas, que
+  // cambia la referencia de "meta" pero no la lista de salones.
+  useEffect(() => {
+    if (!listo || !meta) return;
+    let activo = true;
+    Promise.all(
+      meta.salones.map((s) =>
+        getDia(fecha, s.id)
+          .then((data): [number, { almuerzo: number; cena: number }] => [
+            s.id,
+            {
+              almuerzo: data.almuerzo.reservas.filter(tieneDatosCargados).length,
+              cena: data.cena.reservas.filter(tieneDatosCargados).length,
+            },
+          ])
+          .catch((): [number, { almuerzo: number; cena: number }] => [s.id, { almuerzo: 0, cena: 0 }]),
+      ),
+    ).then((entradas) => {
+      if (activo) setResumenSalones(Object.fromEntries(entradas));
+    });
+    return () => {
+      activo = false;
+    };
+  }, [listo, meta?.salones, fecha]);
 
   const suscribirA = useCallback(async (f: string, s: number) => {
     const conexion = conexionRef.current;
@@ -271,6 +323,14 @@ export default function HomePage() {
   // backend con las mitades temporales si hubo una division por turno.
   const mesasDelSalon = meta?.mesas.filter((m) => m.salonId === salonId) ?? [];
   const salonActual = meta?.salones.find((s) => s.id === salonId) ?? null;
+  // Salones (distintos al elegido) que tienen alguna reserva cargada en el
+  // turno que estás mirando ahora — se lo pasamos al selector para que
+  // avise con un símbolo. Si está vacío en ese turno, no se marca nada.
+  const salonesConReservas = new Set(
+    meta?.salones
+      .filter((s) => s.id !== salonId && (resumenSalones[s.id]?.[turno] ?? 0) > 0)
+      .map((s) => s.id) ?? [],
+  );
 
   return (
     <div>
@@ -297,8 +357,19 @@ export default function HomePage() {
           onHoy={() => setFecha(todayISO())}
           onFecha={setFecha}
         />
-        {meta && salonId !== null && (
+                {meta && salonId !== null && (
           <SalonSelector salones={meta.salones} salonId={salonId} onCambiar={setSalonId} />
+        )}
+        {salonesConReservas.size > 0 && (
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-aviso bg-aviso-suave text-lg text-aviso"
+            title={`Hay reservas cargadas en: ${[...salonesConReservas]
+              .map((id) => meta?.salones.find((s) => s.id === id)?.nombre)
+              .filter(Boolean)
+              .join(", ")}`}
+          >
+            ⚠
+          </span>
         )}
         <TurnoToggle turno={turno} onCambiar={setTurno} />
         <div className="flex items-center gap-3 text-sm text-tinta-suave">

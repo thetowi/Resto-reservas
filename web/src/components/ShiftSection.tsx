@@ -145,7 +145,7 @@ export default function ShiftSection({
               </thead>
               <tbody>
                 {reservas.map((r, i) => (
-                  <ReservaRow key={r.id} reserva={r} mesas={mesas} impar={i % 2 === 1} />
+                  <ReservaRow key={r.id} reserva={r} mesas={mesas} reservas={reservas} impar={i % 2 === 1} />
                 ))}
               </tbody>
             </table>

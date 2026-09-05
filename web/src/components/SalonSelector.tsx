@@ -2,6 +2,7 @@
 
 import type { Salon } from "@/lib/types";
 
+// después
 interface Props {
   salones: Salon[];
   salonId: number;
