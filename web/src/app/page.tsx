@@ -8,6 +8,7 @@ import { getDia, getEspera, getMeta, ApiError } from "@/lib/api";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
+import { turnoPorDefecto } from "@/lib/turno";
 import type { Dia, Espera, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
@@ -30,13 +31,6 @@ function tieneDatosCargados(r: Reserva): boolean {
     r.asistio ||
     r.pidioMesa
   );
-}
-
-// Antes de las 16hs mostramos Almuerzo por defecto, de ahi en mas Cena. Es
-// solo un valor inicial: el usuario lo puede cambiar libremente con el
-// selector, y siempre queda uno de los dos elegido.
-function turnoPorDefecto(): Turno {
-  return new Date().getHours() < 16 ? "almuerzo" : "cena";
 }
 
 export default function HomePage() {
@@ -357,7 +351,7 @@ export default function HomePage() {
           onHoy={() => setFecha(todayISO())}
           onFecha={setFecha}
         />
-                {meta && salonId !== null && (
+        {meta && salonId !== null && (
           <SalonSelector salones={meta.salones} salonId={salonId} onCambiar={setSalonId} />
         )}
         {salonesConReservas.size > 0 && (
