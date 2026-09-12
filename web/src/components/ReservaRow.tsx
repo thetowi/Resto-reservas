@@ -9,51 +9,123 @@ interface Props {
   reserva: Reserva;
   mesas: Mesa[];
   reservas: Reserva[];
+  mesasWalkIn: number[];
   impar: boolean;
+}
+
+// Selector compartido de "celdas" de la grilla: inputs/checkboxes y el
+// selector de mesas (que no es un <select> nativo, por eso se suma a mano
+// via la clase "selector-mesas"). El resto de los botones de una fila
+// (quitar fila, checkboxes del popover de mesas) a proposito NO entran en
+// este recorrido — ni el de Enter ni el de las flechas.
+function elementosFocables(contenedor: ParentNode): HTMLElement[] {
+  return Array.from(
+    contenedor.querySelectorAll<HTMLElement>(
+      "input:not(:disabled), select:not(:disabled), button.selector-mesas:not(:disabled)",
+    ),
+  );
 }
 
 // Enter avanza al siguiente campo de la grilla (ademas de Tab, que ya
 // funciona solo con el orden nativo del navegador) — recorre los inputs
 // enfocables de la MISMA tabla en el orden en que aparecen en el HTML, asi
 // que tambien salta de una fila a la siguiente sin codificar a mano
-// "despues de Hora viene Mesa". El selector de mesas (ver MesaSelector) no
-// es un <select> nativo, por eso se suma explicitamente via la clase
-// "selector-mesas" — el resto de sus botones (quitar fila, checkboxes del
-// popover) a proposito NO entran en este recorrido. Mover el foco ya
-// dispara el onBlur del campo que se deja, que es lo que efectivamente
-// guarda el valor.
+// "despues de Hora viene Mesa". Mover el foco ya dispara el onBlur del
+// campo que se deja, que es lo que efectivamente guarda el valor.
 function enfocarSiguienteCampo(actual: HTMLElement) {
   const tabla = actual.closest("table");
   if (!tabla) return;
-  const focables = Array.from(
-    tabla.querySelectorAll<HTMLElement>(
-      "input:not(:disabled), select:not(:disabled), button.selector-mesas:not(:disabled)",
-    ),
-  );
+  const focables = elementosFocables(tabla);
   const indice = focables.indexOf(actual);
   if (indice === -1) return;
   focables[indice + 1]?.focus();
 }
 
-function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
-  if (e.key !== "Enter") return;
-  e.preventDefault();
-  enfocarSiguienteCampo(e.currentTarget);
+// ¿El cursor de texto esta en la punta que corresponde (para no robarle
+// Izquierda/Derecha a alguien que todavia esta editando el texto de la
+// celda)? Los inputs sin edicion de texto real (checkboxes, el boton de
+// mesas, el numerico de Pax — que en Chrome/Firefox ni siquiera soporta
+// selectionStart) siempre cuentan como "en la punta", asi que ahi
+// Izquierda/Derecha cambian de celda directamente.
+function estaElCursorEnLaPunta(el: HTMLElement, hacia: "izquierda" | "derecha"): boolean {
+  if (!(el instanceof HTMLInputElement)) return true;
+  const tiposConCursor = new Set(["text", "search", "tel", "url", "password"]);
+  if (!tiposConCursor.has(el.type)) return true;
+  const { selectionStart, selectionEnd, value } = el;
+  if (selectionStart === null || selectionEnd === null) return true;
+  return hacia === "izquierda"
+    ? selectionStart === 0 && selectionEnd === 0
+    : selectionStart === value.length && selectionEnd === value.length;
 }
 
-export default function ReservaRow({ reserva, mesas, reservas, impar }: Props) {
+// Navegacion de grilla tipo Excel/Google Sheets: Arriba/Abajo van a la
+// misma columna de la fila anterior/siguiente (y siempre pisan el flechin
+// nativo de +/- del input numerico de Pax, que aca no tiene sentido —
+// tambien lo pisamos en los bordes de la tabla aunque no haya adonde ir,
+// para que nunca alcance a sumar/restar). Izquierda/Derecha van al campo
+// anterior/siguiente DENTRO de la misma fila, pero solo si el cursor de
+// texto ya esta en la punta correspondiente — si no, primero mueve el
+// cursor dentro del texto, como es normal.
+function alPresionarFlecha(e: React.KeyboardEvent<HTMLElement>) {
+  const tecla = e.key;
+  if (tecla !== "ArrowUp" && tecla !== "ArrowDown" && tecla !== "ArrowLeft" && tecla !== "ArrowRight") {
+    return;
+  }
+
+  const actual = e.currentTarget;
+  const fila = actual.closest("tr");
+  if (!fila) return;
+
+  if (tecla === "ArrowUp" || tecla === "ArrowDown") {
+    e.preventDefault();
+    const tabla = actual.closest("table");
+    if (!tabla) return;
+    const columna = elementosFocables(fila).indexOf(actual);
+    if (columna === -1) return;
+    const filas = Array.from(tabla.querySelectorAll<HTMLTableRowElement>("tbody tr"));
+    const indiceFila = filas.indexOf(fila);
+    if (indiceFila === -1) return;
+    const filaDestino = filas[tecla === "ArrowUp" ? indiceFila - 1 : indiceFila + 1];
+    if (!filaDestino) return;
+    const camposDestino = elementosFocables(filaDestino);
+    camposDestino[Math.min(columna, camposDestino.length - 1)]?.focus();
+    return;
+  }
+
+  if (!estaElCursorEnLaPunta(actual, tecla === "ArrowLeft" ? "izquierda" : "derecha")) return;
+  const campos = elementosFocables(fila);
+  const indice = campos.indexOf(actual);
+  if (indice === -1) return;
+  const siguiente = campos[tecla === "ArrowLeft" ? indice - 1 : indice + 1];
+  if (!siguiente) return;
+  e.preventDefault();
+  siguiente.focus();
+}
+
+function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    enfocarSiguienteCampo(e.currentTarget);
+    return;
+  }
+  alPresionarFlecha(e);
+}
+
+export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar }: Props) {
   const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
 
-  // Mesas ya asignadas a OTRA reserva de este mismo turno: no tiene sentido
-  // ofrecerlas como opcion en el selector de esta fila, porque una mesa no
-  // puede estar en dos reservas a la vez. Se excluye la propia reserva del
-  // calculo (comparando por Id), para no bloquearse a si misma las mesas
-  // que ya tiene elegidas.
-  const ocupadasPorOtros = new Set(
-    reservas.filter((r) => r.id !== reserva.id).flatMap((r) => r.mesaIds),
-  );
+  // Mesas que no tiene sentido ofrecer en el selector de esta fila, porque
+  // ya estan tomadas por otro lado: asignadas a OTRA reserva de este mismo
+  // turno (se excluye la propia reserva del calculo, para no bloquearse a
+  // si misma las mesas que ya tiene elegidas), o marcadas como ocupadas por
+  // un walk-in (mesasWalkIn — no son una reserva, pero la mesa esta
+  // igual de tomada: ver el comentario de mesasWalkIn en types.ts).
+  const ocupadasPorOtros = new Set([
+    ...reservas.filter((r) => r.id !== reserva.id).flatMap((r) => r.mesaIds),
+    ...mesasWalkIn,
+  ]);
 
   useEffect(() => {
     setLocal((prev) => {

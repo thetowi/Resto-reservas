@@ -34,11 +34,14 @@ export default function ReporteImpresion({
 
   return (
     <div className="hidden print:block">
-      <header className="mb-5 border-b-2 border-tinta pb-2.5">
-        <div className="text-lg font-bold tracking-wide">
-          BARRANCAS{salonNombre ? ` · ${salonNombre}` : ""} · Reporte del día
+      <header className="mb-5 flex items-center gap-2.5 border-b-2 border-tinta pb-2.5">
+        <img src="/logo.png" alt="" width={28} height={28} className="h-7 w-7 rounded-[6px]" />
+        <div>
+          <div className="text-lg font-bold tracking-wide">
+            BARRANCAS{salonNombre ? ` · ${salonNombre}` : ""} · Reporte del día
+          </div>
+          <div className="text-sm">{formatFechaLarga(fecha)}</div>
         </div>
-        <div className="text-sm">{formatFechaLarga(fecha)}</div>
       </header>
 
       <BloqueTurnoImpresion titulo="Almuerzo" data={almuerzo} espera={esperaAlmuerzo} codigoMesa={codigoMesa} />

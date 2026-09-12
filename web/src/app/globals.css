@@ -1,25 +1,35 @@
 @import "tailwindcss";
 
+/* Paleta "Navy & Teal" (reemplaza a la vieja "Vino y Piedra"), pensada para
+   acoplarse al logo nuevo: el navy (--color-arena/--color-marca) es el color
+   corporativo/tecnologico de marca — tipografia, mesas y lineas del plano,
+   fondos oscuros — y el teal (--color-asistio) queda reservado como acento
+   de "accion completada" (el check de Asistió). El blanco roto
+   (--color-fondo en claro) mantiene el diseño limpio sin la dureza de un
+   blanco puro. */
 :root {
-  --color-tinta: #241a1c;
-  --color-tinta-suave: #6b565a;
-  --color-arena: #7a2e3a;
-  --color-arena-suave: #f4e4e6;
-  --color-fondo: #faf6f5;
-  --color-borde: #e8dcda;
+  --color-tinta: #13242e;
+  --color-tinta-suave: #768188;
+  --color-arena: #143d58;
+  --color-arena-suave: #e3e8eb;
+  --color-fondo: #f0f3f6;
+  --color-borde: #c8d2da;
 
   --color-superficie: #ffffff;
-  --color-marca: #5c2430;
+  --color-marca: #0c2637;
 
-  --color-libre: #eef1ec;
+  --color-libre: #dae1e6;
   --color-ocupada: #c00000;
   --color-ocupada-suave: #fdeaea;
-  --color-asistio: #93c47d;
-  --color-asistio-suave: #eaf5e4;
-  /* Mesa ocupada por un walk-in (no una reserva real): un azul calmo,
-     bien distinguible del rojo de "ocupada" a simple vista. */
-  --color-walkin: #4f7ea8;
-  --color-walkin-suave: #e6eef4;
+  --color-asistio: #32b49d;
+  --color-asistio-suave: #e0f4f0;
+  /* Mesa ocupada por un walk-in (no una reserva real): antes era un azul
+     calmo, pero contra el fondo navy nuevo quedaba casi invisible (mesa
+     libre y walk-in se confundian). Un morado si se distingue bien tanto
+     del rojo de "ocupada" como del navy de fondo/mesa libre, en los dos
+     temas. */
+  --color-walkin: #8f5ad1;
+  --color-walkin-suave: #eee6f8;
   /* Mesa "pedida" (reserva con "Pidió mesa" tildado): anillo pulsante en el
      mismo tono arena de la marca, mas marcado que la version anterior, mas
      un punto fijo en la esquina (.chip-pedida) para que se note incluso en
@@ -191,21 +201,26 @@ select.celda {
    de la app ya son variables, alcanza con redefinirlas aca — el resto de
    los componentes se re-tematiza solo, sin tocar ningun otro archivo. */
 :root[data-theme="dark"] {
-  --color-fondo: #1c1517;
-  --color-superficie: #241b1d;
-  --color-tinta: #f3e8e9;
-  --color-tinta-suave: #b9a4a6;
-  --color-borde: #3d2c2f;
-  --color-libre: #2b2620;
-  --color-arena-suave: #3a2226;
+  --color-fondo: #0b202e;
+  --color-superficie: #143d58;
+  --color-tinta: #f0f3f6;
+  --color-tinta-suave: #8da1af;
+  --color-borde: #236b9a;
+  --color-libre: #1c5479;
   --color-ocupada-suave: #3a1216;
-  --color-asistio-suave: #1c2b16;
-  --color-walkin-suave: #17232f;
+  --color-asistio-suave: #19555c;
+  --color-walkin-suave: #30305c;
   --color-aviso: #e0a942;
   --color-aviso-suave: #362a10;
-  /* --color-marca NO se redefine a proposito: los botones solidos
-     (Guardar, Salir, etc.) tienen que seguir siendo oscuros con texto
-     blanco en los dos temas, no invertirse. */
+  /* Ahora SI hace falta redefinir arena/marca en oscuro (algo que en la
+     paleta vieja no pasaba): el fondo oscuro es navy, asi que un boton o un
+     anillo de foco del mismo navy que el fondo desaparecerian. Un navy mas
+     claro los mantiene bien visibles y de texto blanco sigue leyendose
+     arriba (paso el chequeo de contraste). El teal de --color-asistio no se
+     redefine — es un acento fijo de "accion completada" en los dos temas. */
+  --color-arena: #2777ab;
+  --color-arena-suave: #1c5479;
+  --color-marca: #2777ab;
 }
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar
@@ -213,9 +228,9 @@ select.celda {
    imprimirse en un color claro casi invisible sobre el papel. */
 @media print {
   :root {
-    --color-tinta: #1f1b16;
-    --color-tinta-suave: #55504a;
-    --color-borde: #e7ded3;
+    --color-tinta: #13242e;
+    --color-tinta-suave: #576066;
+    --color-borde: #c8d2da;
   }
 }
 

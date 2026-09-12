@@ -34,9 +34,13 @@ export default function LoginPage() {
             className="w-full max-w-sm rounded-2xl border border-borde bg-superficie p-8 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-marca text-lg font-bold text-arena">
-            B
-          </div>
+          <img
+            src="/logo.png"
+            alt="Barrancas"
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-[10px] border border-borde"
+          />
           <div>
             <div className="text-sm font-bold tracking-wide">BARRANCAS</div>
             <div className="text-xs text-tinta-suave">Restaurant · Reservas</div>

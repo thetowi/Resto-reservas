@@ -334,9 +334,13 @@ export default function HomePage() {
       <div className="print:hidden">
       <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-6 border-b border-borde bg-superficie px-7 py-4.5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10.5 w-10.5 items-center justify-center rounded-[10px] bg-tinta text-lg font-bold text-arena">
-            B
-          </div>
+          <img
+            src="/logo.png"
+            alt="Barrancas"
+            width={42}
+            height={42}
+            className="h-10.5 w-10.5 rounded-[10px] border border-borde"
+          />
           <div>
             <div className="text-sm font-bold tracking-wide">BARRANCAS</div>
             <div className="text-xs text-tinta-suave">Restaurant · Reservas</div>
