@@ -96,6 +96,7 @@ export type ActualizarReservaPayload = Partial<{
   comentarios: string;
   asistio: boolean;
   pidioMesa: boolean;
+  retirada: boolean;
 }>;
 
 export function patchReserva(id: number, payload: ActualizarReservaPayload) {
@@ -171,6 +172,28 @@ export function dividirMesaPorTurno(fecha: string, turno: Turno, mesaId: number,
 // Id de la mesa BASE, no de ninguna de las dos mitades.
 export function unirMesaPorTurno(fecha: string, turno: Turno, mesaBaseId: number) {
   return request<void>(`/api/mesas/${mesaBaseId}/unir-turno`, {
+    method: "POST",
+    body: JSON.stringify({ fecha, turno }),
+  });
+}
+
+// Renombra una mesa SOLO para fecha+turno (ver MesasPanel.tsx): a
+// diferencia de patchMesa (permanente, define el default de /admin/mesas),
+// esta no toca el código real de la mesa — solo cambia cómo se ve para ESE
+// turno (ej: la mesa "55" se corrió junto a la ventana y por esta noche se
+// la quiere ver como "48"). Al terminar el turno deja de aplicarse solo.
+// Llamarla de nuevo sobre una mesa ya renombrada actualiza el renombre.
+export function renombrarMesaPorTurno(fecha: string, turno: Turno, mesaId: number, codigoNuevo: string) {
+  return request<void>(`/api/mesas/${mesaId}/renombrar-turno`, {
+    method: "POST",
+    body: JSON.stringify({ fecha, turno, codigoNuevo }),
+  });
+}
+
+// Deshace un renombre hecho con renombrarMesaPorTurno antes de que termine
+// el turno (si no, igual deja de aplicarse solo al turno siguiente).
+export function revertirNombreMesaPorTurno(fecha: string, turno: Turno, mesaId: number) {
+  return request<void>(`/api/mesas/${mesaId}/revertir-nombre-turno`, {
     method: "POST",
     body: JSON.stringify({ fecha, turno }),
   });

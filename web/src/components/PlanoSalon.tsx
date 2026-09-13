@@ -28,6 +28,17 @@ interface Props {
   // salón): sin arrastre de mesas ni carteles, sin agregar/editar/borrar
   // carteles — solo mirar la disposición y la ocupación en vivo.
   soloLectura?: boolean;
+  // Fecha/turno con los que arranca el plano (ver /plano/page.tsx, que los
+  // pasa según lo que estaba elegido en la hoja antes de entrar). Si no
+  // vienen, arranca en hoy/almuerzo como siempre — uso de /admin/mesas, que
+  // no depende de ningún turno puntual. Ojo: este componente guarda su
+  // propio fecha/turno en estado interno (el usuario los puede seguir
+  // cambiando acá con su propio selector de fecha/turno, más abajo), así
+  // que estos props solo se leen UNA VEZ al montar — el caller le tiene que
+  // pasar una key distinta cada vez que cambian, para forzar un montaje
+  // nuevo y que los tome (ver /plano/page.tsx).
+  fechaInicial?: string;
+  turnoInicial?: Turno;
 }
 
 // Grilla de arranque para las mesas que todavia no se acomodaron a mano
@@ -56,9 +67,16 @@ function tamanoPorCapacidad(capacidad: number) {
   return Math.min(96, Math.max(52, 36 + capacidad * 6));
 }
 
-export default function PlanoSalon({ mesas, salonId, onMoverMesa, soloLectura = false }: Props) {
-  const [fecha, setFecha] = useState(todayISO());
-  const [turno, setTurno] = useState<Turno>("almuerzo");
+export default function PlanoSalon({
+  mesas,
+  salonId,
+  onMoverMesa,
+  soloLectura = false,
+  fechaInicial,
+  turnoInicial,
+}: Props) {
+  const [fecha, setFecha] = useState(fechaInicial ?? todayISO());
+  const [turno, setTurno] = useState<Turno>(turnoInicial ?? "almuerzo");
   const [turnoData, setTurnoData] = useState<TurnoData | null>(null);
   const [elementos, setElementos] = useState<ElementoPlano[]>([]);
   const [error, setError] = useState<string | null>(null);

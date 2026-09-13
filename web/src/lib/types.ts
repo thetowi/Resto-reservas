@@ -27,6 +27,11 @@ export interface Mesa {
   // MesasPanel.tsx). false = mesa estructural del plano permanente, la
   // que se administra desde /admin/mesas.
   esTemporal: boolean;
+  // Solo viene seteado (no null) cuando esta mesa tiene un renombre por
+  // turno activo (ver renombrarMesaPorTurno en api.ts): ahí codigo ya es el
+  // número nuevo a mostrar, y codigoOriginal guarda el número real de
+  // /admin/mesas, para poder ofrecer "volver a llamarla codigoOriginal".
+  codigoOriginal: string | null;
 }
 
 export interface Meta {
@@ -50,6 +55,14 @@ export interface Reserva {
   comentarios: string | null;
   asistio: boolean;
   pidioMesa: boolean;
+  // Se tildó cuando la reserva ya vino, comió y se fue (ver ReservaRow.tsx,
+  // checkbox "Se fue"): a partir de ahí sus mesas (mesaIds/mesaCodigos, acá
+  // arriba) dejan de contar como ocupadas para el panel de mesas y el plano
+  // — quedan libres para un walk-in u otra reserva — pero NO se borran de
+  // la fila: siguen mostrando en qué mesa(s) estuvo sentada esta reserva
+  // (historial), solo que atenuadas. Independiente de "asistio": no se
+  // auto-tildan ni destildan entre sí.
+  retirada: boolean;
   updatedAt: string;
 }
 

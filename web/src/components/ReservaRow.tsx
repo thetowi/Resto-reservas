@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { patchReserva, borrarReserva } from "@/lib/api";
 import type { Mesa, Reserva } from "@/lib/types";
+import { TOLERANCIA_MINUTOS, excedioTolerancia } from "@/lib/tolerancia";
 import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
@@ -11,6 +12,10 @@ interface Props {
   reservas: Reserva[];
   mesasWalkIn: number[];
   impar: boolean;
+  // Reloj compartido de ShiftSection (se actualiza solo cada tanto): así
+  // las 26 filas de un turno recalculan el aviso de tolerancia todas juntas
+  // en vez de tener cada una su propio setInterval.
+  ahora: Date;
 }
 
 // Selector compartido de "celdas" de la grilla: inputs/checkboxes y el
@@ -111,21 +116,25 @@ function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
   alPresionarFlecha(e);
 }
 
-export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar }: Props) {
+export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar, ahora }: Props) {
   const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
 
   // Mesas que no tiene sentido ofrecer en el selector de esta fila, porque
   // ya estan tomadas por otro lado: asignadas a OTRA reserva de este mismo
-  // turno (se excluye la propia reserva del calculo, para no bloquearse a
-  // si misma las mesas que ya tiene elegidas), o marcadas como ocupadas por
-  // un walk-in (mesasWalkIn — no son una reserva, pero la mesa esta
-  // igual de tomada: ver el comentario de mesasWalkIn en types.ts).
+  // turno que todavia no se retiro (se excluye la propia reserva del
+  // calculo, para no bloquearse a si misma las mesas que ya tiene
+  // elegidas; una reserva retirada tampoco cuenta — su mesa ya esta libre,
+  // ver types.ts), o marcadas como ocupadas por un walk-in (mesasWalkIn —
+  // no son una reserva, pero la mesa esta igual de tomada: ver el
+  // comentario de mesasWalkIn en types.ts).
   const ocupadasPorOtros = new Set([
-    ...reservas.filter((r) => r.id !== reserva.id).flatMap((r) => r.mesaIds),
+    ...reservas.filter((r) => r.id !== reserva.id && !r.retirada).flatMap((r) => r.mesaIds),
     ...mesasWalkIn,
   ]);
+
+  const enTolerancia = excedioTolerancia(local, ahora);
 
   useEffect(() => {
     setLocal((prev) => {
@@ -158,33 +167,57 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
     enviar({ mesaIds: ids });
   }
 
-  // Filas intercaladas (zebra striping): un tinte muy sutil en las filas
-  // impares para que se distingan a simple vista sin depender del hover.
-  // "Asistio" (verde) siempre tiene prioridad sobre el intercalado.
+  // Filas intercaladas (zebra striping): --color-fila-zebra (mas marcado
+  // que el gris genérico --color-arena-suave que se usa en hovers de
+  // botones — ver globals.css) para que se distingan a simple vista sin
+  // depender del hover. Prioridad de colores (la primera condicion que se
+  // cumple gana): "Asistio" (verde lima, --color-fila-asistio) > "Retirada"
+  // (atenuada) > tolerancia vencida (ambar, todavia no llego) > intercalado
+  // por defecto. Asistio queda por encima de Retirada a proposito: una vez
+  // que se tildo que vino, el verde queda para siempre como registro de que
+  // esa reserva se cumplio, aunque despues se tilde "Se fue" — la mesa se
+  // libera igual para un walk-in (ver DiaService), eso no depende del color.
   const filaClase = local.asistio
-    ? "bg-asistio-suave"
-    : impar
-      ? "bg-arena-suave/30 hover:bg-arena-suave/60"
-      : "hover:bg-arena-suave/60";
+    ? "bg-fila-asistio"
+    : local.retirada
+      ? "opacity-60"
+      : enTolerancia
+        ? "bg-aviso-suave"
+        : impar
+          ? "bg-fila-zebra hover:bg-fila-zebra-hover"
+          : "hover:bg-fila-zebra-hover";
 
   return (
     <tr className={filaClase}>
       <td className="w-16">
-        <input
-          className="celda"
-          value={local.hora ?? ""}
-          onFocus={() => (focusedField.current = "hora")}
-          onChange={(e) => commit("hora", e.target.value)}
-          onBlur={() => onBlurTexto("hora")}
-          onKeyDown={alPresionarTecla}
-          placeholder="hh:mm"
-        />
+        <div className="relative">
+          <input
+            className="celda"
+            value={local.hora ?? ""}
+            onFocus={() => (focusedField.current = "hora")}
+            onChange={(e) => commit("hora", e.target.value)}
+            onBlur={() => onBlurTexto("hora")}
+            onKeyDown={alPresionarTecla}
+            placeholder="hh:mm"
+          />
+          {enTolerancia && (
+            <button
+              type="button"
+              onClick={() => onCambiarMesas([])}
+              title={`Pasaron ${TOLERANCIA_MINUTOS}+ minutos de la hora reservada y todavía no llegó. Cambiá el horario si se corrió, o tocá acá para liberar su mesa y ofrecérsela a otra reserva o a un walk-in.`}
+              className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-aviso text-[9px] leading-none text-white shadow"
+            >
+              ⏰
+            </button>
+          )}
+        </div>
       </td>
       <td className="w-24">
         <MesaSelector
           mesas={mesas}
           seleccionadas={local.mesaIds}
           bloqueada={local.pidioMesa}
+          retirada={local.retirada}
           pax={local.pax}
           ocupadasPorOtros={ocupadasPorOtros}
           onCambiar={onCambiarMesas}
@@ -265,6 +298,21 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           }}
         />
       </td>
+      <td className="w-14 text-center">
+        <input
+          type="checkbox"
+          className="h-[18px] w-[18px] cursor-pointer"
+          checked={local.retirada}
+          title={
+            'Tildar cuando la reserva ya vino, comió y se fue: libera su mesa para un walk-in u otra reserva, sin borrar en qué mesa estuvo sentada (independiente de "Asistió")'
+          }
+          onKeyDown={alPresionarTecla}
+          onChange={(e) => {
+            commit("retirada", e.target.checked);
+            enviar({ retirada: e.target.checked });
+          }}
+        />
+      </td>
       <td className="w-6 text-center">
         <button
           title="Quitar fila"
@@ -285,6 +333,11 @@ interface MesaSelectorProps {
   mesas: Mesa[];
   seleccionadas: number[];
   bloqueada: boolean;
+  // Reserva ya marcada "Se fue" (ver ReservaRow.tsx): las mesas elegidas se
+  // siguen mostrando (historial de dónde estuvo sentada), pero atenuadas y
+  // sin poder reasignarlas hasta destildar "Se fue" — mismo criterio que
+  // "bloqueada" pero con su propio mensaje, para no confundir motivos.
+  retirada: boolean;
   pax: number | null;
   ocupadasPorOtros: Set<number>;
   onCambiar: (ids: number[]) => void;
@@ -296,10 +349,11 @@ interface MesaSelectorProps {
 // un popover con un checkbox por mesa. Si la capacidad sumada de lo elegido
 // no alcanza para los pax cargados, se ve un aviso (⚠, en rojo) sin
 // bloquear la carga — es solo una ayuda visual para el mozo/host.
-function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, onCambiar }: MesaSelectorProps) {
+function MesaSelector({ mesas, seleccionadas, bloqueada, retirada, pax, ocupadasPorOtros, onCambiar }: MesaSelectorProps) {
   const [abierto, setAbierto] = useState(false);
   const [estilo, setEstilo] = useState<React.CSSProperties | null>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
+  const deshabilitada = bloqueada || retirada;
 
   // Dos filtros sobre las opciones a mostrar:
   // 1) Una base ya dividida al toque (ver MesasPanel.tsx) queda en 0 pax
@@ -319,11 +373,13 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, 
   const capacidadInsuficiente = pax !== null && elegidas.length > 0 && capacidadTotal < pax;
 
   const tituloBase = codigos.length > 0 ? `Mesas: ${codigos.join(", ")}` : "Elegir mesa(s)";
-  const titulo = bloqueada
-    ? "Mesa bloqueada: destildá \"Pidió mesa\" para poder cambiarla"
-    : capacidadInsuficiente
-      ? `${tituloBase} — capacidad ${capacidadTotal}p, no alcanza para ${pax} pax`
-      : tituloBase;
+  const titulo = retirada
+    ? `${tituloBase} — reserva retirada, mesa liberada: destildá "Se fue" para poder reasignarla`
+    : bloqueada
+      ? "Mesa bloqueada: destildá \"Pidió mesa\" para poder cambiarla"
+      : capacidadInsuficiente
+        ? `${tituloBase} — capacidad ${capacidadTotal}p, no alcanza para ${pax} pax`
+        : tituloBase;
 
   function toggle(id: number) {
     const nuevas = seleccionadasSet.has(id)
@@ -361,7 +417,7 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, 
       <button
         ref={botonRef}
         type="button"
-        disabled={bloqueada}
+        disabled={deshabilitada}
         title={titulo}
         onClick={alTocarBoton}
         onKeyDown={alPresionarTecla}
@@ -369,7 +425,9 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, 
           bloqueada ? "anillo-pedida" : ""
         } ${capacidadInsuficiente ? "text-ocupada" : ""}`}
       >
-        <span className="truncate">{codigos.length > 0 ? codigos.join(", ") : "—"}</span>
+        <span className={`truncate ${retirada ? "line-through" : ""}`}>
+          {codigos.length > 0 ? codigos.join(", ") : "—"}
+        </span>
         {capacidadInsuficiente && <span aria-hidden="true">⚠</span>}
       </button>
 
@@ -383,32 +441,41 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, pax, ocupadasPorOtros, 
             onClick={() => setAbierto(false)}
           />
           <div
-            className="fixed z-50 max-h-56 w-36 overflow-auto rounded-lg border border-borde bg-superficie p-1 text-left shadow-lg"
+            className="fixed z-50 flex max-h-56 w-36 flex-col overflow-hidden rounded-lg border border-borde bg-superficie text-left shadow-lg"
             style={estilo ?? undefined}
           >
-            {mesasUsables.map((m) => (
-              <label
-                key={m.id}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-arena-suave"
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 cursor-pointer"
-                  checked={seleccionadasSet.has(m.id)}
-                  onChange={() => toggle(m.id)}
-                />
-                {m.codigo}
-              </label>
-            ))}
-            {seleccionadas.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onCambiar([])}
-                className="mt-0.5 block w-full rounded-md px-2 py-1 text-left text-xs text-tinta-suave hover:bg-arena-suave hover:text-ocupada"
-              >
-                Limpiar
-              </button>
-            )}
+            {/* "Limpiar" fijo arriba de todo (fuera del área con scroll de
+                abajo): si se eligieron muchas mesas y la lista quedó larga,
+                sigue estando a la vista sin tener que scrollear hasta el
+                final para encontrarlo. Se muestra siempre (no solo cuando
+                hay algo elegido) para que no "aparezca y desaparezca" y sea
+                facil de encontrar — si no hay nada elegido, queda
+                deshabilitado en vez de ocultarse.
+            */}
+            <button
+              type="button"
+              disabled={seleccionadas.length === 0}
+              onClick={() => onCambiar([])}
+              className="block w-full shrink-0 border-b border-borde px-2 py-1.5 text-left text-xs font-medium text-tinta-suave hover:bg-arena-suave hover:text-ocupada disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tinta-suave"
+            >
+              Limpiar selección
+            </button>
+            <div className="min-h-0 overflow-auto p-1">
+              {mesasUsables.map((m) => (
+                <label
+                  key={m.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-arena-suave"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 cursor-pointer"
+                    checked={seleccionadasSet.has(m.id)}
+                    onChange={() => toggle(m.id)}
+                  />
+                  {m.codigo}
+                </label>
+              ))}
+            </div>
           </div>
         </>
       )}

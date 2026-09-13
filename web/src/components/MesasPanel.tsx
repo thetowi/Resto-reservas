@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ApiError, dividirMesaPorTurno, toggleWalkIn, unirMesaPorTurno } from "@/lib/api";
+import {
+  ApiError,
+  dividirMesaPorTurno,
+  renombrarMesaPorTurno,
+  revertirNombreMesaPorTurno,
+  toggleWalkIn,
+  unirMesaPorTurno,
+} from "@/lib/api";
 import type { Mesa, Reserva, Turno } from "@/lib/types";
 import { useConfirm } from "./ConfirmProvider";
 
@@ -35,6 +42,11 @@ export default function MesasPanel({
   // El resto (lo que le queda a la mesa base) se calcula solo, no se pide.
   const [dividiendoPara, setDividiendoPara] = useState<number | null>(null);
   const [paxDivision, setPaxDivision] = useState("");
+  // Mesa sobre la que se está mostrando el mini-formulario de "editar
+  // número" (reemplaza al menú cuando se toca "Editar número"): renombra la
+  // mesa solo para este turno, sin tocar su código real de /admin/mesas.
+  const [editandoPara, setEditandoPara] = useState<number | null>(null);
+  const [codigoEditado, setCodigoEditado] = useState("");
 
   const ocupadas = new Set(mesasOcupadas);
   const pedidas = new Set(mesasPedidas);
@@ -46,10 +58,22 @@ export default function MesasPanel({
   // correcto sin duplicar nada.
   const totalPax = mesas.reduce((acc, m) => acc + m.capacidad, 0);
 
+  // El panel se muestra ordenado de menor a mayor por número de mesa (no por
+  // el orden estructural de /admin/mesas, que puede no coincidir — por
+  // ejemplo si se agregó una mesa nueva al final con un código más chico, o
+  // si esta mesa tiene un renombre por turno activo). "numeric: true" hace
+  // que compare el valor numérico de cada código en vez de compararlo como
+  // texto, así "45a"/"45b" quedan pegadas a "45" y antes de "46".
+  const mesasOrdenadas = [...mesas].sort((a, b) =>
+    a.codigo.localeCompare(b.codigo, undefined, { numeric: true, sensitivity: "base" }),
+  );
+
   function cerrarMenus() {
     setMenuAbiertoPara(null);
     setDividiendoPara(null);
     setPaxDivision("");
+    setEditandoPara(null);
+    setCodigoEditado("");
   }
 
   function onTocarMesa(mesa: Mesa) {
@@ -142,6 +166,43 @@ export default function MesasPanel({
     }
   }
 
+  function onAbrirEditar(mesa: Mesa) {
+    setMenuAbiertoPara(null);
+    setEditandoPara(mesa.id);
+    setCodigoEditado(mesa.codigo);
+  }
+
+  async function onConfirmarEditar(mesa: Mesa) {
+    const codigoNuevo = codigoEditado.trim();
+    if (!codigoNuevo) {
+      setError("Ingresá el número nuevo para la mesa.");
+      return;
+    }
+    cerrarMenus();
+    setError(null);
+    setEnviando(mesa.id);
+    try {
+      await renombrarMesaPorTurno(fecha, turno, mesa.id, codigoNuevo);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo editar el número de la mesa");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  async function onRevertirNombre(mesa: Mesa) {
+    setMenuAbiertoPara(null);
+    if (!(await confirmar(`¿Volver a llamar a esta mesa "${mesa.codigoOriginal}" para este turno?`))) return;
+    setEnviando(mesa.id);
+    try {
+      await revertirNombreMesaPorTurno(fecha, turno, mesa.id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo revertir el número de la mesa");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
   return (
     <div className="rounded-2xl border border-borde bg-superficie p-4 shadow-sm">
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -158,7 +219,7 @@ export default function MesasPanel({
       )}
 
       <div className="grid grid-cols-4 gap-1.5">
-        {mesas.map((m) => {
+        {mesasOrdenadas.map((m) => {
           const ocupada = ocupadas.has(m.id);
           const walkIn = walkIns.has(m.id);
           const pedida = pedidas.has(m.id);
@@ -228,6 +289,63 @@ export default function MesasPanel({
                         Dividir mesa
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => onAbrirEditar(m)}
+                      className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+                    >
+                      Editar número
+                    </button>
+                    {m.codigoOriginal && (
+                      <button
+                        type="button"
+                        onClick={() => onRevertirNombre(m)}
+                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+                      >
+                        Volver a mesa {m.codigoOriginal}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {editandoPara === m.id && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Cerrar"
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={cerrarMenus}
+                  />
+                  <div className="absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-2.5 text-left shadow-lg">
+                    <div className="mb-1.5 text-[11px] text-tinta-suave">
+                      Nuevo número para esta mesa, solo para este turno.
+                    </div>
+                    <div className="mb-2 flex items-center justify-center">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={codigoEditado}
+                        onChange={(e) => setCodigoEditado(e.target.value)}
+                        className="w-20 rounded-md border border-borde bg-fondo px-1.5 py-1 text-center text-xs text-tinta"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={cerrarMenus}
+                        className="rounded-md px-2 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onConfirmarEditar(m)}
+                        className="rounded-md bg-marca px-2 py-1 text-xs text-white"
+                      >
+                        Guardar
+                      </button>
+                    </div>
                   </div>
                 </>
               )}

@@ -40,7 +40,7 @@ export default function DateNav({ fecha, titulo, esHoy, onPrev, onNext, onHoy, o
         {!esHoy && (
           <button
             onClick={onHoy}
-            className="rounded-lg bg-tinta px-3.5 py-1.5 text-sm text-white"
+            className="rounded-lg bg-marca px-3.5 py-1.5 text-sm text-white"
           >
             Hoy
           </button>

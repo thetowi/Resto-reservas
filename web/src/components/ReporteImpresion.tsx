@@ -84,12 +84,13 @@ function BloqueTurnoImpresion({
             <th className="py-1 pr-2">Hab / Tel</th>
             <th className="py-1 pr-2">Comentarios</th>
             <th className="py-1 pr-2">Asistió</th>
+            <th className="py-1 pr-2">Se fue</th>
           </tr>
         </thead>
         <tbody>
           {reservas.length === 0 ? (
             <tr>
-              <td colSpan={8} className="py-2 text-center text-tinta-suave">
+              <td colSpan={9} className="py-2 text-center text-tinta-suave">
                 Sin reservas cargadas.
               </td>
             </tr>
@@ -104,6 +105,7 @@ function BloqueTurnoImpresion({
                 <td className="py-1 pr-2">{r.habTel ?? "—"}</td>
                 <td className="py-1 pr-2">{r.comentarios ?? ""}</td>
                 <td className="py-1 pr-2">{r.asistio ? "Sí" : "No"}</td>
+                <td className="py-1 pr-2">{r.retirada ? "Sí" : ""}</td>
               </tr>
             ))
           )}

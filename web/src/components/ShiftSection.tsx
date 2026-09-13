@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { crearReserva, toggleCierre } from "@/lib/api";
 import type { Espera, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
+import { excedioTolerancia } from "@/lib/tolerancia";
 import EsperaPanel from "./EsperaPanel";
 import MesasPanel from "./MesasPanel";
 import ReservaRow from "./ReservaRow";
@@ -36,6 +37,17 @@ export default function ShiftSection({
   const { confirmar, preguntar } = useConfirm();
   const { reservas, totalPax, totalAsistio, mesasOcupadas } = data;
   const [enviandoCierre, setEnviandoCierre] = useState(false);
+
+  // Reloj compartido para el aviso de tolerancia (ver ReservaRow.tsx / lib/
+  // tolerancia.ts): un solo timer acá en vez de uno por fila, y también
+  // alimenta el contador del encabezado de abajo. 30s alcanza de sobra para
+  // un aviso que se dispara recien a los 15 minutos.
+  const [ahora, setAhora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const reservasFueraDeTolerancia = reservas.filter((r) => excedioTolerancia(r, ahora)).length;
 
   // Aviso de sobreventa: cuando el pax reservado de este turno llega al 80%
   // de la capacidad total del salon (todas las mesas, bases y divisiones),
@@ -126,8 +138,18 @@ export default function ShiftSection({
             </div>
           )}
 
+          {reservasFueraDeTolerancia > 0 && (
+            <div className="mb-3 rounded-lg bg-aviso-suave px-3 py-2 text-xs text-aviso">
+              ⏰ {reservasFueraDeTolerancia}{" "}
+              {reservasFueraDeTolerancia === 1
+                ? "reserva superó los 15 minutos de tolerancia y todavía no llegó"
+                : "reservas superaron los 15 minutos de tolerancia y todavía no llegaron"}
+              : movele el horario o liberale la mesa desde su fila.
+            </div>
+          )}
+
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-sm">
+            <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr className="border-b-2 border-borde text-[11px] tracking-wide text-tinta-suave uppercase">
                   <th className="px-1.5 py-1.5 text-left">Hora</th>
@@ -140,6 +162,12 @@ export default function ShiftSection({
                   <th className="px-1.5 py-1.5 text-left">Hab / Tel</th>
                   <th className="px-1.5 py-1.5 text-left">Comentarios</th>
                   <th className="px-1.5 py-1.5 text-left">Asistió</th>
+                  <th
+                    className="px-1.5 py-1.5 text-left"
+                    title="Ya vino, comió y se fue: libera su mesa (para un walk-in u otra reserva) sin borrar en qué mesa estuvo sentada"
+                  >
+                    Se fue
+                  </th>
                   <th />
                 </tr>
               </thead>
@@ -152,6 +180,7 @@ export default function ShiftSection({
                     reservas={reservas}
                     mesasWalkIn={data.mesasWalkIn}
                     impar={i % 2 === 1}
+                    ahora={ahora}
                   />
                 ))}
               </tbody>

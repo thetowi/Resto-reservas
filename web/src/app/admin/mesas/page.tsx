@@ -432,7 +432,7 @@ function FormularioMesa({ placeholder, onCancelar, onGuardar, capacidadMaxima }:
       <button
         disabled={!codigo.trim() || capacidadInvalida}
         onClick={() => onGuardar(codigo.trim(), Number(capacidad))}
-        className="rounded-lg bg-tinta px-3 py-1.5 text-sm text-white disabled:opacity-40"
+        className="rounded-lg bg-marca px-3 py-1.5 text-sm text-white disabled:opacity-40"
       >
         Guardar
       </button>

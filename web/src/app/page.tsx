@@ -29,7 +29,8 @@ function tieneDatosCargados(r: Reserva): boolean {
     !!r.habTel?.trim() ||
     !!r.comentarios?.trim() ||
     r.asistio ||
-    r.pidioMesa
+    r.pidioMesa ||
+    r.retirada
   );
 }
 
@@ -326,6 +327,12 @@ export default function HomePage() {
       .map((s) => s.id) ?? [],
   );
 
+  // Link a "Mapa del salón"/"Plano": lleva la fecha, turno y salón tal cual
+  // están elegidos acá, para que /plano abra mostrando exactamente lo mismo
+  // que se estaba viendo en la hoja (ver plano/page.tsx, que los lee de la
+  // URL) en vez de caer siempre en hoy/turno actual/primer salón.
+  const hrefPlano = `/plano?fecha=${fecha}&turno=${turno}${salonId !== null ? `&salonId=${salonId}` : ""}`;
+
   return (
     <div>
       {/* Toda la UI interactiva se oculta al imprimir: lo unico que debe
@@ -381,7 +388,7 @@ export default function HomePage() {
                 Mesas
               </Link>
               <Link
-                href="/plano"
+                href={hrefPlano}
                 className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
               >
                 Mapa del salón
@@ -408,7 +415,7 @@ export default function HomePage() {
           ) : (
             // El Staff solo puede "ver el plano... para estudiarlo": nada de
             // crear/mover mesas, eso es exclusivo de /admin/mesas.
-            <Link href="/plano" className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
+            <Link href={hrefPlano} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
               Plano
             </Link>
           )}

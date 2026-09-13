@@ -42,6 +42,25 @@
      "asistio", para que se lea como "atencion" y no como "algo salio mal". */
   --color-aviso: #8a5a00;
   --color-aviso-suave: #fbf0d9;
+
+  /* Colores de fila de la grilla de reservas (ReservaRow.tsx), SEPARADOS a
+     proposito de --color-arena-suave/--color-asistio-suave de arriba: esas
+     dos se reusan en un monton de otros lugares (hovers de botones, plano,
+     el badge de "sentada" en la lista de espera), asi que si las
+     oscureciamos/las haciamos lima directo, cambiaba todo eso tambien sin
+     que nadie lo pidiera. Con variables propias, el ajuste queda acotado a
+     las filas de la grilla. En modo oscuro quedan iguales a como se veian
+     antes (mismo calculo que antes, ya "horneado" en vez de depender de
+     una opacidad sobre --color-arena-suave). Ajustado de nuevo a pedido: el
+     gris quedó muy oscuro -> un poco más claro; el verde de asistio pasa a
+     un lima fijo (#C1F7C1) IGUAL en los dos temas (ver también el mismo
+     valor en :root[data-theme="dark"] más abajo, y la regla ".bg-fila-asistio
+     .celda" más abajo en este archivo que fuerza texto oscuro sobre esta
+     fila, necesaria porque el texto claro del modo oscuro quedaría
+     invisible sobre un verde tan claro). */
+  --color-fila-zebra: #e6eaf0;
+  --color-fila-zebra-hover: #d9dfe9;
+  --color-fila-asistio: #c1f7c1;
 }
 
 @theme inline {
@@ -63,6 +82,9 @@
   --color-pedida: var(--color-pedida);
   --color-aviso: var(--color-aviso);
   --color-aviso-suave: var(--color-aviso-suave);
+  --color-fila-zebra: var(--color-fila-zebra);
+  --color-fila-zebra-hover: var(--color-fila-zebra-hover);
+  --color-fila-asistio: var(--color-fila-asistio);
 }
 
 /* Anillo pulsante + resplandor para marcar una mesa "pedida" sin taparle el
@@ -149,6 +171,16 @@ body {
   outline: none;
 }
 
+/* Fila "Asistió" de la grilla de reservas (ReservaRow.tsx): el fondo lima
+   --color-fila-asistio es el MISMO verde claro (#C1F7C1) en modo claro y
+   oscuro (ver globals.css arriba). Eso es un problema en oscuro, donde el
+   texto normal (--color-tinta) es casi blanco y quedaría invisible sobre
+   un verde tan claro — por eso esta fila fuerza un texto oscuro fijo,
+   igual en los dos temas, en vez de heredar --color-tinta. */
+.bg-fila-asistio .celda {
+  color: #13242e;
+}
+
 /* Placeholders (el "hh:mm", "Ej: 4", "Nombre", etc.) con un color propio,
    mas tenue que el texto real (--color-tinta-suave en vez de --color-tinta)
    y con un poco de opacidad extra — asi se distinguen del texto de una
@@ -221,6 +253,18 @@ select.celda {
   --color-arena: #2777ab;
   --color-arena-suave: #1c5479;
   --color-marca: #2777ab;
+
+  /* Mismo resultado visual que antes (arena-suave al 30%/60% de opacidad
+     sobre el fondo oscuro de la fila), ahora como valor solido propio — ver
+     el comentario junto a --color-fila-zebra en :root. El zebra de oscuro
+     no cambia con este pedido. --color-fila-asistio SÍ cambia: pasa a ser
+     el mismo lima (#C1F7C1) que en modo claro (antes era un teal oscuro
+     #19555c) — el texto de la fila se fuerza a oscuro con la regla
+     ".bg-fila-asistio .celda" de más arriba en este archivo, para que
+     siga siendo legible sobre este verde claro. */
+  --color-fila-zebra: #164462;
+  --color-fila-zebra-hover: #194b6c;
+  --color-fila-asistio: #b2ff7eb1;
 }
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar
