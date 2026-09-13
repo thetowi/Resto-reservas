@@ -63,14 +63,19 @@ public class DiaService
                 r.Id, r.Fecha, r.Turno, r.Orden, r.Hora,
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.MesaId).ToList(),
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.Mesa.Codigo).ToList(),
-                r.Pax, r.Nombre, r.HabTel, r.Comentarios, r.Asistio, r.PidioMesa,
+                r.Pax, r.Nombre, r.HabTel, r.Comentarios, r.Asistio, r.PidioMesa, r.Retirada,
                 r.UpdatedAt))
             .ToListAsync();
 
         var totalPax = reservas.Sum(r => r.Pax ?? 0);
         var totalAsistio = reservas.Where(r => r.Asistio).Sum(r => r.Pax ?? 0);
-        var mesasOcupadas = reservas.SelectMany(r => r.MesaIds).Distinct().ToList();
-        var mesasPedidas = reservas.Where(r => r.PidioMesa).SelectMany(r => r.MesaIds).Distinct().ToList();
+        // Una reserva "retirada" (ya vino, comio y se fue — ver
+        // Models/Reserva.cs) deja de contar sus mesas como ocupadas/pedidas:
+        // sus MesaIds se siguen mostrando en la fila (historial), pero acá
+        // se excluyen a proposito para que la mesa quede libre en el panel
+        // y en el plano, disponible para un walk-in u otra reserva.
+        var mesasOcupadas = reservas.Where(r => !r.Retirada).SelectMany(r => r.MesaIds).Distinct().ToList();
+        var mesasPedidas = reservas.Where(r => r.PidioMesa && !r.Retirada).SelectMany(r => r.MesaIds).Distinct().ToList();
         var mesasWalkIn = await _db.WalkIns
             .Where(w => w.Fecha == fecha && w.Turno == turno && w.SalonId == salonId)
             .Select(w => w.MesaId)
@@ -87,13 +92,42 @@ public class DiaService
         var basesDivididas = divisiones.Select(d => d.MesaBaseId).ToHashSet();
         var hijasActivas = divisiones.SelectMany(d => new[] { d.MesaHijaAId, d.MesaHijaBId }).ToHashSet();
 
+        // Renombres activos para este turno puntual (ver Models/
+        // RenombreMesaTurno.cs): mesaId -> codigo nuevo a mostrar. No ocultan
+        // ni crean ninguna mesa (a diferencia de divisiones): solo cambian
+        // el Codigo con el que se ve una mesa que sigue siendo la misma.
+        var renombres = await _db.RenombresMesaTurno
+            .Where(r => r.Fecha == fecha && r.Turno == turno && r.SalonId == salonId)
+            .ToDictionaryAsync(r => r.MesaId, r => r.CodigoNuevo);
+
         var mesas = await _db.Mesas
             .Where(m => m.SalonId == salonId)
             .Where(m => !m.EsTemporal || hijasActivas.Contains(m.Id))
             .Where(m => !basesDivididas.Contains(m.Id))
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
+            .Select(m => new MesaDto(
+                m.Id,
+                m.Codigo,
+                m.Capacidad,
+                m.MesaPadreId,
+                m.Orden,
+                m.PosX,
+                m.PosY,
+                m.SalonId,
+                m.EsTemporal,
+                null))
             .ToListAsync();
+
+        // Aplicamos los renombres despues de traer la lista (no se puede
+        // resolver el diccionario dentro del Select de EF/SQL): si hay uno
+        // activo para esta mesa, Codigo pasa a ser el nuevo numero y
+        // CodigoOriginal guarda el real, para que el frontend pueda ofrecer
+        // "revertir".
+        mesas = mesas
+            .Select(m => renombres.TryGetValue(m.Id, out var codigoNuevo)
+                ? m with { Codigo = codigoNuevo, CodigoOriginal = m.Codigo }
+                : m)
+            .ToList();
 
         return new TurnoDataDto(
             fecha, turno, salonId, reservas, totalPax, totalAsistio, mesasOcupadas, mesasPedidas, mesasWalkIn,

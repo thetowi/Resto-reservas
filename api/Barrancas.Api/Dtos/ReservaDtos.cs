@@ -18,6 +18,11 @@ public record ReservaDto(
     string? Comentarios,
     bool Asistio,
     bool PidioMesa,
+    // Se tildo cuando esta reserva ya vino, comio y se fue: sus mesas (mas
+    // arriba, MesaIds/MesaCodigos) se siguen mostrando como historial, pero
+    // dejan de contar como ocupadas (ver TurnoDataDto.MesasOcupadas /
+    // DiaService) — quedan libres para un walk-in u otra reserva.
+    bool Retirada,
     DateTime UpdatedAt
 );
 
@@ -40,7 +45,11 @@ public record TurnoDataDto(
 public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena);
 
 // después
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal);
+// CodigoOriginal viene null salvo en TurnoDataDto.Mesas cuando esta mesa
+// tiene un renombre por turno activo (ver DiaService / RenombreMesaTurno):
+// ahi Codigo ya es el nuevo numero para mostrar, y CodigoOriginal guarda el
+// numero real de /admin/mesas, para poder ofrecer "revertir" en el frontend.
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, string? CodigoOriginal = null);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual
@@ -72,5 +81,6 @@ public record ActualizarReservaRequest(
     string? HabTel,
     string? Comentarios,
     bool? Asistio,
-    bool? PidioMesa
+    bool? PidioMesa,
+    bool? Retirada
 );

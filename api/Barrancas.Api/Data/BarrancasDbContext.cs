@@ -17,6 +17,7 @@ public class BarrancasDbContext : DbContext
     public DbSet<WalkIn> WalkIns => Set<WalkIn>();
     public DbSet<CierreTurno> CierresTurno => Set<CierreTurno>();
     public DbSet<DivisionMesaTurno> DivisionesMesaTurno => Set<DivisionMesaTurno>();
+    public DbSet<RenombreMesaTurno> RenombresMesaTurno => Set<RenombreMesaTurno>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -144,6 +145,26 @@ public class BarrancasDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.MesaHijaBId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RenombreMesaTurno>(e =>
+        {
+            // Un solo renombre activo por mesa y turno puntual (editar de
+            // nuevo actualiza esta misma fila, no crea una segunda).
+            e.HasIndex(x => new { x.Fecha, x.Turno, x.MesaId }).IsUnique();
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // Cascade (no Restrict): a diferencia de una division (que sí
+            // bloquea el borrado de sus mesas hijas/base), un renombre es
+            // una anotacion liviana sobre la mesa — si la mesa se borra, el
+            // renombre no tiene sentido y desaparece con ella, sin
+            // bloquear el borrado (mismo criterio que WalkIn).
+            e.HasOne(x => x.Mesa)
+                .WithMany()
+                .HasForeignKey(x => x.MesaId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

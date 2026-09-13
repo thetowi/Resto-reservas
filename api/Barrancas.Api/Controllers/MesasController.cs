@@ -301,6 +301,88 @@ public class MesasController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Renombra una mesa SOLO para una fecha+turno puntual (ver Models/
+    /// RenombreMesaTurno.cs): a diferencia de <see cref="Actualizar"/> (PATCH,
+    /// permanente, define el default de /admin/mesas), esta no toca el
+    /// Codigo real de la mesa — solo hace que ESE turno la vea con otro
+    /// numero. Caso tipico: se corrio la mesa "55" junto a la ventana y por
+    /// esta noche se la quiere ver como "48". Al terminar el turno deja de
+    /// aplicarse solo. Abierta a Admin y Staff (ver comentario de la clase).
+    /// Volver a llamar a este mismo endpoint sobre una mesa ya renombrada
+    /// actualiza el renombre (no crea uno segundo).
+    /// </summary>
+    [HttpPost("{id:int}/renombrar-turno")]
+    public async Task<ActionResult> RenombrarPorTurno(int id, RenombrarPorTurnoRequest req)
+    {
+        var mesa = await _db.Mesas.FirstOrDefaultAsync(m => m.Id == id);
+        if (mesa is null) return NotFound(new { error = "la mesa indicada no existe" });
+
+        var codigoNuevo = req.CodigoNuevo?.Trim();
+        if (string.IsNullOrWhiteSpace(codigoNuevo))
+        {
+            return BadRequest(new { error = "el numero nuevo es obligatorio" });
+        }
+
+        // Chequeamos contra la lista de mesas YA RESUELTA de este turno
+        // (divisiones y renombres previos incluidos), para no dejar dos
+        // mesas mostrando el mismo numero al mismo tiempo. Se excluye a la
+        // mesa que se esta renombrando: renombrarla al numero que ya tiene
+        // (o volver a editarla) no cuenta como choque contra si misma.
+        var turnoActual = await _diaService.GetTurnoAsync(req.Fecha, req.Turno, mesa.SalonId);
+        var choque = turnoActual.Mesas.Any(m => m.Id != mesa.Id && m.Codigo == codigoNuevo);
+        if (choque)
+        {
+            return BadRequest(new { error = $"ya hay otra mesa con el numero {codigoNuevo} en este turno" });
+        }
+
+        var renombre = await _db.RenombresMesaTurno.FirstOrDefaultAsync(r =>
+            r.Fecha == req.Fecha && r.Turno == req.Turno && r.MesaId == mesa.Id);
+        if (renombre is null)
+        {
+            _db.RenombresMesaTurno.Add(new RenombreMesaTurno
+            {
+                Fecha = req.Fecha,
+                Turno = req.Turno,
+                SalonId = mesa.SalonId,
+                MesaId = mesa.Id,
+                CodigoNuevo = codigoNuevo,
+            });
+        }
+        else
+        {
+            renombre.CodigoNuevo = codigoNuevo;
+        }
+        await _db.SaveChangesAsync();
+
+        // No hace falta BroadcastMesasAsync: el Codigo real de la mesa (el
+        // que ve /admin/mesas) no cambio, solo su vista para este turno.
+        await BroadcastTurnoAsync(req.Fecha, req.Turno, mesa.SalonId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deshace un renombre hecho con <see cref="RenombrarPorTurno"/> antes de
+    /// que termine el turno (si no se llama, igual deja de aplicarse solo al
+    /// turno siguiente). Se pide con el Id real de la mesa.
+    /// </summary>
+    [HttpPost("{id:int}/revertir-nombre-turno")]
+    public async Task<ActionResult> RevertirNombrePorTurno(int id, RevertirNombrePorTurnoRequest req)
+    {
+        var renombre = await _db.RenombresMesaTurno.FirstOrDefaultAsync(r =>
+            r.Fecha == req.Fecha && r.Turno == req.Turno && r.MesaId == id);
+        if (renombre is null)
+        {
+            return NotFound(new { error = "esta mesa no tiene un renombre activo en este turno" });
+        }
+
+        _db.RenombresMesaTurno.Remove(renombre);
+        await _db.SaveChangesAsync();
+
+        await BroadcastTurnoAsync(req.Fecha, req.Turno, renombre.SalonId);
+        return NoContent();
+    }
+
     [HttpPatch("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<List<MesaDto>>> Actualizar(int id, ActualizarMesaRequest req)

@@ -116,6 +116,12 @@ public class ReservasController : ControllerBase
         }
 
         if (req.PidioMesa.HasValue) reserva.PidioMesa = req.PidioMesa.Value;
+        // Independiente de Asistio a proposito (ver Models/Reserva.cs): no
+        // se auto-tilda ni se auto-destilda entre si. Se puede volver a
+        // destildar sin restricciones si fue un error — si en el medio esa
+        // mesa ya la tomó otro walk-in u otra reserva, quedan las dos
+        // marcándola (caso raro, se resuelve a mano reasignando mesa).
+        if (req.Retirada.HasValue) reserva.Retirada = req.Retirada.Value;
 
         reserva.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

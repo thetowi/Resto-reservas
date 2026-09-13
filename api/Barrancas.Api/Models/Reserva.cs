@@ -38,5 +38,17 @@ public class Reserva
     // bloquea el desplegable de Mesa para que nadie la reasigne por error.
     public bool PidioMesa { get; set; }
 
+    // Se tildo cuando esta reserva ya vino, comio y se fue: a partir de ahi
+    // sus mesas (ReservaMesas) DEJAN de contar como ocupadas (ver
+    // DiaService.GetTurnoAsync — mesasOcupadas/mesasPedidas se calculan
+    // excluyendo las reservas retiradas) asi quedan libres para un walk-in
+    // u otra reserva. A proposito NO se borran las ReservaMesas al tildar
+    // esto: la fila sigue mostrando en que mesa(s) estuvo sentada esta
+    // reserva (historial), solo que atenuada — ver ReservaRow.tsx. Es
+    // independiente de Asistio (no se auto-tilda ni se auto-destilda entre
+    // si): el equipo puede querer marcar "se fue" sin haber tildado antes
+    // "Asistio", segun como lo use cada turno.
+    public bool Retirada { get; set; }
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

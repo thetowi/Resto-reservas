@@ -58,9 +58,13 @@ public class WalkInController : ControllerBase
         // No marcar como walk-in una mesa que ya tiene una reserva real
         // asignada en este turno — evita pintar/ocupar algo que ya esta
         // ocupado por otra via. Ahora una reserva puede tener varias mesas,
-        // asi que se busca en ReservaMesas en vez de un MesaId suelto.
+        // asi que se busca en ReservaMesas en vez de un MesaId suelto. Una
+        // reserva "retirada" (ya vino, comio y se fue — ver
+        // Models/Reserva.cs) NO cuenta aca: su mesa ya esta libre aunque
+        // ReservaMesas siga con el registro historico de que la uso.
         var yaReservada = await _db.ReservaMesas.AnyAsync(rm =>
-            rm.MesaId == req.MesaId && rm.Reserva.Fecha == req.Fecha && rm.Reserva.Turno == req.Turno);
+            rm.MesaId == req.MesaId && rm.Reserva.Fecha == req.Fecha && rm.Reserva.Turno == req.Turno
+            && !rm.Reserva.Retirada);
         if (yaReservada)
         {
             return BadRequest(new { error = "esa mesa ya tiene una reserva asignada en este turno" });
