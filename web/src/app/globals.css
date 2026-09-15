@@ -171,14 +171,21 @@ body {
   outline: none;
 }
 
-/* Fila "Asistió" de la grilla de reservas (ReservaRow.tsx): el fondo lima
-   --color-fila-asistio es el MISMO verde claro (#C1F7C1) en modo claro y
-   oscuro (ver globals.css arriba). Eso es un problema en oscuro, donde el
-   texto normal (--color-tinta) es casi blanco y quedaría invisible sobre
-   un verde tan claro — por eso esta fila fuerza un texto oscuro fijo,
-   igual en los dos temas, en vez de heredar --color-tinta. */
+/* Fila "Asistió" de la grilla de reservas (ReservaRow.tsx): en modo claro
+   --color-fila-asistio sigue siendo el lima claro (#C1F7C1) de siempre, y
+   por eso esta fila fuerza un texto oscuro fijo — el texto normal
+   (--color-tinta) ahí es oscuro tambien, pero fijamos el valor igual para
+   no depender de que --color-tinta no cambie. En modo oscuro el verde pasa
+   a ser un esmeralda mas oscuro y solido (ver --color-fila-asistio en
+   :root[data-theme="dark"] mas abajo), asi que ahi el texto se revierte a
+   claro (mismo --color-tinta que el resto de la fila) en vez del oscuro
+   fijo de esta regla — ver el override justo debajo. */
 .bg-fila-asistio .celda {
   color: #13242e;
+}
+
+:root[data-theme="dark"] .bg-fila-asistio .celda {
+  color: var(--color-tinta);
 }
 
 /* Placeholders (el "hh:mm", "Ej: 4", "Nombre", etc.) con un color propio,
@@ -257,14 +264,15 @@ select.celda {
   /* Mismo resultado visual que antes (arena-suave al 30%/60% de opacidad
      sobre el fondo oscuro de la fila), ahora como valor solido propio — ver
      el comentario junto a --color-fila-zebra en :root. El zebra de oscuro
-     no cambia con este pedido. --color-fila-asistio SÍ cambia: pasa a ser
-     el mismo lima (#C1F7C1) que en modo claro (antes era un teal oscuro
-     #19555c) — el texto de la fila se fuerza a oscuro con la regla
-     ".bg-fila-asistio .celda" de más arriba en este archivo, para que
-     siga siendo legible sobre este verde claro. */
+     no cambia con este pedido. --color-fila-asistio en oscuro es un
+     esmeralda propio (mas oscuro/solido que el lima de modo claro, a
+     pedido: el lima quedaba demasiado "prendido" sobre el fondo navy
+     oscuro) — con este tono el texto vuelve a ser claro en vez del oscuro
+     fijo que usa la fila en modo claro (ver el override de
+     ".bg-fila-asistio .celda" mas arriba en este archivo). */
   --color-fila-zebra: #164462;
   --color-fila-zebra-hover: #194b6c;
-  --color-fila-asistio: #b2ff7eb1;
+  --color-fila-asistio: #2f8f5b;
 }
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ApiError,
@@ -47,6 +47,18 @@ export default function MesasPanel({
   // mesa solo para este turno, sin tocar su código real de /admin/mesas.
   const [editandoPara, setEditandoPara] = useState<number | null>(null);
   const [codigoEditado, setCodigoEditado] = useState("");
+
+  // Si quedó un error mostrado de una accion anterior (por ejemplo "Unir
+  // mesas" fallando porque esa mesa no estaba dividida en OTRO turno/fecha),
+  // no tiene sentido que siga ahi al cambiar de turno o de dia: no tiene
+  // nada que ver con lo que se esta viendo ahora y confunde (parece un error
+  // del turno/fecha actual cuando en realidad es viejo). Lo mismo para
+  // cualquier menu/mini-formulario que hubiera quedado abierto.
+  useEffect(() => {
+    cerrarMenus();
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fecha, turno]);
 
   const ocupadas = new Set(mesasOcupadas);
   const pedidas = new Set(mesasPedidas);

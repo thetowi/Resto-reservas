@@ -30,8 +30,19 @@ public class BarrancasDbContext : DbContext
         {
             // Unico DENTRO de un salon, no en todo el restaurante (ver
             // Models/Mesa.cs): dos salones distintos pueden tener cada uno
-            // su propia mesa "11".
-            e.HasIndex(m => new { m.SalonId, m.Codigo }).IsUnique();
+            // su propia mesa "11". El filtro "solo mesas permanentes"
+            // (EsTemporal = false) es a proposito: una division "por turno"
+            // (ver DividirPorTurno en MesasController) es independiente de
+            // fecha/turno para el usuario — la mesa 52 se puede dividir en
+            // "52a"/"52b" para el almuerzo Y, por separado, tambien para la
+            // cena del mismo dia, sin que una choque con la otra. Si el
+            // indice fuera unico sobre TODAS las mesas, la segunda division
+            // no podria crear su "52a" mientras la primera siga existiendo.
+            // Las divisiones permanentes de /admin/mesas (EsTemporal=false)
+            // si siguen siendo unicas en todo el salon, sin importar turno.
+            e.HasIndex(m => new { m.SalonId, m.Codigo })
+                .IsUnique()
+                .HasFilter("\"EsTemporal\" = false");
             // Restrict: no se puede borrar un salon que todavia tiene mesas
             // (hay que borrarlas/pasarlas primero) — reforzado tambien en
             // SalonesController.Borrar.

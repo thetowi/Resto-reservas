@@ -219,48 +219,37 @@ public class MesasController : ControllerBase
             return BadRequest(new { error = $"las dos mitades tienen que sumar {padre.Capacidad} pax (la capacidad de la mesa)" });
         }
 
-        // La division "por turno" es SOLO para la fecha+turno pedida: el
-        // turno siguiente ya vuelve solo al default (GetTurnoAsync arriba
-        // filtra por fecha+turno exactos), no hace falta "Unir mesas" a mano
-        // para eso. El problema es otro: las dos mesas hijas son filas
-        // fisicas en la tabla Mesas (mismo codigo unico por salon que
-        // cualquier otra mesa) y no se autoborran solas al cambiar de turno
-        // — solo desaparecen cuando alguien las une o las volvemos a usar.
-        // Si quedo una division de un turno/dia anterior sin unir, sus
-        // "{padre.Codigo}a"/"b" seguian ocupando esos codigos para siempre y
-        // el insert de mas abajo reventaba con un error 500 (violacion de
-        // unicidad) en cuanto alguien volvia a dividir esa misma mesa. La
-        // division es independiente de fecha/turno para el usuario: no
-        // importa si esas mitades tuvieron una reserva o un walk-in en otro
-        // turno, esa division vieja ya es historia y no bloquea nada — la
-        // limpiamos siempre nosotros antes de crear la nueva (el borrado de
-        // la mesa hace cascade sobre sus ReservaMesas/WalkIns viejos: la
-        // reserva en si no se toca, solo deja de apuntar a esa mesa puntual).
-        var divisionVieja = await _db.DivisionesMesaTurno.FirstOrDefaultAsync(d => d.MesaBaseId == padre.Id);
-        if (divisionVieja is not null)
+        // La division "por turno" es independiente de fecha/turno: la mesa
+        // 52 se puede dividir en "52a"/"52b" para el almuerzo y, por
+        // separado, tambien para la cena del mismo dia (o de otro dia),
+        // sin que una pise a la otra — cada turno tiene su propia fila de
+        // DivisionMesaTurno y sus propias mesas hijas. El indice unico de
+        // Mesas (SalonId, Codigo) aplica SOLO a mesas permanentes
+        // (EsTemporal = false — ver BarrancasDbContext): dos mesas
+        // temporales de turnos distintos pueden compartir el mismo texto de
+        // codigo sin chocar en la base de datos, porque nunca se muestran
+        // juntas (GetTurnoAsync filtra cada turno por su propia
+        // DivisionMesaTurno). Solo hace falta bloquear la re-division del
+        // MISMO turno+fecha (ya tiene una division activa).
+        var yaDividida = await _db.DivisionesMesaTurno.AnyAsync(d =>
+            d.Fecha == req.Fecha && d.Turno == req.Turno && d.MesaBaseId == padre.Id);
+        if (yaDividida)
         {
-            if (divisionVieja.Fecha == req.Fecha && divisionVieja.Turno == req.Turno)
-            {
-                return BadRequest(new { error = "esta mesa ya esta dividida en este turno" });
-            }
-
-            var hijaIdsViejas = new[] { divisionVieja.MesaHijaAId, divisionVieja.MesaHijaBId };
-            var hijasViejas = await _db.Mesas.Where(m => hijaIdsViejas.Contains(m.Id)).ToListAsync();
-            _db.DivisionesMesaTurno.Remove(divisionVieja);
-            _db.Mesas.RemoveRange(hijasViejas);
-            await _db.SaveChangesAsync();
+            return BadRequest(new { error = "esta mesa ya esta dividida en este turno" });
         }
 
-        // Red de seguridad adicional por si quedo una mesa hija huerfana sin
-        // su registro de DivisionMesaTurno (por ejemplo datos viejos de antes
-        // de este chequeo): evita el 500 igual, con un mensaje accionable.
+        // Red de seguridad: el "{codigo}a"/"b" SI tiene que seguir siendo
+        // unico contra las mesas PERMANENTES del salon (las de /admin/mesas
+        // no estan protegidas por ningun otro chequeo de turno).
         var codigoA = $"{padre.Codigo}a";
         var codigoB = $"{padre.Codigo}b";
-        if (await _db.Mesas.AnyAsync(m => m.SalonId == padre.SalonId && (m.Codigo == codigoA || m.Codigo == codigoB)))
+        var chocaConPermanente = await _db.Mesas.AnyAsync(m =>
+            m.SalonId == padre.SalonId && !m.EsTemporal && (m.Codigo == codigoA || m.Codigo == codigoB));
+        if (chocaConPermanente)
         {
             return BadRequest(new
             {
-                error = $"ya existe una mesa con código {codigoA} o {codigoB}: revisalo desde \"Administrar mesas\"",
+                error = $"ya existe una mesa permanente con código {codigoA} o {codigoB}: revisalo desde \"Administrar mesas\"",
             });
         }
 
@@ -503,7 +492,16 @@ public class MesasController : ControllerBase
 
     private async Task<List<MesaDto>> BroadcastMesasAsync()
     {
+        // Igual que MetaController.GetMeta (que arma esta misma lista en el
+        // primer fetch): las mesas TEMPORALES (divisiones por turno) no van
+        // aca — son propias de un turno puntual, no del "mobiliario por
+        // default" del salon que administra /admin/mesas. Sin este filtro,
+        // cualquier broadcast global terminaba pisando el estado ya
+        // correctamente filtrado del primer fetch con una lista que
+        // mezclaba mesas de turnos distintos (incluso con codigos
+        // repetidos, ahora que dos turnos pueden compartir "52a").
         var mesas = await _db.Mesas
+            .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
             .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
             .ToListAsync();

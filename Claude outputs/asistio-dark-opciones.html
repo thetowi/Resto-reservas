@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Opciones verde "Asistió" — modo oscuro</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --color-fondo: #0b202e;
+    --color-superficie: #143d58;
+    --color-tinta: #f0f3f6;
+    --color-tinta-suave: #8da1af;
+    --color-borde: #236b9a;
+    --color-fila-zebra: #164462;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px 20px;
+    background: var(--color-fondo);
+    color: var(--color-tinta);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--color-tinta-suave);
+    margin: 0 0 4px;
+  }
+  p.sub {
+    margin: 0 0 24px;
+    font-size: 13px;
+    color: var(--color-tinta-suave);
+  }
+  .opcion {
+    margin-bottom: 22px;
+    border: 1px solid var(--color-borde);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--color-superficie);
+  }
+  .etiqueta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-tinta-suave);
+    border-bottom: 1px solid var(--color-borde);
+  }
+  .etiqueta .hex {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--color-tinta-suave);
+    background: rgba(255,255,255,0.06);
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-tinta-suave);
+    padding: 6px 12px;
+  }
+  td {
+    padding: 9px 12px;
+    white-space: nowrap;
+  }
+  tr.zebra { background: var(--color-fila-zebra); }
+  tr.asistio td { color: var(--dark-text, var(--color-tinta)); }
+  .chk {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.25);
+    font-size: 11px;
+  }
+  tr.asistio .chk {
+    background: rgba(0,0,0,0.22);
+  }
+</style>
+</head>
+<body>
+  <h1>Fila "Asistió" — modo oscuro</h1>
+  <p class="sub">Mismo fondo/borde que la pantalla real (Barrancas, modo oscuro). Cada bloque es una opción de <code>--color-fila-asistio</code> en <code>:root[data-theme="dark"]</code>. El modo claro no cambia.</p>
+
+  <div class="opcion">
+    <div class="etiqueta">Opción A — Verde bosque apagado <span class="hex">#3d6b45</span></div>
+    <table>
+      <tr><th>Hora</th><th>Mesa</th><th>Nombre</th><th>Pax</th><th>Asistió</th></tr>
+      <tr class="zebra"><td>20:30</td><td>14</td><td>Fernández</td><td>4</td><td><span class="chk">✓</span></td></tr>
+      <tr class="asistio" style="background:#3d6b45; --dark-text:#f0f3f6;"><td>20:45</td><td>22</td><td>Gómez, Ariel</td><td>2</td><td><span class="chk">✓</span></td></tr>
+      <tr><td>21:00</td><td>—</td><td></td><td></td><td><span class="chk">&nbsp;</span></td></tr>
+    </table>
+  </div>
+
+  <div class="opcion">
+    <div class="etiqueta">Opción B — Teal de acento de la app <span class="hex">#1f6b5c</span></div>
+    <table>
+      <tr><th>Hora</th><th>Mesa</th><th>Nombre</th><th>Pax</th><th>Asistió</th></tr>
+      <tr class="zebra"><td>20:30</td><td>14</td><td>Fernández</td><td>4</td><td><span class="chk">✓</span></td></tr>
+      <tr class="asistio" style="background:#1f6b5c; --dark-text:#f0f3f6;"><td>20:45</td><td>22</td><td>Gómez, Ariel</td><td>2</td><td><span class="chk">✓</span></td></tr>
+      <tr><td>21:00</td><td>—</td><td></td><td></td><td><span class="chk">&nbsp;</span></td></tr>
+    </table>
+  </div>
+
+  <div class="opcion">
+    <div class="etiqueta">Opción C — Esmeralda medio <span class="hex">#2f8f5b</span></div>
+    <table>
+      <tr><th>Hora</th><th>Mesa</th><th>Nombre</th><th>Pax</th><th>Asistió</th></tr>
+      <tr class="zebra"><td>20:30</td><td>14</td><td>Fernández</td><td>4</td><td><span class="chk">✓</span></td></tr>
+      <tr class="asistio" style="background:#2f8f5b; --dark-text:#f0f3f6;"><td>20:45</td><td>22</td><td>Gómez, Ariel</td><td>2</td><td><span class="chk">✓</span></td></tr>
+      <tr><td>21:00</td><td>—</td><td></td><td></td><td><span class="chk">&nbsp;</span></td></tr>
+    </table>
+  </div>
+</body>
+</html>
