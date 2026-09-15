@@ -1,3 +1,5 @@
+using Barrancas.Api.Models;
+
 namespace Barrancas.Api.Dtos;
 
 // DTOs del panel de administracion de mesas (/admin/mesas en el frontend):
@@ -10,5 +12,7 @@ public record DividirMesaRequest(string Codigo, int Capacidad);
 
 // Todos los campos opcionales: solo se actualiza lo que viene en el body.
 // PosX/PosY se mandan juntos siempre que se termina de arrastrar una mesa en
-// el plano visual (vista "Plano" de /admin/mesas).
-public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY);
+// el plano visual (vista "Plano" de /admin/mesas). Forma se manda sola,
+// desde el selector que aparece al elegir una mesa en ese mismo plano (ver
+// PlanoSalon.tsx).
+public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY, FormaMesa? Forma);

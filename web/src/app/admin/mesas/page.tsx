@@ -156,6 +156,15 @@ export default function AdminMesasPage() {
     }
   }
 
+  async function onCambiarForma(mesa: Mesa, forma: "redonda" | "cuadrada") {
+    try {
+      setTodasLasMesas(await patchMesa(mesa.id, { forma }));
+      setError(null);
+    } catch (e) {
+      manejarError(e);
+    }
+  }
+
   if (!listo) return null;
 
   return (
@@ -224,7 +233,7 @@ export default function AdminMesasPage() {
       {cargando ? (
         <div className="p-10 text-center text-tinta-suave">Cargando…</div>
       ) : vista === "plano" && salonId !== null ? (
-        <PlanoSalon mesas={mesas} salonId={salonId} onMoverMesa={onMoverMesa} />
+        <PlanoSalon mesas={mesas} salonId={salonId} onMoverMesa={onMoverMesa} onCambiarForma={onCambiarForma} />
       ) : (
         <div className="rounded-2xl border border-borde bg-superficie shadow-sm">
           <div className="divide-y divide-borde">

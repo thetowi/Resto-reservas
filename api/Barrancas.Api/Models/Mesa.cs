@@ -20,6 +20,10 @@ public class Mesa
     public int Orden { get; set; }
     public bool EsTemporal { get; set; } = false;
 
+    // Forma visual en el plano (ver Models/FormaMesa.cs): elegida a mano por
+    // mesa, no se deriva de la capacidad.
+    public FormaMesa Forma { get; set; } = FormaMesa.Cuadrada;
+
     // A que salon pertenece esta mesa (Restaurant, Bar, Aqua Bar, etc — ver
     // Models/Salon.cs). El codigo solo tiene que ser unico DENTRO de un
     // salon, no en todo el restaurante: cada salon es su propio plano

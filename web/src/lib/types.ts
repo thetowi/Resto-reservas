@@ -27,6 +27,12 @@ export interface Mesa {
   // MesasPanel.tsx). false = mesa estructural del plano permanente, la
   // que se administra desde /admin/mesas.
   esTemporal: boolean;
+  // Forma visual en el mapa del salón (ver PlanoSalon.tsx): se elige a mano
+  // por mesa, no depende de la capacidad. Una mesa cuadrada de 4 pax se
+  // dibuja como dos cuadrados de 2 pax pegados (así son las mesas reales del
+  // salón), el resto de las cuadradas y todas las redondas se dibujan como
+  // una sola forma.
+  forma: "redonda" | "cuadrada";
   // Solo viene seteado (no null) cuando esta mesa tiene un renombre por
   // turno activo (ver renombrarMesaPorTurno en api.ts): ahí codigo ya es el
   // número nuevo a mostrar, y codigoOriginal guarda el número real de

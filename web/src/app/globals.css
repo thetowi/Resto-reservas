@@ -61,6 +61,15 @@
   --color-fila-zebra: #e6eaf0;
   --color-fila-zebra-hover: #d9dfe9;
   --color-fila-asistio: #c1f7c1;
+
+  /* Cartel de referencia del plano (Ventana, Cocina, Bodega, etc. — ver
+     PlanoSalon.tsx): antes usaba --color-arena-suave, que en modo oscuro es
+     EXACTAMENTE el mismo valor que --color-libre (una mesa libre) — los
+     cartelitos y las mesas libres se veían casi idénticos. Un tono khaki
+     propio, que no se parece a ningún color de mesa (libre/ocupada/walk-in/
+     pedida), los distingue de un vistazo en los dos temas. */
+  --color-referencia: #9c7a3c;
+  --color-referencia-suave: #f3ecd8;
 }
 
 @theme inline {
@@ -85,6 +94,8 @@
   --color-fila-zebra: var(--color-fila-zebra);
   --color-fila-zebra-hover: var(--color-fila-zebra-hover);
   --color-fila-asistio: var(--color-fila-asistio);
+  --color-referencia: var(--color-referencia);
+  --color-referencia-suave: var(--color-referencia-suave);
 }
 
 /* Anillo pulsante + resplandor para marcar una mesa "pedida" sin taparle el
@@ -273,6 +284,12 @@ select.celda {
   --color-fila-zebra: #164462;
   --color-fila-zebra-hover: #194b6c;
   --color-fila-asistio: #2f8f5b;
+
+  /* Mismo criterio que en claro: un khaki propio, mas claro/dorado para que
+     se note contra el fondo navy oscuro, distinto de --color-libre en
+     oscuro (#1c5479). */
+  --color-referencia: #d1a94f;
+  --color-referencia-suave: #4a3d1f;
 }
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar

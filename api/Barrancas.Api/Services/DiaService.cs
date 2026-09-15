@@ -115,6 +115,7 @@ public class DiaService
                 m.PosY,
                 m.SalonId,
                 m.EsTemporal,
+                m.Forma,
                 null))
             .ToListAsync();
 

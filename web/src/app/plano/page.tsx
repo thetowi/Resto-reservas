@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiError, getDia, getMeta } from "@/lib/api";
-import { haySesion } from "@/lib/auth";
+import { ApiError, getDia, getMeta, patchMesa } from "@/lib/api";
+import { esAdmin, haySesion } from "@/lib/auth";
 import { formatFechaLarga, todayISO } from "@/lib/date";
 import { turnoPorDefecto } from "@/lib/turno";
 import type { Mesa, Salon, Turno } from "@/lib/types";
@@ -15,10 +15,17 @@ function esTurnoValido(valor: string | null): valor is Turno {
   return valor === "almuerzo" || valor === "cena";
 }
 
-// Vista de solo lectura del plano del salón, para el rol Staff ("ver el
-// plano... para estudiarlo" — no puede crear/mover mesas ni carteles, eso
-// es exclusivo de /admin/mesas). Un Admin también puede entrar acá si
-// quiere, simplemente no es su vista por defecto (la de él es /admin/mesas).
+// Vista del plano del salón para el turno elegido. Para el rol Staff sigue
+// siendo de solo lectura ("ver el plano... para estudiarlo" — no puede
+// crear/mover mesas ni carteles, eso es exclusivo de /admin/mesas). Un Admin
+// que entra acá, en cambio, SÍ puede arrastrar mesas para acomodarlas — esto
+// es lo único que deja mover las divisiones TEMPORALES por turno (ver
+// MesasController.DividirPorTurno): esas mitades no existen en
+// /admin/mesas (son propias de este turno puntual, no del plano fijo del
+// salón), así que esta es la única pantalla donde alguna vez se las puede
+// ver Y tocar al mismo tiempo. Mover una mesa PERMANENTE desde acá también
+// funciona (mismo PATCH que usa /admin/mesas) y su posición queda igual
+// para todos los turnos, como siempre.
 //
 // Respeta la fecha, turno y salón que estaban elegidos en la pantalla
 // principal al momento de tocar "Mapa del salón"/"Plano" (ver ese link en
@@ -116,6 +123,44 @@ function PlanoPageInterno() {
     };
   }, [listo, salonId, turno, fecha]);
 
+  // Solo se llama cuando puedeEditar es true (soloLectura=false en
+  // PlanoSalon, ver mas abajo), pero igual queda gateado por el rol tambien
+  // del lado del backend (MesasController.Actualizar es [Authorize(Roles =
+  // "Admin")]) — asi que aunque alguien manipulara el cliente, un Staff
+  // nunca podria mover una mesa de verdad.
+  //
+  // No usamos la respuesta del PATCH para actualizar el estado (a diferencia
+  // de /admin/mesas): esa respuesta es la lista de mesas PERMANENTES de todo
+  // el salon (ver MesasController.BroadcastMesasAsync), que no incluye las
+  // divisiones temporales por turno — si la usaramos tal cual, esas mitades
+  // desaparecerian del plano apenas se arrastra CUALQUIER mesa. En cambio
+  // actualizamos solo la mesa movida, a mano, con la posicion que ya
+  // sabemos que se guardo.
+  async function onMoverMesa(mesa: Mesa, posX: number, posY: number) {
+    try {
+      await patchMesa(mesa.id, { posX, posY });
+      setMesas((prev) => prev.map((m) => (m.id === mesa.id ? { ...m, posX, posY } : m)));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo mover la mesa");
+    }
+  }
+
+  // Mismo criterio que onMoverMesa: se actualiza a mano en vez de usar la
+  // respuesta del PATCH, para no perder del estado las divisiones
+  // temporales por turno (ver comentario de onMoverMesa).
+  async function onCambiarForma(mesa: Mesa, forma: "redonda" | "cuadrada") {
+    try {
+      await patchMesa(mesa.id, { forma });
+      setMesas((prev) => prev.map((m) => (m.id === mesa.id ? { ...m, forma } : m)));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo cambiar la forma de la mesa");
+    }
+  }
+
+  const puedeEditar = esAdmin();
+
   if (!listo) return null;
 
   return (
@@ -155,8 +200,9 @@ function PlanoPageInterno() {
           key={`${fecha}-${turno}-${salonId}`}
           mesas={mesas}
           salonId={salonId}
-          onMoverMesa={() => {}}
-          soloLectura
+          onMoverMesa={onMoverMesa}
+          onCambiarForma={onCambiarForma}
+          soloLectura={!puedeEditar}
           fechaInicial={fecha}
           turnoInicial={turno}
         />

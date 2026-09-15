@@ -35,6 +35,45 @@ namespace Barrancas.Api.Controllers;
 [Route("api/mesas")]
 public class MesasController : ControllerBase
 {
+    // Separacion horizontal (px del lienzo del plano) entre dos mesas recien
+    // creadas por una division: sin esto, las mesas nuevas nacen con
+    // PosX/PosY en null y el frontend las ubica en la grilla por defecto
+    // (ver posicionPorDefecto en PlanoSalon.tsx), lejos de donde estaba la
+    // mesa que se dividio — visualmente aparecian "perdidas" en vez de
+    // separadas una de la otra justo donde uno las estaba mirando. Solo
+    // aplica cuando la mesa base YA tenia una posicion propia en el plano
+    // (se acomodo a mano alguna vez): si todavia esta en la grilla por
+    // defecto, las nuevas tambien quedan en null y el frontend las ubica
+    // solo (ya les toca un "Orden" distinto, asi que no se superponen).
+    //
+    // El valor esta calcado a proposito del ancho de UN cuadrado del par
+    // visual que dibuja una mesa cuadrada de 4 pax (ver dimensionesPorCapacidad
+    // / GAP_PAR en PlanoSalon.tsx: lado 52px + separacion interna 4px = 56).
+    // Asi, al dividir una mesa "11" de 4 pax en "11a"/"11b" de 2 pax cada
+    // una, las dos mitades nuevas aparecen EXACTAMENTE donde ya estaban
+    // dibujados los dos cuadrados del par — no saltan a otro lado, solo se
+    // "sueltan" y quedan separadas por ese mismo espacio chiquito que ya
+    // tenian antes de dividirse. Si cambia esa geometria del lado frontend,
+    // hay que actualizar este numero tambien.
+    private const double SeparacionDivisionPx = 56;
+
+    // Ancho aproximado (px del lienzo) que ocupa cualquier mesa en el plano,
+    // sin importar su capacidad exacta ni si es redonda o cuadrada: alcanza
+    // para detectar una superposicion evidente contra OTRA mesa ya ubicada,
+    // sin tener que calcar pixel a pixel dimensionesPorCapacidad del
+    // frontend (que ademas depende de esPar, forma, etc.). No hace falta
+    // que sea exacto: solo evitar que una division recien creada nazca
+    // literalmente arriba de una mesa vecina no relacionada.
+    private const double DistanciaMinimaEntreMesas = 70;
+
+    // Tope de intentos al alejar una mesa nueva de sus vecinas (ver
+    // AlejarDeVecinasAsync): un salon con MUCHAS mesas ya ubicadas en fila
+    // podria en teoria necesitar varios pasos para encontrar hueco libre;
+    // este limite evita un bucle infinito si por algun motivo nunca lo
+    // encuentra (en ese caso se devuelve la ultima posicion probada, que en
+    // la practica ya esta bastante lejos del punto de partida).
+    private const int IntentosMaximosDeAlejar = 12;
+
     private readonly BarrancasDbContext _db;
     private readonly IHubContext<ReservasHub> _hub;
     private readonly DiaService _diaService;
@@ -63,7 +102,16 @@ public class MesasController : ControllerBase
         {
             return BadRequest(new { error = "el salón indicado no existe" });
         }
-        if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == req.SalonId))
+        // El chequeo de codigo unico ignora las divisiones TEMPORALES por
+        // turno (EsTemporal=true — ver DividirPorTurno): esas son propias de
+        // una fecha+turno puntual, invisibles en Administrar mesas, y el
+        // indice unico real de la base de datos tampoco las cuenta (ver
+        // BarrancasDbContext). Sin este filtro, una division temporal vieja
+        // que quedo dando vueltas (por ejemplo "11b" de un turno donde no se
+        // llego a "Unir") bloqueaba para siempre crear una mesa PERMANENTE
+        // con ese mismo codigo, con un error confuso para quien no tiene
+        // forma de ver esa mesa temporal en ningun lado de este panel.
+        if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == req.SalonId && !m.EsTemporal))
         {
             return BadRequest(new { error = "ya existe una mesa con ese codigo en este salón" });
         }
@@ -98,7 +146,10 @@ public class MesasController : ControllerBase
         {
             return BadRequest(new { error = "la capacidad tiene que ser mayor a 0" });
         }
-        if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == padre.SalonId))
+        // Mismo criterio que en Crear: una division TEMPORAL por turno que
+        // haya quedado con este mismo codigo (ver comentario de Crear) no
+        // cuenta como choque para crear la division PERMANENTE.
+        if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == padre.SalonId && !m.EsTemporal))
         {
             return BadRequest(new { error = "ya existe una mesa con ese codigo en este salón" });
         }
@@ -121,14 +172,27 @@ public class MesasController : ControllerBase
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 1);
 
         padre.Capacidad -= req.Capacidad;
-        _db.Mesas.Add(new Mesa
+        var hija = new Mesa
         {
             Codigo = codigo,
             Capacidad = req.Capacidad,
             Orden = padre.Orden + 1,
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
-        });
+            // La division es fisicamente la misma mesa partida en dos: hereda
+            // la forma de la base en vez de arrancar en el default.
+            Forma = padre.Forma,
+        };
+        // La base se queda en su lugar (no se toca su posicion): la nueva
+        // division aparece pegada a su derecha, ya separada, en vez de
+        // nacer en la grilla por defecto (ver SeparacionDivisionPx).
+        if (padre.PosX is not null && padre.PosY is not null)
+        {
+            var (x, y) = await AlejarDeVecinasAsync(padre.SalonId, padre.PosX.Value + SeparacionDivisionPx, padre.PosY.Value, padre.Id);
+            hija.PosX = x;
+            hija.PosY = y;
+        }
+        _db.Mesas.Add(hija);
         await _db.SaveChangesAsync();
 
         return Ok(await BroadcastMesasAsync());
@@ -164,7 +228,11 @@ public class MesasController : ControllerBase
 
         var codigoA = $"{padre.Codigo}a";
         var codigoB = $"{padre.Codigo}b";
-        if (await _db.Mesas.AnyAsync(m => m.SalonId == padre.SalonId && (m.Codigo == codigoA || m.Codigo == codigoB)))
+        // Mismo criterio que en Crear/Dividir: una division TEMPORAL por
+        // turno con este mismo codigo (por ejemplo, si ya se hizo un
+        // "Dividir mesa" de un solo turno sobre esta mesa y no se "Unio")
+        // no bloquea crear la division PERMANENTE — son cosas distintas.
+        if (await _db.Mesas.AnyAsync(m => m.SalonId == padre.SalonId && !m.EsTemporal && (m.Codigo == codigoA || m.Codigo == codigoB)))
         {
             return BadRequest(new
             {
@@ -186,8 +254,22 @@ public class MesasController : ControllerBase
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
 
         padre.Capacidad = 0;
-        _db.Mesas.Add(new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id });
-        _db.Mesas.Add(new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id });
+        var hijaA = new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma };
+        var hijaB = new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma };
+        // La mesa base queda en 0 pax (ver comentario arriba) y el plano ya
+        // no la dibuja (PlanoSalon.tsx la oculta por capacidad <= 0): las dos
+        // mitades nuevas toman su lugar, una al lado de la otra, en vez de
+        // nacer en la grilla por defecto lejos de donde estaba.
+        if (padre.PosX is not null && padre.PosY is not null)
+        {
+            hijaA.PosX = padre.PosX;
+            hijaA.PosY = padre.PosY;
+            var (x, y) = await AlejarDeVecinasAsync(padre.SalonId, padre.PosX.Value + SeparacionDivisionPx, padre.PosY.Value, padre.Id);
+            hijaB.PosX = x;
+            hijaB.PosY = y;
+        }
+        _db.Mesas.Add(hijaA);
+        _db.Mesas.Add(hijaB);
         await _db.SaveChangesAsync();
 
         return Ok(await BroadcastMesasAsync());
@@ -263,6 +345,7 @@ public class MesasController : ControllerBase
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
             EsTemporal = true,
+            Forma = padre.Forma,
         };
         var hijaB = new Mesa
         {
@@ -272,7 +355,20 @@ public class MesasController : ControllerBase
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
             EsTemporal = true,
+            Forma = padre.Forma,
         };
+        // Este turno ya no dibuja a la base (DiaService.GetTurnoAsync la
+        // oculta mientras esta dividida): las dos mitades toman su lugar en
+        // el plano, separadas entre si, en vez de nacer en la grilla por
+        // defecto.
+        if (padre.PosX is not null && padre.PosY is not null)
+        {
+            hijaA.PosX = padre.PosX;
+            hijaA.PosY = padre.PosY;
+            var (x, y) = await AlejarDeVecinasAsync(padre.SalonId, padre.PosX.Value + SeparacionDivisionPx, padre.PosY.Value, padre.Id);
+            hijaB.PosX = x;
+            hijaB.PosY = y;
+        }
         _db.Mesas.AddRange(hijaA, hijaB);
         await _db.SaveChangesAsync();
 
@@ -424,7 +520,10 @@ public class MesasController : ControllerBase
             {
                 return BadRequest(new { error = "el codigo de mesa no puede quedar vacio" });
             }
-            if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == mesa.SalonId && m.Id != id))
+            // Mismo criterio que en Crear/Dividir/DividirEnDos: una division
+            // TEMPORAL por turno con este codigo no bloquea renombrar una
+            // mesa PERMANENTE a ese mismo codigo.
+            if (await _db.Mesas.AnyAsync(m => m.Codigo == codigo && m.SalonId == mesa.SalonId && m.Id != id && !m.EsTemporal))
             {
                 return BadRequest(new { error = "ya existe una mesa con ese codigo en este salón" });
             }
@@ -446,6 +545,10 @@ public class MesasController : ControllerBase
         // coordenada real al soltar el arrastre).
         if (req.PosX is not null) mesa.PosX = req.PosX;
         if (req.PosY is not null) mesa.PosY = req.PosY;
+
+        // Forma (redonda/cuadrada): se manda sola, desde el selector que
+        // aparece al elegir una mesa en el plano (ver PlanoSalon.tsx).
+        if (req.Forma is not null) mesa.Forma = req.Forma.Value;
 
         await _db.SaveChangesAsync();
 
@@ -479,6 +582,34 @@ public class MesasController : ControllerBase
         return Ok(await BroadcastMesasAsync());
     }
 
+    // Si (x,y) cae encima (o demasiado cerca) de OTRA mesa ya ubicada en el
+    // mismo salon, la corre hacia abajo en pasos de SeparacionDivisionPx
+    // hasta encontrar un lugar libre. Sin esto, el offset fijo que usan las
+    // divisiones (ver SeparacionDivisionPx) podia terminar exactamente
+    // arriba de una mesa vecina no relacionada en un plano muy cargado,
+    // dejando las dos literalmente superpuestas — e imposibles de
+    // seleccionar por separado, porque la que queda arriba en el orden de
+    // dibujo capta todos los clicks de esa zona. excluirIds deja afuera a la
+    // mesa que se esta dividiendo (es normal y esperado que la nueva mitad
+    // aparezca pegada a ella).
+    private async Task<(double x, double y)> AlejarDeVecinasAsync(int salonId, double x, double y, params int[] excluirIds)
+    {
+        var vecinas = await _db.Mesas
+            .Where(m => m.SalonId == salonId && !m.EsTemporal && m.Capacidad > 0
+                && !excluirIds.Contains(m.Id) && m.PosX != null && m.PosY != null)
+            .Select(m => new { PosX = m.PosX!.Value, PosY = m.PosY!.Value })
+            .ToListAsync();
+
+        for (var intento = 0; intento < IntentosMaximosDeAlejar; intento++)
+        {
+            var chocaConAlguna = vecinas.Any(v =>
+                Math.Abs(v.PosX - x) < DistanciaMinimaEntreMesas && Math.Abs(v.PosY - y) < DistanciaMinimaEntreMesas);
+            if (!chocaConAlguna) return (x, y);
+            y += SeparacionDivisionPx;
+        }
+        return (x, y);
+    }
+
     // Le hace lugar a "cantidad" mesas nuevas justo despues de ordenDesde,
     // corriendo un lugar (o los que hagan falta) a todo lo que ya estaba
     // despues DENTRO DEL MISMO SALON. Sin el filtro de salon, esto correria
@@ -503,7 +634,7 @@ public class MesasController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma))
             .ToListAsync();
         await _hub.Clients.All.SendAsync("MesasActualizado", mesas);
         return mesas;

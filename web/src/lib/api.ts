@@ -201,7 +201,13 @@ export function revertirNombreMesaPorTurno(fecha: string, turno: Turno, mesaId: 
 
 export function patchMesa(
   mesaId: number,
-  payload: Partial<{ codigo: string; capacidad: number; posX: number; posY: number }>,
+  payload: Partial<{
+    codigo: string;
+    capacidad: number;
+    posX: number;
+    posY: number;
+    forma: "redonda" | "cuadrada";
+  }>,
 ) {
   return request<Mesa[]>(`/api/mesas/${mesaId}`, {
     method: "PATCH",

@@ -27,7 +27,7 @@ public class MetaController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma))
             .ToListAsync();
 
         var salones = await _db.Salones
