@@ -49,7 +49,7 @@ public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena);
 // tiene un renombre por turno activo (ver DiaService / RenombreMesaTurno):
 // ahi Codigo ya es el nuevo numero para mostrar, y CodigoOriginal guarda el
 // numero real de /admin/mesas, para poder ofrecer "revertir" en el frontend.
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, string? CodigoOriginal = null);
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, string? CodigoOriginal = null);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual

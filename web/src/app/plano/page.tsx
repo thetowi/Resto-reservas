@@ -159,6 +159,17 @@ function PlanoPageInterno() {
     }
   }
 
+  // Mismo criterio que onCambiarForma.
+  async function onFijar(mesa: Mesa, fijada: boolean) {
+    try {
+      await patchMesa(mesa.id, { fijada });
+      setMesas((prev) => prev.map((m) => (m.id === mesa.id ? { ...m, fijada } : m)));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo fijar/desfijar la mesa");
+    }
+  }
+
   const puedeEditar = esAdmin();
 
   if (!listo) return null;
@@ -202,6 +213,7 @@ function PlanoPageInterno() {
           salonId={salonId}
           onMoverMesa={onMoverMesa}
           onCambiarForma={onCambiarForma}
+          onFijar={onFijar}
           soloLectura={!puedeEditar}
           fechaInicial={fecha}
           turnoInicial={turno}

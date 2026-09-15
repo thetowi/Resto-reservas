@@ -207,6 +207,7 @@ export function patchMesa(
     posX: number;
     posY: number;
     forma: "redonda" | "cuadrada";
+    fijada: boolean;
   }>,
 ) {
   return request<Mesa[]>(`/api/mesas/${mesaId}`, {

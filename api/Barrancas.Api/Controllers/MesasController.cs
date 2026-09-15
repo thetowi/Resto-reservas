@@ -539,6 +539,17 @@ public class MesasController : ControllerBase
             mesa.Capacidad = req.Capacidad.Value;
         }
 
+        // Segunda linea de defensa contra mover una mesa fijada (la primera
+        // es el frontend, que ni siquiera deja arrancar el arrastre — ver
+        // PlanoSalon.tsx): si esta fijada y el pedido trae una posicion
+        // nueva, se rechaza, salvo que este MISMO pedido tambien la este
+        // desfijando (req.Fijada == false), para permitir "desfijar y mover"
+        // en un solo paso si el frontend alguna vez lo necesita.
+        if ((req.PosX is not null || req.PosY is not null) && mesa.Fijada && req.Fijada is not false)
+        {
+            return BadRequest(new { error = "esta mesa está fijada: desfijala antes de moverla" });
+        }
+
         // PosX/PosY viajan juntos desde el plano visual; no tiene sentido
         // mandar uno sin el otro, pero por las dudas los tratamos por
         // separado (ninguno "limpia" la posicion: siempre se manda una
@@ -549,6 +560,10 @@ public class MesasController : ControllerBase
         // Forma (redonda/cuadrada): se manda sola, desde el selector que
         // aparece al elegir una mesa en el plano (ver PlanoSalon.tsx).
         if (req.Forma is not null) mesa.Forma = req.Forma.Value;
+
+        // Fijada: tambien se manda sola, desde el mismo selector, al tocar
+        // "Fijar"/"Desfijar".
+        if (req.Fijada is not null) mesa.Fijada = req.Fijada.Value;
 
         await _db.SaveChangesAsync();
 
@@ -634,7 +649,7 @@ public class MesasController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada))
             .ToListAsync();
         await _hub.Clients.All.SendAsync("MesasActualizado", mesas);
         return mesas;

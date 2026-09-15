@@ -24,6 +24,13 @@ public class Mesa
     // mesa, no se deriva de la capacidad.
     public FormaMesa Forma { get; set; } = FormaMesa.Cuadrada;
 
+    // Si esta "fijada" en el plano visual (PlanoSalon.tsx), el frontend
+    // bloquea el arrastre: pensado para que un click torpe en medio del
+    // servicio no mueva una mesa que ya quedo bien acomodada. El backend
+    // tambien lo respeta al recibir un PATCH con PosX/PosY (ver
+    // MesasController.Actualizar) como segunda linea de defensa.
+    public bool Fijada { get; set; } = false;
+
     // A que salon pertenece esta mesa (Restaurant, Bar, Aqua Bar, etc — ver
     // Models/Salon.cs). El codigo solo tiene que ser unico DENTRO de un
     // salon, no en todo el restaurante: cada salon es su propio plano

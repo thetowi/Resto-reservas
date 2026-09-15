@@ -14,5 +14,6 @@ public record DividirMesaRequest(string Codigo, int Capacidad);
 // PosX/PosY se mandan juntos siempre que se termina de arrastrar una mesa en
 // el plano visual (vista "Plano" de /admin/mesas). Forma se manda sola,
 // desde el selector que aparece al elegir una mesa en ese mismo plano (ver
-// PlanoSalon.tsx).
-public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY, FormaMesa? Forma);
+// PlanoSalon.tsx). Fijada tambien se manda sola, desde el mismo selector,
+// al tocar "Fijar"/"Desfijar".
+public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY, FormaMesa? Forma, bool? Fijada);

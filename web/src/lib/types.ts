@@ -33,6 +33,11 @@ export interface Mesa {
   // salón), el resto de las cuadradas y todas las redondas se dibujan como
   // una sola forma.
   forma: "redonda" | "cuadrada";
+  // Si está "fijada" en el mapa del salón (ver PlanoSalon.tsx): bloquea el
+  // arrastre, para que no se mueva por un click accidental en medio del
+  // servicio. Se activa/desactiva desde el mismo selector donde se elige
+  // la forma.
+  fijada: boolean;
   // Solo viene seteado (no null) cuando esta mesa tiene un renombre por
   // turno activo (ver renombrarMesaPorTurno en api.ts): ahí codigo ya es el
   // número nuevo a mostrar, y codigoOriginal guarda el número real de

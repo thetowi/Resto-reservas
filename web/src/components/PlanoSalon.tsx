@@ -29,6 +29,10 @@ interface Props {
   // Opcional porque en modo lectura (/plano) no aplica — ahí no se puede
   // editar nada del plano, solo mirarlo.
   onCambiarForma?: (mesa: Mesa, forma: "redonda" | "cuadrada") => void;
+  // Fija/desfija una mesa: mientras está fijada, MesaCaja ignora el
+  // arrastre (ver onPointerDown/onPointerMove más abajo). Mismo criterio de
+  // opcionalidad que onCambiarForma: no aplica en modo lectura.
+  onFijar?: (mesa: Mesa, fijada: boolean) => void;
   // Modo lectura (usado en /plano, la vista de Staff "para estudiar" el
   // salón): sin arrastre de mesas ni carteles, sin agregar/editar/borrar
   // carteles — solo mirar la disposición y la ocupación en vivo. Sí permite
@@ -194,6 +198,7 @@ export default function PlanoSalon({
   salonId,
   onMoverMesa,
   onCambiarForma,
+  onFijar,
   soloLectura = false,
   fechaInicial,
   turnoInicial,
@@ -583,6 +588,7 @@ export default function PlanoSalon({
                 mesa={mesaSeleccionada}
                 rect={rectSeleccionada}
                 onElegir={(forma) => onCambiarForma(mesaSeleccionada, forma)}
+                onFijar={onFijar ? (fijada) => onFijar(mesaSeleccionada, fijada) : undefined}
                 onCerrar={() => setMesaSeleccionadaId(null)}
               />
             )}
@@ -610,6 +616,10 @@ export default function PlanoSalon({
         <span className="inline-flex items-center gap-1.5">
           <i className="inline-block h-2.5 w-3 rounded-sm border border-dashed border-arena" />
           Mesa dividida
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true">🔒</span>
+          Mesa fijada
         </span>
         <span className="inline-flex items-center gap-1.5">
           <i className="inline-block h-2.5 w-2.5 rounded-sm border border-dashed border-referencia bg-referencia-suave" />
@@ -685,14 +695,19 @@ interface SelectorFormaProps {
   mesa: Mesa;
   rect: RectRender;
   onElegir: (forma: "redonda" | "cuadrada") => void;
+  // Opcional: si no viene, no se muestra el botón de fijar/desfijar (mismo
+  // criterio que onCambiarForma en el componente padre).
+  onFijar?: (fijada: boolean) => void;
   onCerrar: () => void;
 }
 
 // Selector flotante que aparece pegado a la mesa recién seleccionada (modo
-// edición del plano): elegir Redonda o Cuadrada la guarda al toque. Vive en
-// el mismo sistema de coordenadas que las mesas (dentro del lienzo
-// escalado por el zoom), así que se mueve y escala junto con el plano.
-function SelectorForma({ mesa, rect, onElegir, onCerrar }: SelectorFormaProps) {
+// edición del plano): elegir Redonda o Cuadrada la guarda al toque, y
+// Fijar/Desfijar bloquea o libera el arrastre de esta mesa (ver
+// MesaCaja.onPointerDown más abajo). Vive en el mismo sistema de
+// coordenadas que las mesas (dentro del lienzo escalado por el zoom), así
+// que se mueve y escala junto con el plano.
+function SelectorForma({ mesa, rect, onElegir, onFijar, onCerrar }: SelectorFormaProps) {
   const arriba = rect.y > 44;
   return (
     <div
@@ -728,6 +743,20 @@ function SelectorForma({ mesa, rect, onElegir, onCerrar }: SelectorFormaProps) {
       >
         ■ Cuadrada
       </button>
+      {onFijar && (
+        <button
+          onClick={() => onFijar(!mesa.fijada)}
+          aria-pressed={mesa.fijada}
+          title={mesa.fijada ? "Desfijar mesa (permitir arrastrarla)" : "Fijar mesa (bloquear el arrastre)"}
+          className={`rounded-md border px-2 py-1 text-[11px] font-medium ${
+            mesa.fijada
+              ? "border-marca bg-marca text-white"
+              : "border-borde text-tinta-suave hover:bg-arena-suave"
+          }`}
+        >
+          {mesa.fijada ? "Fijada" : "Fijar"}
+        </button>
+      )}
       <button
         onClick={onCerrar}
         title="Cerrar"
@@ -799,8 +828,11 @@ function MesaCaja({
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     // En modo lectura no hay arrastre: el click (más abajo, onClick) es el
-    // que abre el detalle de la reserva.
-    if (soloLectura) return;
+    // que abre el detalle de la reserva. Una mesa fijada tampoco arranca el
+    // arrastre (ver SelectorForma) — pero sigue dejando hacer click simple
+    // para seleccionarla y poder desfijarla desde ahí (ver onPointerUp, que
+    // no depende de que haya arrancado el arrastre).
+    if (soloLectura || mesa.fijada) return;
     const rect = ref.current!.getBoundingClientRect();
     offset.current = { dx: (e.clientX - rect.left) / zoom, dy: (e.clientY - rect.top) / zoom };
     ref.current!.setPointerCapture(e.pointerId);
@@ -883,9 +915,15 @@ function MesaCaja({
         onClick={() => {
           if (soloLectura) onClickMesa(mesa);
         }}
-        title={`Mesa ${mesa.codigo} — ${mesa.capacidad} pax — ${estado}`}
+        title={`Mesa ${mesa.codigo} — ${mesa.capacidad} pax — ${estado}${mesa.fijada ? " — fijada" : ""}`}
         className={`absolute touch-none text-xs font-semibold shadow-md select-none transition-shadow ${
-          soloLectura ? (reserva ? "cursor-pointer" : "") : "cursor-grab focus:outline-none active:cursor-grabbing"
+          soloLectura
+            ? reserva
+              ? "cursor-pointer"
+              : ""
+            : mesa.fijada
+              ? "cursor-default focus:outline-none"
+              : "cursor-grab focus:outline-none active:cursor-grabbing"
         } ${esPar ? "flex items-stretch" : `flex flex-col items-center justify-center border-2 ${colorClase} ${dividida ? "border-dashed" : ""}`} ${!esPar && pedida ? "anillo-pedida" : ""}`}
         style={{
           left: pos.x,
@@ -917,6 +955,14 @@ function MesaCaja({
             <span className="text-[9px] font-normal opacity-75">{mesa.capacidad}p</span>
             {pedida && <span className="chip-pedida" aria-hidden="true" />}
           </>
+        )}
+        {mesa.fijada && !soloLectura && (
+          <span
+            className="pointer-events-none absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-borde bg-superficie text-[8px] leading-none shadow-sm"
+            aria-hidden="true"
+          >
+            🔒
+          </span>
         )}
       </div>
       {reserva && (
