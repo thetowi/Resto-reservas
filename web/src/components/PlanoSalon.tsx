@@ -33,6 +33,11 @@ interface Props {
   // arrastre (ver onPointerDown/onPointerMove más abajo). Mismo criterio de
   // opcionalidad que onCambiarForma: no aplica en modo lectura.
   onFijar?: (mesa: Mesa, fijada: boolean) => void;
+  // Rota el dibujo de una mesa (mesa + sillitas) en pasos de 90°: se llama
+  // desde el mismo selector que onCambiarForma/onFijar, botón "Rotar" (ver
+  // más abajo). No mueve ni redimensiona la mesa, solo cambia mesa.rotacion.
+  // Mismo criterio de opcionalidad: no aplica en modo lectura.
+  onRotar?: (mesa: Mesa, rotacion: number) => void;
   // Modo lectura (usado en /plano, la vista de Staff "para estudiar" el
   // salón): sin arrastre de mesas ni carteles, sin agregar/editar/borrar
   // carteles — solo mirar la disposición y la ocupación en vivo. Sí permite
@@ -49,6 +54,15 @@ interface Props {
   // nuevo y que los tome (ver /plano/page.tsx).
   fechaInicial?: string;
   turnoInicial?: Turno;
+  // Si el salón de este plano permite el turno Merienda (ver
+  // Salon.permiteMerienda): habilita el botón "Merienda" en el toggle
+  // interno de turno, más abajo. Default false: si no se pasa, se comporta
+  // igual que antes (solo Almuerzo/Cena).
+  permiteMerienda?: boolean;
+  // Nombre del salón (Restaurant, Bar, Aqua Bar, etc): solo se usa para el
+  // encabezado del PDF exportado (ver exportarPdf) — si no viene, el PDF
+  // sale con un título genérico.
+  salonNombre?: string;
 }
 
 // Grilla de arranque para las mesas que todavia no se acomodaron a mano
@@ -77,9 +91,14 @@ const GRID_STEP = 20;
 const SNAP_TOLERANCIA = 6;
 
 // Límites del zoom del lienzo (1 = 100%).
-const ZOOM_MIN = 0.5;
+const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 1.5;
 const ZOOM_PASO = 0.1;
+
+// Factor de resolución del <canvas> que arma exportarPdf (ver
+// construirCanvasPlano): 2 = el doble de pixels por unidad de lienzo, para
+// que el PDF salga nítido incluso ampliado.
+const RESOLUCION_EXPORT = 2;
 
 function posicionPorDefecto(orden: number) {
   return {
@@ -91,9 +110,11 @@ function posicionPorDefecto(orden: number) {
 // Tamaño y forma de cada mesa: la forma (redonda/cuadrada) la elige la
 // persona a mano por mesa (ver mesa.forma, seleccionable desde el plano),
 // no se deriva de la capacidad. La única excepción es una mesa CUADRADA de
-// 4 pax: en el salón real esa es siempre la unión de dos mesas cuadradas de
-// 2 pax pegadas, así que se dibuja como dos cuadrados en vez de uno solo
-// más grande (esPar=true; ladoPar es el lado de cada cuadrado individual).
+// más de 2 pax: en el salón real esas nunca son un cuadrado más grande, son
+// la unión en fila de N mesas cuadradas individuales de 2 pax (4 pax = 2
+// unidas, 6 pax = 3 unidas, 8 pax = 4 unidas, etc.), así que se dibujan como
+// N cuadrados pegados en vez de uno solo agrandado (esPar=true; ladoPar es
+// el lado de cada cuadrado individual, numCuadrados cuántos hay en la fila).
 const GAP_PAR = 4;
 
 interface Dimensiones {
@@ -101,28 +122,317 @@ interface Dimensiones {
   alto: number;
   esPar: boolean;
   ladoPar: number;
+  numCuadrados: number;
 }
 
 // Un único cálculo de tamaño por capacidad, reusado tanto para una mesa
-// normal como para el lado de cada cuadrado del par (ver más abajo): así el
-// par de una mesa cuadrada de 4 queda garantizado del MISMO tamaño que una
-// mesa independiente de 2 pax, sin dos fórmulas separadas que se puedan
-// desalinear con el tiempo.
+// normal como para el lado de cada cuadrado del par (ver más abajo): así la
+// fila de cuadrados de una mesa cuadrada de más de 2 pax queda garantizada
+// del MISMO tamaño por cuadrado que una mesa independiente de 2 pax, sin dos
+// fórmulas separadas que se puedan desalinear con el tiempo.
 function ladoDeCapacidad(capacidad: number) {
-  return Math.min(96, Math.max(52, 36 + capacidad * 6));
+  return Math.min(84, Math.max(46, 30 + capacidad * 5));
 }
 
 function dimensionesPorCapacidad(capacidad: number, forma: "redonda" | "cuadrada"): Dimensiones {
-  if (forma === "cuadrada" && capacidad === 4) {
+  if (forma === "cuadrada" && capacidad > 2) {
     const lado = ladoDeCapacidad(2);
-    return { ancho: lado * 2 + GAP_PAR, alto: lado, esPar: true, ladoPar: lado };
+    // Impar (3, 5, 7...): el último cuadrado de la fila queda con una sola
+    // silla en vez de dos (ver sillasParUnido) — no debería pasar en la
+    // práctica (las mesas cuadradas reales siempre son pares de 2 pax), pero
+    // no rompe el dibujo si pasa.
+    const numCuadrados = Math.ceil(capacidad / 2);
+    return {
+      ancho: numCuadrados * lado + (numCuadrados - 1) * GAP_PAR,
+      alto: lado,
+      esPar: true,
+      ladoPar: lado,
+      numCuadrados,
+    };
   }
   const base = ladoDeCapacidad(capacidad);
-  return { ancho: base, alto: base, esPar: false, ladoPar: base };
+  return { ancho: base, alto: base, esPar: false, ladoPar: base, numCuadrados: 1 };
 }
 
-function radioPorForma(forma: "redonda" | "cuadrada") {
-  return forma === "redonda" ? "9999px" : "12px";
+// --- Sillitas alrededor de la mesa (ver MesaCaja) ---------------------
+//
+// Cada silla se ubica en coordenadas relativas al CENTRO de la mesa (0,0),
+// con una rotación en grados para orientar el respaldo hacia afuera. Esto
+// se probó primero a mano en un boceto aparte (con el usuario mirando cada
+// iteración) antes de portarlo acá, así que las constantes de tamaño/gap
+// vienen directo de esa versión aprobada — no cambiarlas "a ojo".
+interface Silla {
+  x: number;
+  y: number;
+  rotacion: number;
+  // Mesas redondas: respaldo más chico y sutil. Mesas cuadradas/par: el
+  // respaldo original, más marcado (así se pidió explícitamente).
+  sutil: boolean;
+}
+
+const SILLA_ANCHO = 15;
+const SILLA_ALTO = 11;
+const SILLA_SEPARACION = 9; // separación mesa→silla, cuadrada y par unido
+const SILLA_RADIO_EXTRA = 8; // separación mesa→silla, redonda
+// Cuánto puede sobresalir una silla más allá de la caja lógica de la mesa
+// (ancho x alto): define el margen del <svg> que dibuja mesa+sillas, y
+// cuánto hay que correr para abajo el cartel con el nombre de la reserva
+// para que no le queden las sillas de abajo encima.
+const MARGEN_SILLAS = 26;
+
+function sillasRedonda(radioMesa: number, n: number): Silla[] {
+  const sillas: Silla[] = [];
+  const dist = radioMesa + SILLA_RADIO_EXTRA;
+  for (let i = 0; i < n; i++) {
+    const ang = -90 + (360 / n) * i; // grados, empieza arriba
+    const rad = (ang * Math.PI) / 180;
+    sillas.push({ x: dist * Math.cos(rad), y: dist * Math.sin(rad), rotacion: ang + 90, sutil: true });
+  }
+  return sillas;
+}
+
+// Reparte n sillas entre los dos pares de lados (arriba/abajo e izquierda/
+// derecha) de a pares, para que cada silla quede enfrentada a su opuesta.
+// En cada paso se suma un par al lado que en ese momento tenga más espacio
+// disponible por silla (largo del lado / sillas ya puestas ahí), así los
+// lados largos reciben más sillas que los cortos pero siempre parejo.
+function distribuirSillasRectangulo(w: number, h: number, n: number) {
+  let countTB = 0;
+  let countLR = 0;
+  const pares = Math.floor(n / 2);
+  for (let i = 0; i < pares; i++) {
+    const espacioTB = w / (countTB + 1);
+    const espacioLR = h / (countLR + 1);
+    if (espacioTB >= espacioLR) countTB++;
+    else countLR++;
+  }
+  const extra = n % 2; // capacidades impares: una silla suelta en el lado con más espacio
+  let arriba = countTB;
+  let abajo = countTB;
+  let izquierda = countLR;
+  let derecha = countLR;
+  if (extra) {
+    if (w / (countTB + 1) >= h / (countLR + 1)) arriba++;
+    else izquierda++;
+  }
+  return { arriba, abajo, izquierda, derecha };
+}
+
+function sillasRectangulo(w: number, h: number, n: number): Silla[] {
+  const { arriba, abajo, izquierda, derecha } = distribuirSillasRectangulo(w, h, n);
+  const sillas: Silla[] = [];
+  const fraccion = (j: number, k: number) => -0.5 + (j + 0.5) / k;
+  for (let j = 0; j < arriba; j++) {
+    sillas.push({ x: fraccion(j, arriba) * w, y: -h / 2 - SILLA_SEPARACION, rotacion: 0, sutil: false });
+  }
+  for (let j = 0; j < abajo; j++) {
+    sillas.push({ x: fraccion(j, abajo) * w, y: h / 2 + SILLA_SEPARACION, rotacion: 180, sutil: false });
+  }
+  for (let j = 0; j < izquierda; j++) {
+    sillas.push({ x: -w / 2 - SILLA_SEPARACION, y: fraccion(j, izquierda) * h, rotacion: 270, sutil: false });
+  }
+  for (let j = 0; j < derecha; j++) {
+    sillas.push({ x: w / 2 + SILLA_SEPARACION, y: fraccion(j, derecha) * h, rotacion: 90, sutil: false });
+  }
+  return sillas;
+}
+
+// Caso esPar: N mesas de 2 pax unidas en fila (ver dimensionesPorCapacidad).
+// Una silla arriba y una abajo por cada cuadrado de la fila, enfrentadas
+// entre sí, nunca en las puntas cortas de la fila (ahí es donde se unen las
+// mesas) — generaliza el caso original de 2 cuadrados (4 pax) a cualquier
+// cantidad. Si la capacidad es impar, el último cuadrado se queda sin la
+// silla de abajo (ver comentario de dimensionesPorCapacidad).
+function sillasParUnido(w: number, ladoPar: number, capacidad: number): Silla[] {
+  const sillas: Silla[] = [];
+  const centroCuadrado = (i: number) => -w / 2 + ladoPar / 2 + i * (ladoPar + GAP_PAR);
+  const arriba = Math.ceil(capacidad / 2);
+  const abajo = Math.floor(capacidad / 2);
+  for (let i = 0; i < arriba; i++) {
+    sillas.push({ x: centroCuadrado(i), y: -ladoPar / 2 - SILLA_SEPARACION, rotacion: 0, sutil: false });
+  }
+  for (let i = 0; i < abajo; i++) {
+    sillas.push({ x: centroCuadrado(i), y: ladoPar / 2 + SILLA_SEPARACION, rotacion: 180, sutil: false });
+  }
+  return sillas;
+}
+
+function SillaSvg({ silla }: { silla: Silla }) {
+  const w = SILLA_ANCHO;
+  const h = SILLA_ALTO;
+  return (
+    <g transform={`translate(${silla.x.toFixed(2)}, ${silla.y.toFixed(2)}) rotate(${silla.rotacion})`}>
+      <rect
+        x={-w / 2}
+        y={-h / 2}
+        width={w}
+        height={h}
+        rx={w * 0.28}
+        fill="var(--color-silla)"
+        stroke="var(--color-silla-borde)"
+        strokeWidth={1}
+      />
+      {silla.sutil ? (
+        <rect
+          x={-(w * 0.86) / 2}
+          y={-h / 2 - h * 0.27}
+          width={w * 0.86}
+          height={h * 0.3}
+          rx={w * 0.86 * 0.24}
+          fill="var(--color-silla-borde)"
+        />
+      ) : (
+        <rect x={-w / 2} y={-h / 2 - h * 0.32} width={w} height={h * 0.34} rx={w * 0.22} fill="var(--color-silla-borde)" />
+      )}
+    </g>
+  );
+}
+
+// --- Dibujo del plano a mano en <canvas> (ver construirCanvasPlano en el
+// componente, y el comentario de exportarPdf sobre por qué se dibuja en vez
+// de capturar el DOM): funciones puras de trazado, sin estado propio.
+//
+// Mesa cuadrada/redonda/par y sillas se dibujan CENTRADAS en el (0,0) del
+// contexto (el llamador hace ctx.translate al centro de la mesa y, si
+// corresponde, ctx.rotate por mesa.rotacion antes de llamarlas — ver el loop
+// de mesas en construirCanvasPlano) para poder rotar mesa+sillas como un
+// solo bloque, igual que el <g> del SVG en pantalla (ver MesaCaja).
+
+// Mismos colores fijos que --color-silla/--color-silla-borde en modo claro
+// (globals.css): el PDF siempre sale en modo claro, así que acá van como
+// literales en vez de var(...) — mismo criterio que el resto de esta función
+// (relleno/borde de mesas).
+const COLOR_SILLA = "#b9c3ca";
+const COLOR_SILLA_BORDE = "#8fa0aa";
+
+function dibujarRectRedondeado(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radio: number) {
+  const r = Math.min(radio, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// Equivalente en <canvas> de SillaSvg más arriba: misma geometría (asiento +
+// respaldo, sutil o marcado), pero dibujada con la API Canvas 2D en vez de
+// JSX. `silla.x/y/rotacion` ya vienen en coordenadas locales al centro de la
+// mesa (ver sillasRedonda/sillasRectangulo/sillasParUnido), así que esta
+// función asume que el contexto ya está trasladado a ese centro.
+function dibujarSilla(ctx: CanvasRenderingContext2D, silla: Silla) {
+  const w = SILLA_ANCHO;
+  const h = SILLA_ALTO;
+  ctx.save();
+  ctx.translate(silla.x, silla.y);
+  ctx.rotate((silla.rotacion * Math.PI) / 180);
+  dibujarRectRedondeado(ctx, -w / 2, -h / 2, w, h, w * 0.28);
+  ctx.fillStyle = COLOR_SILLA;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = COLOR_SILLA_BORDE;
+  ctx.stroke();
+  if (silla.sutil) {
+    dibujarRectRedondeado(ctx, -(w * 0.86) / 2, -h / 2 - h * 0.27, w * 0.86, h * 0.3, w * 0.86 * 0.24);
+  } else {
+    dibujarRectRedondeado(ctx, -w / 2, -h / 2 - h * 0.32, w, h * 0.34, w * 0.22);
+  }
+  ctx.fillStyle = COLOR_SILLA_BORDE;
+  ctx.fill();
+  ctx.restore();
+}
+
+function trazarMesaCuadrada(
+  ctx: CanvasRenderingContext2D,
+  lado: number,
+  relleno: string,
+  borde: string,
+  dividida: boolean,
+) {
+  dibujarRectRedondeado(ctx, -lado / 2, -lado / 2, lado, lado, 12);
+  ctx.fillStyle = relleno;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = borde;
+  ctx.setLineDash(dividida ? [5, 3] : []);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function trazarMesaRedonda(
+  ctx: CanvasRenderingContext2D,
+  ancho: number,
+  alto: number,
+  relleno: string,
+  borde: string,
+  dividida: boolean,
+) {
+  ctx.beginPath();
+  ctx.ellipse(0, 0, ancho / 2, alto / 2, 0, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = relleno;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = borde;
+  ctx.setLineDash(dividida ? [5, 3] : []);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// Caso esPar (mesa cuadrada de más de 2 pax = N cuadrados de 2 pax pegados
+// en fila, ver dimensionesPorCapacidad): N cuadrados + una línea punteada
+// divisoria entre cada par de cuadrados consecutivos, igual que el bloque
+// esPar de MesaCaja en pantalla.
+function trazarMesaPar(
+  ctx: CanvasRenderingContext2D,
+  ancho: number,
+  alto: number,
+  ladoPar: number,
+  numCuadrados: number,
+  relleno: string,
+  borde: string,
+  divisor: string,
+  dividida: boolean,
+) {
+  for (let i = 0; i < numCuadrados; i++) {
+    dibujarRectRedondeado(ctx, -ancho / 2 + i * (ladoPar + GAP_PAR), -alto / 2, ladoPar, alto, 10);
+    ctx.fillStyle = relleno;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = borde;
+    ctx.setLineDash(dividida ? [5, 3] : []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  for (let i = 0; i < numCuadrados - 1; i++) {
+    const xDivisor = -ancho / 2 + i * (ladoPar + GAP_PAR) + ladoPar + GAP_PAR / 2;
+    ctx.beginPath();
+    ctx.moveTo(xDivisor, -alto / 2 + 3);
+    ctx.lineTo(xDivisor, alto / 2 - 3);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = divisor;
+    ctx.setLineDash([2, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+// Puntito de "mesa pedida" (ver .chip-pedida en globals.css — mismo criterio
+// visual, en la esquina superior derecha de la mesa).
+function dibujarPuntoPedida(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#b8722c";
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
 }
 
 // Guía de alineación activa mientras se arrastra: una línea vertical (v) y/o
@@ -199,9 +509,12 @@ export default function PlanoSalon({
   onMoverMesa,
   onCambiarForma,
   onFijar,
+  onRotar,
   soloLectura = false,
   fechaInicial,
   turnoInicial,
+  permiteMerienda = false,
+  salonNombre,
 }: Props) {
   const [fecha, setFecha] = useState(fechaInicial ?? todayISO());
   const [turno, setTurno] = useState<Turno>(turnoInicial ?? "almuerzo");
@@ -214,8 +527,31 @@ export default function PlanoSalon({
   // Mesa elegida en el plano (solo en modo edición): al seleccionarla
   // aparece el selector de forma (redonda/cuadrada) flotando junto a ella.
   const [mesaSeleccionadaId, setMesaSeleccionadaId] = useState<number | null>(null);
+  // Texto de "Buscar mesa" (ver centrarEnMesa más abajo) y la mesa que quedó
+  // resaltada momentáneamente después de encontrarla/centrarla.
+  const [busqueda, setBusqueda] = useState("");
+  const [mesaResaltadaId, setMesaResaltadaId] = useState<number | null>(null);
+  const [exportando, setExportando] = useState(false);
   const fechaRef = useRef(fecha);
   const turnoRef = useRef(turno);
+  // Contenedor con scroll (el que tiene overflow-auto): se usa para centrar
+  // una mesa encontrada por búsqueda (ver centrarEnMesa).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const resaltadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Lista de mesas que se USA PARA DIBUJAR el plano (posiciones, forma,
+  // dividida, fijada): arranca con `mesas` (la que trae el caller: la
+  // estructural fija de /admin/mesas, o la ya resuelta para el fecha/turno
+  // con el que se entró a /plano), pero DESPUES se reemplaza por
+  // turnoData.mesas apenas se resuelve el turno elegido (ver mas abajo).
+  // Hace falta este segundo paso porque este componente tiene SU PROPIO
+  // selector de fecha/turno (mas abajo): si el usuario lo usa para cambiar
+  // de turno SIN salir de la pantalla, `mesas` (el prop) no cambia solo —
+  // sigue siendo la foto de cuando se entro — y sin esto, una mesa dividida
+  // SOLO PARA ESE TURNO (ver DividirPorTurno) seguia apareciendo entera (o
+  // viceversa) al cambiar de turno con el toggle interno o el calendario,
+  // en vez de mostrar como esta esa mesa DE VERDAD en el turno elegido.
+  const [mesasInternas, setMesasInternas] = useState<Mesa[]>(mesas);
 
   useEffect(() => {
     fechaRef.current = fecha;
@@ -224,14 +560,65 @@ export default function PlanoSalon({
     turnoRef.current = turno;
   }, [turno]);
 
-  // Trae la ocupacion del turno elegido (para pintar rojo/verde). El plano
-  // en si (posiciones/capacidades) ya viaja en `mesas`, esto es solo el
-  // estado de las reservas de ese dia/turno/salon puntual.
+  // Calcula el zoom más grande que hace entrar el lienzo completo
+  // (LIENZO_ANCHO x LIENZO_ALTO) en el contenedor visible SIN necesitar
+  // scroll, y lo aplica. Redondea siempre para abajo (no al más cercano):
+  // así nunca queda a un pixel de redondeo de distancia de disparar la
+  // scrollbar por el lado que se pasó.
+  function ajustarZoomAlContenedor() {
+    const el = scrollRef.current;
+    if (!el || el.clientWidth === 0 || el.clientHeight === 0) return;
+    const escalaX = el.clientWidth / LIENZO_ANCHO;
+    const escalaY = el.clientHeight / LIENZO_ALTO;
+    const ajuste = Math.min(escalaX, escalaY, ZOOM_MAX);
+    setZoom(Math.max(ZOOM_MIN, Math.floor(ajuste * 100) / 100));
+  }
+
+  // Al entrar al plano, arranca siempre ajustado a lo que entra en pantalla
+  // (en vez de fijo a 100%, que en la mayoría de las pantallas obligaba a
+  // scrollear para ver el salón completo).
+  useEffect(() => {
+    ajustarZoomAlContenedor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (resaltadoTimer.current) clearTimeout(resaltadoTimer.current);
+    },
+    [],
+  );
+
+  // Si el prop cambia desde afuera (el caller volvio a pedir /api/meta o
+  // /api/dias, o aplico a mano un PATCH — ver admin/mesas/page.tsx y
+  // /plano/page.tsx), se refleja aca. Se pisa de nuevo apenas resuelve
+  // turnoData (efecto de abajo), que es la fuente mas actualizada para el
+  // turno puntual que se esta mirando.
+  useEffect(() => {
+    setMesasInternas(mesas);
+  }, [mesas]);
+
+  // Trae la ocupacion del turno elegido (para pintar rojo/verde) Y la lista
+  // de mesas ya resuelta para ESE fecha/turno puntual (con las divisiones
+  // por turno aplicadas — ver DiaService.GetTurnoAsync): esto ultimo es lo
+  // que hace que cambiar de turno con el toggle interno, o de fecha con el
+  // calendario, actualice tambien como se ve cada mesa (dividida o entera),
+  // no solo la ocupacion.
   useEffect(() => {
     getDia(fecha, salonId)
-      .then((dia) => setTurnoData(turno === "almuerzo" ? dia.almuerzo : dia.cena))
+      .then((dia) => {
+        // dia.merienda es null si el salón no tiene Merienda habilitada (ver
+        // Salon.permiteMerienda) — si igual se llega acá con
+        // turno==="merienda" para ese salón, no queda ocupación que mostrar.
+        const data = turno === "almuerzo" ? dia.almuerzo : turno === "merienda" ? dia.merienda : dia.cena;
+        setTurnoData(data);
+      })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Error cargando la ocupación"));
   }, [fecha, turno, salonId]);
+
+  useEffect(() => {
+    if (turnoData) setMesasInternas(turnoData.mesas);
+  }, [turnoData]);
 
   // Los elementos de referencia (cartelitos) son globales (de todos los
   // salones), se cargan una sola vez y despues se mantienen con el
@@ -288,7 +675,7 @@ export default function PlanoSalon({
   // (para no romper reservas viejas que le apuntaban), pero no tiene sentido
   // dibujarla en el plano. Sin este filtro quedaba un cajoncito fantasma de
   // "0p" justo donde estaban las dos mitades nuevas.
-  const mesasVisibles = useMemo(() => mesas.filter((m) => m.capacidad > 0), [mesas]);
+  const mesasVisibles = useMemo(() => mesasInternas.filter((m) => m.capacidad > 0), [mesasInternas]);
 
   // Mesa -> reserva que la ocupa (si tiene una): para el label de nombre/hora
   // sobre la mesa y para el detalle al hacer click. Una reserva puede tener
@@ -331,6 +718,314 @@ export default function PlanoSalon({
       }),
     [mesasVisibles],
   );
+
+  // Resultados de "Buscar mesa" (por código, no distingue mayúsculas): hasta
+  // 8 para no desbordar el desplegable. Vacío si todavía no se escribió nada.
+  const coincidencias = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return [];
+    return mesasVisibles.filter((m) => m.codigo.toLowerCase().includes(q)).slice(0, 8);
+  }, [busqueda, mesasVisibles]);
+
+  // Centra el scroll del plano en la mesa indicada (con animación) y la
+  // resalta un rato (ver mesaResaltadaId, MesaCaja) para que sea fácil de
+  // ubicar de un vistazo. Las coordenadas de mesasRender ya están en
+  // "espacio de lienzo" (sin escalar); acá se multiplican por el zoom actual
+  // porque el contenedor con scroll trabaja en pixels de pantalla.
+  function centrarEnMesa(mesaId: number) {
+    const rect = mesasRender.find((r) => r.id === `mesa-${mesaId}`);
+    const contenedor = scrollRef.current;
+    if (!rect || !contenedor) return;
+    const cx = (rect.x + rect.ancho / 2) * zoom;
+    const cy = (rect.y + rect.alto / 2) * zoom;
+    contenedor.scrollTo({
+      left: Math.max(0, cx - contenedor.clientWidth / 2),
+      top: Math.max(0, cy - contenedor.clientHeight / 2),
+      behavior: "smooth",
+    });
+    setMesaResaltadaId(mesaId);
+    if (resaltadoTimer.current) clearTimeout(resaltadoTimer.current);
+    resaltadoTimer.current = setTimeout(
+      () => setMesaResaltadaId((actual) => (actual === mesaId ? null : actual)),
+      2200,
+    );
+  }
+
+  function onBuscarSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (coincidencias.length === 0) return;
+    centrarEnMesa(coincidencias[0].id);
+    setBusqueda("");
+  }
+
+  // Dibuja el plano completo (mesas + carteles + conectores de división) en
+  // un <canvas> propio, a partir de los mismos datos que se usan para
+  // pintarlo en pantalla — a mano, con la API Canvas 2D, en vez de capturar
+  // el DOM (ver comentario de exportarPdf más abajo sobre por qué). Siempre
+  // a resolución fija (RESOLUCION_EXPORT) y sobre fondo blanco, sin importar
+  // el zoom o el tema (claro/oscuro) con el que se lo esté mirando en
+  // pantalla en ese momento.
+  function construirCanvasPlano(): HTMLCanvasElement {
+    // Autocrop: en vez de exportar el lienzo entero (1600x1000 fijos —
+    // vacíos en su mayoría si el salón real ocupa solo una esquina, que era
+    // justo lo que dejaba tanto espacio en blanco en el PDF), calcula el
+    // rectángulo que en verdad contiene mesas y carteles, con un margen
+    // chico alrededor, y arma el canvas de ESE tamaño. Se recalcula solo en
+    // cada exportación — no hace falta mandar una captura ni tocar nada a
+    // mano: si más adelante se agregan o mueven mesas, el recorte se ajusta
+    // automáticamente.
+    const PADDING_RECORTE = 40;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const r of mesasRender) {
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.ancho);
+      maxY = Math.max(maxY, r.y + r.alto);
+    }
+    for (const elemento of elementosDelSalon) {
+      minX = Math.min(minX, elemento.posX);
+      minY = Math.min(minY, elemento.posY);
+      maxX = Math.max(maxX, elemento.posX + elemento.ancho);
+      maxY = Math.max(maxY, elemento.posY + elemento.alto);
+    }
+    // Salón vacío (sin mesas visibles ni carteles): cae al lienzo completo
+    // en vez de un rectángulo vacío/infinito.
+    if (!Number.isFinite(minX)) {
+      minX = 0;
+      minY = 0;
+      maxX = LIENZO_ANCHO;
+      maxY = LIENZO_ALTO;
+    }
+    minX = Math.max(0, minX - PADDING_RECORTE);
+    minY = Math.max(0, minY - PADDING_RECORTE);
+    maxX = Math.min(LIENZO_ANCHO, maxX + PADDING_RECORTE);
+    maxY = Math.min(LIENZO_ALTO, maxY + PADDING_RECORTE);
+    const anchoRecorte = maxX - minX;
+    const altoRecorte = maxY - minY;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = anchoRecorte * RESOLUCION_EXPORT;
+    canvas.height = altoRecorte * RESOLUCION_EXPORT;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no se pudo crear el contexto 2D");
+    ctx.scale(RESOLUCION_EXPORT, RESOLUCION_EXPORT);
+    // Corre el origen al recorte: todo el código de dibujo de más abajo usa
+    // coordenadas absolutas del lienzo completo (mesa.posX/posY, etc.) sin
+    // cambios — este translate es lo único que hace falta para que esas
+    // mismas coordenadas caigan en el lugar correcto del canvas recortado.
+    ctx.translate(-minX, -minY);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(minX, minY, anchoRecorte, altoRecorte);
+
+    // Carteles de referencia primero (quedan "debajo" de las mesas, igual
+    // que en pantalla — aunque en la práctica no se pisan entre sí).
+    for (const elemento of elementosDelSalon) {
+      dibujarRectRedondeado(ctx, elemento.posX, elemento.posY, elemento.ancho, elemento.alto, 8);
+      ctx.fillStyle = "#f3ecd8";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#9c7a3c";
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#9c7a3c";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(
+        elemento.etiqueta,
+        elemento.posX + elemento.ancho / 2,
+        elemento.posY + elemento.alto / 2,
+        elemento.ancho - 6,
+      );
+    }
+
+    // Conectores entre mesas divididas (línea punteada entre los centros).
+    ctx.strokeStyle = "#143d58";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    for (const [a, b] of paresDivididos) {
+      const ra = mesasRender.find((r) => r.id === `mesa-${a.id}`);
+      const rb = mesasRender.find((r) => r.id === `mesa-${b.id}`);
+      if (!ra || !rb) continue;
+      ctx.beginPath();
+      ctx.moveTo(ra.x + ra.ancho / 2, ra.y + ra.alto / 2);
+      ctx.lineTo(rb.x + rb.ancho / 2, rb.y + rb.alto / 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Mesas: mismos colores que la leyenda de pantalla (ver más abajo en el
+    // JSX), pero como literales fijos — el PDF sale siempre en modo claro.
+    // Mesa + sillitas se dibujan centradas y rotadas como un solo bloque
+    // (ctx.save/translate/rotate/restore), igual que el <g> del SVG en
+    // pantalla (ver MesaCaja) — así el PDF respeta mesa.rotacion. El texto
+    // (código/capacidad), el puntito de "pedida" y el cartel de la reserva
+    // quedan A PROPÓSITO fuera de esa rotación, para que sigan siendo
+    // legibles sin importar cómo esté rotada la mesa (mismo criterio que en
+    // pantalla, donde esas etiquetas viven fuera del <svg> rotado).
+    for (const mesa of mesasVisibles) {
+      const inicial =
+        mesa.posX !== null && mesa.posY !== null ? { x: mesa.posX, y: mesa.posY } : posicionPorDefecto(mesa.orden);
+      const dim = dimensionesPorCapacidad(mesa.capacidad, mesa.forma);
+      const ocupada = ocupadas.has(mesa.id);
+      const walkIn = walkIns.has(mesa.id);
+      const pedida = pedidas.has(mesa.id);
+      const dividida = mesa.mesaPadreId !== null;
+      const relleno = ocupada ? "#c00000" : walkIn ? "#8f5ad1" : "#dae1e6";
+      const borde = ocupada ? "#c00000" : walkIn ? "#8f5ad1" : "#c8d2da";
+      const divisor = ocupada || walkIn ? "rgba(255,255,255,0.55)" : "#c8d2da";
+      const colorTexto = ocupada || walkIn ? "#ffffff" : "#13242e";
+      const cx = inicial.x + dim.ancho / 2;
+      const cy = inicial.y + dim.alto / 2;
+      const sillas = dim.esPar
+        ? sillasParUnido(dim.ancho, dim.ladoPar, mesa.capacidad)
+        : mesa.forma === "redonda"
+          ? sillasRedonda(dim.ancho / 2, mesa.capacidad)
+          : sillasRectangulo(dim.ancho, dim.alto, mesa.capacidad);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((mesa.rotacion * Math.PI) / 180);
+      for (const silla of sillas) dibujarSilla(ctx, silla);
+      if (dim.esPar) {
+        trazarMesaPar(ctx, dim.ancho, dim.alto, dim.ladoPar, dim.numCuadrados, relleno, borde, divisor, dividida);
+      } else if (mesa.forma === "redonda") {
+        trazarMesaRedonda(ctx, dim.ancho, dim.alto, relleno, borde, dividida);
+      } else {
+        trazarMesaCuadrada(ctx, dim.ancho, relleno, borde, dividida);
+      }
+      ctx.restore();
+
+      // Código/capacidad centrados sobre TODA la mesa (fila completa de
+      // cuadrados incluida, no sobre un cuadrado en particular) — mismo
+      // criterio que en pantalla, donde estas dos etiquetas viven afuera del
+      // <svg> y quedan centradas por flexbox sobre la caja entera sin
+      // importar si es esPar o no (ver el <span> de mesa.codigo en MesaCaja).
+      ctx.fillStyle = colorTexto;
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText(mesa.codigo, inicial.x + dim.ancho / 2, inicial.y + dim.alto / 2 - 6);
+      ctx.font = "9px sans-serif";
+      ctx.fillText(`${mesa.capacidad}p`, inicial.x + dim.ancho / 2, inicial.y + dim.alto / 2 + 8);
+      if (pedida) dibujarPuntoPedida(ctx, inicial.x + dim.ancho - 4, inicial.y + 4);
+
+      const reserva = reservaPorMesaId.get(mesa.id);
+      if (reserva) {
+        ctx.fillStyle = "#13242e";
+        ctx.font = "9px sans-serif";
+        ctx.textBaseline = "top";
+        const texto = `${reserva.nombre || "Sin nombre"}${reserva.hora ? ` · ${reserva.hora}` : ""}`;
+        ctx.fillText(texto, inicial.x + dim.ancho / 2, inicial.y + dim.alto + 4, dim.ancho + 40);
+        ctx.textBaseline = "middle";
+      }
+    }
+
+    return canvas;
+  }
+
+  // Exporta el plano completo (todo el lienzo, no solo lo que se ve con el
+  // scroll actual) como un PDF de una página — pensado para tenerlo impreso
+  // como referencia para personal nuevo.
+  //
+  // A propósito NO usa html2canvas (capturar el DOM tal cual se ve en
+  // pantalla): esta app usa Tailwind v4, que compila cualquier utilidad de
+  // opacidad con "/" (ej. "bg-superficie/90", el fondo del cartelito con el
+  // nombre de la reserva) a un color-mix(...) en CSS — una función de color
+  // moderna que html2canvas (una librería vieja, sin actualizar para eso) no
+  // sabe interpretar, y tira error apenas encuentra una. En vez de andar
+  // esquivando esa combinación en cada clase nueva que se agregue a futuro,
+  // el plano para el PDF se dibuja a mano en un <canvas> propio (ver
+  // construirCanvasPlano) a partir de los mismos datos que ya se usan para
+  // pintarlo en pantalla — sin tocar el DOM ni sus estilos, así que este
+  // problema no puede volver a aparecer.
+  async function exportarPdf() {
+    if (exportando) return;
+    setExportando(true);
+    try {
+      const canvasPlano = construirCanvasPlano();
+      const { jsPDF } = await import("jspdf");
+
+      // Página A4 real (no un tamaño a medida de la imagen, que es lo que
+      // hacía que al imprimir saliera gigante o cortado): todo lo demás se
+      // calcula para que la imagen ENTRE adentro de esta hoja, no al revés.
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const anchoPagina = doc.internal.pageSize.getWidth();
+      const altoPagina = doc.internal.pageSize.getHeight();
+      const margen = 10;
+      const alturaEncabezado = 14;
+      const alturaLeyenda = 8;
+
+      const turnoTexto = turno === "almuerzo" ? "Almuerzo" : turno === "merienda" ? "Merienda" : "Cena";
+      doc.setFontSize(14);
+      doc.setTextColor(20);
+      doc.text(salonNombre ? `Plano del salón — ${salonNombre}` : "Plano del salón", margen, margen + 4);
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      doc.text(`${formatFechaLarga(fecha)} · ${turnoTexto}`, margen, margen + 9);
+
+      // Espacio disponible para la imagen, entre el encabezado y la
+      // leyenda de abajo: la imagen se escala para entrar ahí completa
+      // (proporción 1600x1000 preservada — "contain", no la deforma) y
+      // queda centrada tanto horizontal como verticalmente en ese espacio.
+      const cajaAncho = anchoPagina - margen * 2;
+      const cajaAlto = altoPagina - margen * 2 - alturaEncabezado - alturaLeyenda;
+      const relacionImagen = canvasPlano.width / canvasPlano.height;
+      let anchoImagen = cajaAncho;
+      let altoImagen = anchoImagen / relacionImagen;
+      if (altoImagen > cajaAlto) {
+        altoImagen = cajaAlto;
+        anchoImagen = altoImagen * relacionImagen;
+      }
+      const xImagen = margen + (cajaAncho - anchoImagen) / 2;
+      const yImagen = margen + alturaEncabezado + (cajaAlto - altoImagen) / 2;
+
+      doc.addImage(canvasPlano.toDataURL("image/png"), "PNG", xImagen, yImagen, anchoImagen, altoImagen);
+
+      // Referencia rápida, mismos colores que la leyenda de pantalla —
+      // siempre pegada al pie de la hoja (no depende de la altura real de
+      // la imagen, que puede quedar más baja que la caja si el salón es más
+      // "cuadrado" que 1.6:1).
+      const yLeyenda = margen + alturaEncabezado + cajaAlto + 6;
+      let xLeyenda = margen;
+      doc.setFontSize(8);
+      for (const [color, etiqueta] of [
+        ["#dae1e6", "Libre"],
+        ["#c00000", "Ocupada"],
+        ["#8f5ad1", "Walk-in"],
+        ["#9c7a3c", "Cartel de referencia"],
+      ] as const) {
+        doc.setFillColor(color);
+        doc.roundedRect(xLeyenda, yLeyenda - 3, 3, 3, 0.8, 0.8, "F");
+        doc.setTextColor(60);
+        doc.text(etiqueta, xLeyenda + 4.5, yLeyenda);
+        xLeyenda += doc.getTextWidth(etiqueta) + 14;
+      }
+
+      // doc.save(...) de jsPDF, en algunos navegadores, termina abriendo el
+      // PDF en una pestaña nueva en vez de descargarlo (depende de cómo esa
+      // versión arme el link interno) — forzando la descarga a mano con un
+      // <a download> sobre un blob: URL (en vez de la data: URL que usa
+      // jsPDF por dentro) es el método que los navegadores sí respetan
+      // siempre como "guardar archivo" en vez de "previsualizar".
+      const blobPdf = doc.output("blob");
+      const url = URL.createObjectURL(blobPdf);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `plano-salon-${fecha}-${turno}.pdf`;
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("No se pudo exportar el plano a PDF");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   async function onAgregarElemento(etiqueta: string) {
     try {
@@ -401,7 +1096,7 @@ export default function PlanoSalon({
           onHoy={() => setFecha(todayISO())}
           onFecha={setFecha}
         />
-        <TurnoToggle turno={turno} onCambiar={setTurno} />
+        <TurnoToggle turno={turno} onCambiar={setTurno} permiteMerienda={permiteMerienda} />
       </div>
 
       {error && (
@@ -438,42 +1133,98 @@ export default function PlanoSalon({
           <span />
         )}
 
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-tinta-suave">Zoom:</span>
-          <button
-            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_PASO) * 100) / 100))}
-            disabled={zoom <= ZOOM_MIN}
-            className="flex h-6 w-6 items-center justify-center rounded-md border border-borde hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-30"
-            title="Alejar"
-          >
-            −
-          </button>
-          <span className="w-10 text-center text-tinta-suave">{Math.round(zoom * 100)}%</span>
-          <button
-            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_PASO) * 100) / 100))}
-            disabled={zoom >= ZOOM_MAX}
-            className="flex h-6 w-6 items-center justify-center rounded-md border border-borde hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-30"
-            title="Acercar"
-          >
-            +
-          </button>
-          {zoom !== 1 && (
-            <button onClick={() => setZoom(1)} className="ml-0.5 text-tinta-suave underline">
-              Restablecer
+        <form onSubmit={onBuscarSubmit} className="relative flex items-center gap-1.5 text-xs">
+          <span className="text-tinta-suave">Buscar mesa:</span>
+          <input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="ej: 11b"
+            className="w-24 rounded-md border border-borde px-2 py-1 text-xs"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda("")}
+              title="Limpiar búsqueda"
+              className="text-tinta-suave hover:text-tinta"
+            >
+              ×
             </button>
           )}
+          {coincidencias.length > 0 && (
+            <div className="absolute top-full left-0 z-30 mt-1 max-h-48 w-40 overflow-auto rounded-lg border border-borde bg-superficie shadow-lg">
+              {coincidencias.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    centrarEnMesa(m.id);
+                    setBusqueda("");
+                  }}
+                  className="block w-full px-2.5 py-1.5 text-left text-xs hover:bg-arena-suave"
+                >
+                  Mesa {m.codigo} <span className="text-tinta-suave">· {m.capacidad}p</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </form>
+
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-tinta-suave">Zoom:</span>
+            <button
+              onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_PASO) * 100) / 100))}
+              disabled={zoom <= ZOOM_MIN}
+              className="flex h-6 w-6 items-center justify-center rounded-md border border-borde hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-30"
+              title="Alejar"
+            >
+              −
+            </button>
+            <span className="w-10 text-center text-tinta-suave">{Math.round(zoom * 100)}%</span>
+            <button
+              onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_PASO) * 100) / 100))}
+              disabled={zoom >= ZOOM_MAX}
+              className="flex h-6 w-6 items-center justify-center rounded-md border border-borde hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-30"
+              title="Acercar"
+            >
+              +
+            </button>
+            {zoom !== 1 && (
+              <button onClick={() => setZoom(1)} className="ml-0.5 text-tinta-suave underline">
+                Restablecer
+              </button>
+            )}
+            <button
+              onClick={ajustarZoomAlContenedor}
+              title="Ajustar el zoom para que entre todo el salón sin scrollear"
+              className="ml-0.5 rounded-md border border-borde px-2 py-1 text-[11px] hover:bg-arena-suave"
+            >
+              Ajustar a pantalla
+            </button>
+          </div>
+
+          <button
+            onClick={exportarPdf}
+            disabled={exportando}
+            title="Exportar el plano completo a PDF (útil como referencia impresa para personal nuevo)"
+            className="rounded-md border border-borde px-2.5 py-1 text-xs hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {exportando ? "Generando…" : "Exportar PDF"}
+          </button>
         </div>
       </div>
 
       <div
-        className="relative overflow-auto rounded-2xl border border-borde"
-        style={{
-          height: "min(78vh, 760px)",
-          backgroundColor: "var(--color-fondo)",
-          backgroundImage: "radial-gradient(var(--color-borde) 1px, transparent 1px)",
-          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-        }}
-      >
+          ref={scrollRef}
+          className="relative overflow-auto rounded-2xl border border-borde"
+          style={{
+            height: "min(78vh, 760px)",
+            backgroundColor: "var(--color-fondo)",
+            backgroundImage: "radial-gradient(var(--color-borde) 1px, transparent 1px)",
+            backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+          }}
+        >
         <div
           className="relative"
           style={{ width: LIENZO_ANCHO * zoom, height: LIENZO_ALTO * zoom }}
@@ -548,6 +1299,7 @@ export default function PlanoSalon({
                   pedida={pedidas.has(mesa.id)}
                   dividida={mesa.mesaPadreId !== null}
                   seleccionada={mesa.id === mesaSeleccionadaId}
+                  resaltada={mesa.id === mesaResaltadaId}
                   reserva={reserva ?? null}
                   onMover={onMoverMesa}
                   onClickMesa={onClickMesa}
@@ -589,6 +1341,7 @@ export default function PlanoSalon({
                 rect={rectSeleccionada}
                 onElegir={(forma) => onCambiarForma(mesaSeleccionada, forma)}
                 onFijar={onFijar ? (fijada) => onFijar(mesaSeleccionada, fijada) : undefined}
+                onRotar={onRotar ? (rotacion) => onRotar(mesaSeleccionada, rotacion) : undefined}
                 onCerrar={() => setMesaSeleccionadaId(null)}
               />
             )}
@@ -616,10 +1369,6 @@ export default function PlanoSalon({
         <span className="inline-flex items-center gap-1.5">
           <i className="inline-block h-2.5 w-3 rounded-sm border border-dashed border-arena" />
           Mesa dividida
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden="true">🔒</span>
-          Mesa fijada
         </span>
         <span className="inline-flex items-center gap-1.5">
           <i className="inline-block h-2.5 w-2.5 rounded-sm border border-dashed border-referencia bg-referencia-suave" />
@@ -698,6 +1447,9 @@ interface SelectorFormaProps {
   // Opcional: si no viene, no se muestra el botón de fijar/desfijar (mismo
   // criterio que onCambiarForma en el componente padre).
   onFijar?: (fijada: boolean) => void;
+  // Opcional: si no viene, no se muestra el botón de rotar (mismo criterio
+  // que onFijar).
+  onRotar?: (rotacion: number) => void;
   onCerrar: () => void;
 }
 
@@ -707,7 +1459,7 @@ interface SelectorFormaProps {
 // MesaCaja.onPointerDown más abajo). Vive en el mismo sistema de
 // coordenadas que las mesas (dentro del lienzo escalado por el zoom), así
 // que se mueve y escala junto con el plano.
-function SelectorForma({ mesa, rect, onElegir, onFijar, onCerrar }: SelectorFormaProps) {
+function SelectorForma({ mesa, rect, onElegir, onFijar, onRotar, onCerrar }: SelectorFormaProps) {
   const arriba = rect.y > 44;
   return (
     <div
@@ -757,6 +1509,15 @@ function SelectorForma({ mesa, rect, onElegir, onFijar, onCerrar }: SelectorForm
           {mesa.fijada ? "Fijada" : "Fijar"}
         </button>
       )}
+      {onRotar && (
+        <button
+          onClick={() => onRotar((mesa.rotacion + 90) % 360)}
+          title="Rotar el dibujo de esta mesa 90°"
+          className="rounded-md border border-borde px-2 py-1 text-[11px] font-medium text-tinta-suave hover:bg-arena-suave"
+        >
+          ⟳ Rotar
+        </button>
+      )}
       <button
         onClick={onCerrar}
         title="Cerrar"
@@ -777,6 +1538,11 @@ interface MesaCajaProps {
   pedida: boolean;
   dividida: boolean;
   seleccionada: boolean;
+  // Mesa recién encontrada con "Buscar mesa" (ver centrarEnMesa en
+  // PlanoSalon): pinta un anillo distinto (aviso/dorado) durante unos
+  // segundos, independiente de "seleccionada" — se puede resaltar una mesa
+  // sin necesariamente seleccionarla para editarla.
+  resaltada?: boolean;
   reserva: Reserva | null;
   onMover: (mesa: Mesa, posX: number, posY: number) => void;
   onClickMesa: (mesa: Mesa) => void;
@@ -796,6 +1562,7 @@ function MesaCaja({
   pedida,
   dividida,
   seleccionada,
+  resaltada = false,
   reserva,
   onMover,
   onClickMesa,
@@ -805,7 +1572,7 @@ function MesaCaja({
   referencias,
   onGuia,
 }: MesaCajaProps) {
-  const { ancho, alto, esPar, ladoPar } = dimensionesPorCapacidad(mesa.capacidad, mesa.forma);
+  const { ancho, alto, esPar, ladoPar, numCuadrados } = dimensionesPorCapacidad(mesa.capacidad, mesa.forma);
   const [pos, setPos] = useState({ x, y });
   const [arrastrando, setArrastrando] = useState(false);
   const offset = useRef({ dx: 0, dy: 0 });
@@ -889,19 +1656,36 @@ function MesaCaja({
     });
   }
 
-  const colorClase = ocupada
-    ? "border-ocupada bg-ocupada text-white"
-    : walkIn
-      ? "border-walkin bg-walkin text-white"
-      : "border-borde bg-libre text-tinta";
-
   const estado = ocupada
     ? `ocupada${pedida ? ", pedida puntualmente" : ""}`
     : walkIn
       ? "ocupada por un walk-in"
       : "libre";
 
+  // Reemplaza al viejo colorClase (clases de Tailwind sobre un <div> con
+  // fondo/borde propios): ahora el "cuerpo" de la mesa lo dibuja el <svg> de
+  // abajo, así que estos son los mismos tres estados pero como valores CSS
+  // para fill/stroke/texto.
+  const colorMesa = ocupada
+    ? { fill: "var(--color-ocupada)", stroke: "var(--color-ocupada)", texto: "#ffffff", divisor: "rgba(255,255,255,0.55)" }
+    : walkIn
+      ? { fill: "var(--color-walkin)", stroke: "var(--color-walkin)", texto: "#ffffff", divisor: "rgba(255,255,255,0.55)" }
+      : { fill: "var(--color-libre)", stroke: "var(--color-borde)", texto: "var(--color-tinta)", divisor: "var(--color-borde)" };
+
   const anilloSeleccion = seleccionada && !soloLectura ? { boxShadow: "0 0 0 3px var(--color-marca)" } : undefined;
+  // Anillo de "recién encontrada" (ver Buscar mesa en PlanoSalon): independiente
+  // de la selección de edición, así que se ve tanto en modo lectura (/plano)
+  // como en modo edición (/admin/mesas).
+  const anilloResaltado = resaltada ? { boxShadow: "0 0 0 4px var(--color-aviso)" } : undefined;
+
+  // Sillitas alrededor de la mesa (ver bloque "Sillitas alrededor de la
+  // mesa" más arriba en este archivo) — geometría fija por forma/capacidad,
+  // se recalcula solo si esas dos cambian, no en cada frame de arrastre.
+  const sillas = useMemo(() => {
+    if (esPar) return sillasParUnido(ancho, ladoPar, mesa.capacidad);
+    if (mesa.forma === "redonda") return sillasRedonda(ancho / 2, mesa.capacidad);
+    return sillasRectangulo(ancho, alto, mesa.capacidad);
+  }, [esPar, mesa.forma, mesa.capacidad, ancho, alto, ladoPar]);
 
   return (
     <>
@@ -916,7 +1700,7 @@ function MesaCaja({
           if (soloLectura) onClickMesa(mesa);
         }}
         title={`Mesa ${mesa.codigo} — ${mesa.capacidad} pax — ${estado}${mesa.fijada ? " — fijada" : ""}`}
-        className={`absolute touch-none text-xs font-semibold shadow-md select-none transition-shadow ${
+        className={`absolute touch-none flex flex-col items-center justify-center text-xs font-semibold select-none transition-shadow ${
           soloLectura
             ? reserva
               ? "cursor-pointer"
@@ -924,51 +1708,101 @@ function MesaCaja({
             : mesa.fijada
               ? "cursor-default focus:outline-none"
               : "cursor-grab focus:outline-none active:cursor-grabbing"
-        } ${esPar ? "flex items-stretch" : `flex flex-col items-center justify-center border-2 ${colorClase} ${dividida ? "border-dashed" : ""}`} ${!esPar && pedida ? "anillo-pedida" : ""}`}
+        } ${pedida ? "anillo-pedida" : ""} ${resaltada ? "animate-pulse" : ""}`}
         style={{
           left: pos.x,
           top: pos.y,
           width: ancho,
           height: alto,
-          gap: esPar ? GAP_PAR : undefined,
-          borderRadius: esPar ? undefined : radioPorForma(mesa.forma),
           ...anilloSeleccion,
+          ...anilloResaltado,
         }}
       >
-        {esPar ? (
-          <>
-            {[0, 1].map((i) => (
-              <div
-                key={i}
-                className={`relative flex flex-1 flex-col items-center justify-center border-2 ${colorClase} ${dividida ? "border-dashed" : ""} ${pedida ? "anillo-pedida" : ""}`}
-                style={{ width: ladoPar, borderRadius: radioPorForma("cuadrada") }}
-              >
-                {i === 0 && <span>{mesa.codigo}</span>}
-                {i === 1 && <span className="text-[9px] font-normal opacity-75">{mesa.capacidad}p</span>}
-                {pedida && i === 1 && <span className="chip-pedida" aria-hidden="true" />}
-              </div>
-            ))}
-          </>
-        ) : (
-          <>
-            <span>{mesa.codigo}</span>
-            <span className="text-[9px] font-normal opacity-75">{mesa.capacidad}p</span>
-            {pedida && <span className="chip-pedida" aria-hidden="true" />}
-          </>
-        )}
-        {mesa.fijada && !soloLectura && (
-          <span
-            className="pointer-events-none absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-borde bg-superficie text-[8px] leading-none shadow-sm"
-            aria-hidden="true"
+        {/* Mesa + sillitas: puramente decorativo (pointer-events-none), el
+            área que se puede arrastrar/clickear sigue siendo exactamente la
+            caja lógica (ancho x alto) de siempre — las sillas sobresalen
+            visualmente pero no agrandan el "hitbox" de la mesa. */}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute overflow-visible"
+          style={{ left: -MARGEN_SILLAS, top: -MARGEN_SILLAS }}
+          width={ancho + MARGEN_SILLAS * 2}
+          height={alto + MARGEN_SILLAS * 2}
+          viewBox={`0 0 ${ancho + MARGEN_SILLAS * 2} ${alto + MARGEN_SILLAS * 2}`}
+        >
+          <g
+            transform={`translate(${ancho / 2 + MARGEN_SILLAS}, ${alto / 2 + MARGEN_SILLAS}) rotate(${mesa.rotacion})`}
           >
-            🔒
-          </span>
-        )}
+            {sillas.map((silla, i) => (
+              <SillaSvg key={i} silla={silla} />
+            ))}
+            {esPar ? (
+              <>
+                {Array.from({ length: numCuadrados }, (_, i) => (
+                  <rect
+                    key={`cuadrado-${i}`}
+                    x={-ancho / 2 + i * (ladoPar + GAP_PAR)}
+                    y={-alto / 2}
+                    width={ladoPar}
+                    height={alto}
+                    rx={10}
+                    fill={colorMesa.fill}
+                    stroke={colorMesa.stroke}
+                    strokeWidth={2}
+                    strokeDasharray={dividida ? "5 4" : undefined}
+                  />
+                ))}
+                {Array.from({ length: numCuadrados - 1 }, (_, i) => {
+                  const xDivisor = -ancho / 2 + i * (ladoPar + GAP_PAR) + ladoPar + GAP_PAR / 2;
+                  return (
+                    <line
+                      key={`divisor-${i}`}
+                      x1={xDivisor}
+                      y1={-alto / 2 + 3}
+                      x2={xDivisor}
+                      y2={alto / 2 - 3}
+                      stroke={colorMesa.divisor}
+                      strokeWidth={1.5}
+                      strokeDasharray="2 3"
+                    />
+                  );
+                })}
+              </>
+            ) : mesa.forma === "redonda" ? (
+              <circle
+                r={ancho / 2}
+                fill={colorMesa.fill}
+                stroke={colorMesa.stroke}
+                strokeWidth={2}
+                strokeDasharray={dividida ? "5 4" : undefined}
+              />
+            ) : (
+              <rect
+                x={-ancho / 2}
+                y={-alto / 2}
+                width={ancho}
+                height={alto}
+                rx={12}
+                fill={colorMesa.fill}
+                stroke={colorMesa.stroke}
+                strokeWidth={2}
+                strokeDasharray={dividida ? "5 4" : undefined}
+              />
+            )}
+          </g>
+        </svg>
+        <span className="relative" style={{ color: colorMesa.texto }}>
+          {mesa.codigo}
+        </span>
+        <span className="relative text-[9px] font-normal opacity-75" style={{ color: colorMesa.texto }}>
+          {mesa.capacidad}p
+        </span>
+        {pedida && <span className="chip-pedida" aria-hidden="true" />}
       </div>
       {reserva && (
         <div
           className="pointer-events-none absolute truncate rounded-md bg-superficie/90 px-1.5 py-0.5 text-center text-[10px] leading-tight font-medium text-tinta shadow-sm"
-          style={{ left: pos.x - 10, top: pos.y + alto + 3, width: ancho + 20 }}
+          style={{ left: pos.x - 10, top: pos.y + alto + MARGEN_SILLAS + 3, width: ancho + 20 }}
         >
           {reserva.nombre || "Sin nombre"}
           {reserva.hora ? ` · ${reserva.hora}` : ""}

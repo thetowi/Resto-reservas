@@ -79,6 +79,7 @@ public class SalonesController : ControllerBase
         }
 
         if (req.Orden is not null) salon.Orden = req.Orden.Value;
+        if (req.PermiteMerienda is not null) salon.PermiteMerienda = req.PermiteMerienda.Value;
 
         await _db.SaveChangesAsync();
 
@@ -117,7 +118,7 @@ public class SalonesController : ControllerBase
     {
         return await _db.Salones
             .OrderBy(s => s.Orden)
-            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden))
+            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda))
             .ToListAsync();
     }
 

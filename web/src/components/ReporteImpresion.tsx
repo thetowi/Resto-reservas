@@ -11,8 +11,12 @@ interface Props {
   mesas: Mesa[];
   almuerzo: TurnoData;
   cena: TurnoData;
+  // null para los salones que no tienen Merienda habilitada (ver
+  // Salon.permiteMerienda): en ese caso no se imprime esa sección.
+  merienda: TurnoData | null;
   esperaAlmuerzo: Espera[];
   esperaCena: Espera[];
+  esperaMerienda: Espera[];
 }
 
 // Vista de impresion del dia ("Impresion del dia me parece algo excelente"):
@@ -27,8 +31,10 @@ export default function ReporteImpresion({
   mesas,
   almuerzo,
   cena,
+  merienda,
   esperaAlmuerzo,
   esperaCena,
+  esperaMerienda,
 }: Props) {
   const codigoMesa = (id: number) => mesas.find((m) => m.id === id)?.codigo ?? `#${id}`;
 
@@ -45,6 +51,12 @@ export default function ReporteImpresion({
       </header>
 
       <BloqueTurnoImpresion titulo="Almuerzo" data={almuerzo} espera={esperaAlmuerzo} codigoMesa={codigoMesa} />
+      {merienda && (
+        <>
+          <div className="my-6 border-t border-tinta" />
+          <BloqueTurnoImpresion titulo="Merienda" data={merienda} espera={esperaMerienda} codigoMesa={codigoMesa} />
+        </>
+      )}
       <div className="my-6 border-t border-tinta" />
       <BloqueTurnoImpresion titulo="Cena" data={cena} espera={esperaCena} codigoMesa={codigoMesa} />
     </div>

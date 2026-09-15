@@ -12,7 +12,7 @@ import PlanoSalon from "@/components/PlanoSalon";
 import SalonSelector from "@/components/SalonSelector";
 
 function esTurnoValido(valor: string | null): valor is Turno {
-  return valor === "almuerzo" || valor === "cena";
+  return valor === "almuerzo" || valor === "cena" || valor === "merienda";
 }
 
 // Vista del plano del salón para el turno elegido. Para el rol Staff sigue
@@ -114,7 +114,13 @@ function PlanoPageInterno() {
     setCargando(true);
     getDia(fecha, salonId)
       .then((data) => {
-        if (activo) setMesas(data[turno].mesas);
+        if (!activo) return;
+        // data.merienda es null para salones que no la tienen habilitada
+        // (ver Salon.permiteMerienda) — si igual se llega acá con
+        // turno==="merienda" (por ejemplo por una URL vieja), no hay mesas
+        // que mostrar para ese turno en ese salón.
+        const turnoData = turno === "almuerzo" ? data.almuerzo : turno === "merienda" ? data.merienda : data.cena;
+        setMesas(turnoData ? turnoData.mesas : []);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Error cargando las mesas"))
       .finally(() => activo && setCargando(false));
@@ -170,7 +176,19 @@ function PlanoPageInterno() {
     }
   }
 
+  // Mismo criterio que onCambiarForma.
+  async function onRotar(mesa: Mesa, rotacion: number) {
+    try {
+      await patchMesa(mesa.id, { rotacion });
+      setMesas((prev) => prev.map((m) => (m.id === mesa.id ? { ...m, rotacion } : m)));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo rotar la mesa");
+    }
+  }
+
   const puedeEditar = esAdmin();
+  const permiteMerienda = salones.find((s) => s.id === salonId)?.permiteMerienda ?? false;
 
   if (!listo) return null;
 
@@ -184,7 +202,8 @@ function PlanoPageInterno() {
           <h1 className="mt-1 text-lg font-bold">
             Plano del salón{" "}
             <span className="font-normal text-tinta-suave">
-              — {formatFechaLarga(fecha)} · {turno === "almuerzo" ? "Almuerzo" : "Cena"}
+              — {formatFechaLarga(fecha)} ·{" "}
+              {turno === "almuerzo" ? "Almuerzo" : turno === "merienda" ? "Merienda" : "Cena"}
             </span>
           </h1>
         </div>
@@ -214,9 +233,12 @@ function PlanoPageInterno() {
           onMoverMesa={onMoverMesa}
           onCambiarForma={onCambiarForma}
           onFijar={onFijar}
+          onRotar={onRotar}
           soloLectura={!puedeEditar}
           fechaInicial={fecha}
           turnoInicial={turno}
+          permiteMerienda={permiteMerienda}
+          salonNombre={salones.find((s) => s.id === salonId)?.nombre}
         />
       )}
     </div>

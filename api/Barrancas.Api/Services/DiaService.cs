@@ -117,6 +117,7 @@ public class DiaService
                 m.EsTemporal,
                 m.Forma,
                 m.Fijada,
+                m.Rotacion,
                 null))
             .ToListAsync();
 
@@ -140,6 +141,17 @@ public class DiaService
     {
         var almuerzo = await GetTurnoAsync(fecha, Turno.Almuerzo, salonId);
         var cena = await GetTurnoAsync(fecha, Turno.Cena, salonId);
-        return new DiaDto(fecha, almuerzo, cena);
+
+        // Merienda solo se calcula (y solo se siembran sus filas default) si
+        // ESTE salon la tiene habilitada (ver Salon.PermiteMerienda) — un
+        // salon que nunca la usa no necesita generar reservas vacias para
+        // ese turno en cada dia que se consulta.
+        var permiteMerienda = await _db.Salones
+            .Where(s => s.Id == salonId)
+            .Select(s => s.PermiteMerienda)
+            .FirstOrDefaultAsync();
+        var merienda = permiteMerienda ? await GetTurnoAsync(fecha, Turno.Merienda, salonId) : null;
+
+        return new DiaDto(fecha, almuerzo, cena, merienda);
     }
 }

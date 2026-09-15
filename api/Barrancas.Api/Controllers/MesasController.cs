@@ -180,8 +180,10 @@ public class MesasController : ControllerBase
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
             // La division es fisicamente la misma mesa partida en dos: hereda
-            // la forma de la base en vez de arrancar en el default.
+            // la forma y la rotacion de la base en vez de arrancar en el
+            // default.
             Forma = padre.Forma,
+            Rotacion = padre.Rotacion,
         };
         // La base se queda en su lugar (no se toca su posicion): la nueva
         // division aparece pegada a su derecha, ya separada, en vez de
@@ -254,8 +256,8 @@ public class MesasController : ControllerBase
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
 
         padre.Capacidad = 0;
-        var hijaA = new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma };
-        var hijaB = new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma };
+        var hijaA = new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma, Rotacion = padre.Rotacion };
+        var hijaB = new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma, Rotacion = padre.Rotacion };
         // La mesa base queda en 0 pax (ver comentario arriba) y el plano ya
         // no la dibuja (PlanoSalon.tsx la oculta por capacidad <= 0): las dos
         // mitades nuevas toman su lugar, una al lado de la otra, en vez de
@@ -565,6 +567,11 @@ public class MesasController : ControllerBase
         // "Fijar"/"Desfijar".
         if (req.Fijada is not null) mesa.Fijada = req.Fijada.Value;
 
+        // Rotacion: igual que Fijada, se manda sola al tocar "Rotar". Se
+        // normaliza a [0, 360) por las dudas (el frontend siempre manda un
+        // multiplo de 90, pero no cuesta nada blindarlo aca tambien).
+        if (req.Rotacion is not null) mesa.Rotacion = ((req.Rotacion.Value % 360) + 360) % 360;
+
         await _db.SaveChangesAsync();
 
         return Ok(await BroadcastMesasAsync());
@@ -649,7 +656,7 @@ public class MesasController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada, m.Rotacion))
             .ToListAsync();
         await _hub.Clients.All.SendAsync("MesasActualizado", mesas);
         return mesas;

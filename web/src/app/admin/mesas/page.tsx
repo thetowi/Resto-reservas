@@ -95,6 +95,8 @@ export default function AdminMesasPage() {
   // divisiones, como se hacia antes, dejaba el total de menos.
   const totalPax = mesas.reduce((acc, m) => acc + m.capacidad, 0);
 
+  const permiteMerienda = salones.find((s) => s.id === salonId)?.permiteMerienda ?? false;
+
   function manejarError(e: unknown) {
     setError(e instanceof ApiError ? e.message : "No se pudo completar la acción");
   }
@@ -168,6 +170,15 @@ export default function AdminMesasPage() {
   async function onFijar(mesa: Mesa, fijada: boolean) {
     try {
       setTodasLasMesas(await patchMesa(mesa.id, { fijada }));
+      setError(null);
+    } catch (e) {
+      manejarError(e);
+    }
+  }
+
+  async function onRotar(mesa: Mesa, rotacion: number) {
+    try {
+      setTodasLasMesas(await patchMesa(mesa.id, { rotacion }));
       setError(null);
     } catch (e) {
       manejarError(e);
@@ -248,6 +259,9 @@ export default function AdminMesasPage() {
           onMoverMesa={onMoverMesa}
           onCambiarForma={onCambiarForma}
           onFijar={onFijar}
+          onRotar={onRotar}
+          permiteMerienda={permiteMerienda}
+          salonNombre={salones.find((s) => s.id === salonId)?.nombre}
         />
       ) : (
         <div className="rounded-2xl border border-borde bg-superficie shadow-sm">

@@ -208,6 +208,7 @@ export function patchMesa(
     posY: number;
     forma: "redonda" | "cuadrada";
     fijada: boolean;
+    rotacion: number;
   }>,
 ) {
   return request<Mesa[]>(`/api/mesas/${mesaId}`, {
@@ -324,7 +325,7 @@ export function crearSalon(nombre: string) {
   });
 }
 
-export function patchSalon(id: number, payload: Partial<{ nombre: string; orden: number }>) {
+export function patchSalon(id: number, payload: Partial<{ nombre: string; orden: number; permiteMerienda: boolean }>) {
   return request<Salon[]>(`/api/salones/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),

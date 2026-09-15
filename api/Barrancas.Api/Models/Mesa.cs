@@ -50,5 +50,12 @@ public class Mesa
     public double? PosX { get; set; }
     public double? PosY { get; set; }
 
+    // Rotacion del dibujo de la mesa (mesa + sillitas) en el plano visual,
+    // en grados: 0/90/180/270 (ver PlanoSalon.tsx, boton "Rotar" en el mismo
+    // selector donde se elige forma/fijada). Util para acomodar una mesa
+    // contra una pared o en un rincon sin que las sillas queden mirando para
+    // cualquier lado. No afecta Ancho/Alto/hitbox de la mesa, solo el dibujo.
+    public int Rotacion { get; set; } = 0;
+
     public List<ReservaMesa> ReservaMesas { get; set; } = new();
 }

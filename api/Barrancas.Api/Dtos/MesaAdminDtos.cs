@@ -15,5 +15,6 @@ public record DividirMesaRequest(string Codigo, int Capacidad);
 // el plano visual (vista "Plano" de /admin/mesas). Forma se manda sola,
 // desde el selector que aparece al elegir una mesa en ese mismo plano (ver
 // PlanoSalon.tsx). Fijada tambien se manda sola, desde el mismo selector,
-// al tocar "Fijar"/"Desfijar".
-public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY, FormaMesa? Forma, bool? Fijada);
+// al tocar "Fijar"/"Desfijar". Rotacion igual, al tocar "Rotar" — siempre en
+// grados absolutos (0/90/180/270), no un delta.
+public record ActualizarMesaRequest(string? Codigo, int? Capacidad, double? PosX, double? PosY, FormaMesa? Forma, bool? Fijada, int? Rotacion);

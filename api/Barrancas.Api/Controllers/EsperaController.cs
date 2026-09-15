@@ -44,7 +44,7 @@ public class EsperaController : ControllerBase
         }
         if (!Enum.TryParse<Turno>(turno, ignoreCase: true, out var turnoParseado))
         {
-            return BadRequest(new { error = "turno invalido, usar almuerzo o cena" });
+            return BadRequest(new { error = "turno invalido, usar almuerzo, cena o merienda" });
         }
 
         var lista = await _db.Esperas

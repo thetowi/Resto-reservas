@@ -42,14 +42,18 @@ public record TurnoDataDto(
     List<MesaDto> Mesas
 );
 
-public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena);
+// Merienda viene null para los salones que no la ofrecen (ver
+// Salon.PermiteMerienda / DiaService.GetDiaAsync): ese turno ni siquiera se
+// calcula para ellos, para no generar reservas "fantasma" en un salon que
+// nunca usa ese horario.
+public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena, TurnoDataDto? Merienda);
 
 // después
 // CodigoOriginal viene null salvo en TurnoDataDto.Mesas cuando esta mesa
 // tiene un renombre por turno activo (ver DiaService / RenombreMesaTurno):
 // ahi Codigo ya es el nuevo numero para mostrar, y CodigoOriginal guarda el
 // numero real de /admin/mesas, para poder ofrecer "revertir" en el frontend.
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, string? CodigoOriginal = null);
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, int Rotacion, string? CodigoOriginal = null);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual

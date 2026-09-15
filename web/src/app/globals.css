@@ -42,6 +42,11 @@
      "asistio", para que se lea como "atencion" y no como "algo salio mal". */
   --color-aviso: #8a5a00;
   --color-aviso-suave: #fbf0d9;
+  /* Sillitas del plano (ver MesaCaja en PlanoSalon.tsx): un gris neutro que
+     no compite con los colores de estado de la mesa (libre/ocupada/walk-in),
+     asi se distinguen las sillas del cuerpo de la mesa a simple vista. */
+  --color-silla: #b9c3ca;
+  --color-silla-borde: #8fa0aa;
 
   /* Colores de fila de la grilla de reservas (ReservaRow.tsx), SEPARADOS a
      proposito de --color-arena-suave/--color-asistio-suave de arriba: esas
@@ -262,6 +267,8 @@ select.celda {
   --color-walkin-suave: #30305c;
   --color-aviso: #e0a942;
   --color-aviso-suave: #362a10;
+  --color-silla: #2a5773;
+  --color-silla-borde: #3d7196;
   /* Ahora SI hace falta redefinir arena/marca en oscuro (algo que en la
      paleta vieja no pasaba): el fondo oscuro es navy, asi que un boton o un
      anillo de foco del mismo navy que el fondo desaparecerian. Un navy mas

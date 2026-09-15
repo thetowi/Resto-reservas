@@ -82,6 +82,15 @@ export default function AdminSalonesPage() {
     }
   }
 
+  async function onCambiarPermiteMerienda(salon: Salon, permiteMerienda: boolean) {
+    try {
+      setSalones(await patchSalon(salon.id, { permiteMerienda }));
+      setError(null);
+    } catch (e) {
+      manejarError(e);
+    }
+  }
+
   async function onBorrar(salon: Salon) {
     if (!window.confirm(`¿Borrar el salón "${salon.nombre}"? Tiene que estar vacío (sin mesas).`)) return;
     try {
@@ -123,7 +132,13 @@ export default function AdminSalonesPage() {
         <div className="rounded-2xl border border-borde bg-superficie shadow-sm">
           <div className="divide-y divide-borde">
             {salones.map((salon) => (
-              <FilaSalon key={salon.id} salon={salon} onRenombrar={onRenombrar} onBorrar={onBorrar} />
+              <FilaSalon
+                key={salon.id}
+                salon={salon}
+                onRenombrar={onRenombrar}
+                onBorrar={onBorrar}
+                onCambiarPermiteMerienda={onCambiarPermiteMerienda}
+              />
             ))}
           </div>
 
@@ -153,10 +168,12 @@ function FilaSalon({
   salon,
   onRenombrar,
   onBorrar,
+  onCambiarPermiteMerienda,
 }: {
   salon: Salon;
   onRenombrar: (salon: Salon, nombre: string) => void;
   onBorrar: (salon: Salon) => void;
+  onCambiarPermiteMerienda: (salon: Salon, permiteMerienda: boolean) => void;
 }) {
   const [nombre, setNombre] = useState(salon.nombre);
 
@@ -171,6 +188,14 @@ function FilaSalon({
         onChange={(e) => setNombre(e.target.value)}
         onBlur={() => onRenombrar(salon, nombre)}
       />
+      <label className="flex items-center gap-1.5 text-xs text-tinta-suave">
+        <input
+          type="checkbox"
+          checked={salon.permiteMerienda}
+          onChange={(e) => onCambiarPermiteMerienda(salon, e.target.checked)}
+        />
+        Permite merienda
+      </label>
       <button
         onClick={() => onBorrar(salon)}
         className="ml-auto rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:bg-ocupada-suave hover:text-ocupada"

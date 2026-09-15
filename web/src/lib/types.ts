@@ -1,4 +1,7 @@
-export type Turno = "almuerzo" | "cena";
+// "merienda" es un turno intermedio (16:00 a 18:00, cada 30 min) pensado
+// para el lobby bar: solo aparece como opción elegible en los salones que
+// lo tienen habilitado (ver Salon.permiteMerienda más abajo).
+export type Turno = "almuerzo" | "cena" | "merienda";
 
 // admin: administra mesas/plano y cuentas de login, y ve los reportes.
 // staff: carga reservas, lista de espera, y ve el plano en modo lectura.
@@ -11,6 +14,9 @@ export interface Salon {
   id: number;
   nombre: string;
   orden: number;
+  // Si este salón ofrece el turno Merienda (ver el comentario de Turno más
+  // arriba) — pensado para el lobby bar, no para el salón principal.
+  permiteMerienda: boolean;
 }
 
 // después
@@ -38,6 +44,12 @@ export interface Mesa {
   // servicio. Se activa/desactiva desde el mismo selector donde se elige
   // la forma.
   fijada: boolean;
+  // Rotación del dibujo de la mesa (mesa + sillitas) en el plano visual, en
+  // grados absolutos: 0/90/180/270 (ver PlanoSalon.tsx, botón "Rotar" en el
+  // mismo selector donde se elige forma/fijada). No afecta el ancho/alto ni
+  // el "hitbox" de arrastre de la mesa, solo cómo se ve dibujada — útil para
+  // acomodarla visualmente contra una pared o en un rincón.
+  rotacion: number;
   // Solo viene seteado (no null) cuando esta mesa tiene un renombre por
   // turno activo (ver renombrarMesaPorTurno en api.ts): ahí codigo ya es el
   // número nuevo a mostrar, y codigoOriginal guarda el número real de
@@ -146,6 +158,9 @@ export interface Dia {
   fecha: string;
   almuerzo: TurnoData;
   cena: TurnoData;
+  // null para los salones que no ofrecen Merienda (ver Salon.permiteMerienda):
+  // el backend ni siquiera calcula ese turno para ellos.
+  merienda: TurnoData | null;
 }
 
 export interface LoginResponse {

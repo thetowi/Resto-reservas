@@ -8,7 +8,7 @@ import { getDia, getEspera, getMeta, ApiError } from "@/lib/api";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
-import { turnoPorDefecto } from "@/lib/turno";
+import { turnoPorDefecto, turnoPorDefectoSinMerienda } from "@/lib/turno";
 import type { Dia, Espera, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
@@ -51,9 +51,9 @@ export default function HomePage() {
   // distinto al que estás mirando ahora. Se recalcula por fecha (no por
   // turno: un solo getDia trae los dos turnos juntos), y no se toca al
   // cambiar de salón para no repetir pedidos de más.
-  const [resumenSalones, setResumenSalones] = useState<Record<number, { almuerzo: number; cena: number }>>(
-    {},
-  );
+  const [resumenSalones, setResumenSalones] = useState<
+    Record<number, { almuerzo: number; cena: number; merienda: number }>
+  >({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState<string | null>(null);
@@ -63,15 +63,22 @@ export default function HomePage() {
   // pantalla), la impresion necesita los dos turnos juntos, asi que se
   // piden aparte al apretar "Imprimir" en vez de mantenerlos siempre en
   // memoria.
-  const [esperaImpresion, setEsperaImpresion] = useState<{ almuerzo: Espera[]; cena: Espera[] } | null>(
-    null,
-  );
+  const [esperaImpresion, setEsperaImpresion] = useState<{
+    almuerzo: Espera[];
+    cena: Espera[];
+    merienda: Espera[];
+  } | null>(null);
   const [imprimiendo, setImprimiendo] = useState(false);
 
   const fechaRef = useRef(fecha);
   const turnoRef = useRef(turno);
   const salonIdRef = useRef(salonId);
   const conexionRef = useRef<HubConnection | null>(null);
+  // Si el salon actualmente elegido permite Merienda (ver Salon.permiteMerienda):
+  // leido dentro de suscribirA/desuscribirDe via ref (mismo patron que
+  // fechaRef/turnoRef/salonIdRef) para no tener que declararlas en las deps
+  // de esos useCallback.
+  const permiteMeriendaRef = useRef(false);
 
   useEffect(() => {
     fechaRef.current = fecha;
@@ -84,6 +91,10 @@ export default function HomePage() {
   useEffect(() => {
     salonIdRef.current = salonId;
   }, [salonId]);
+
+  useEffect(() => {
+    permiteMeriendaRef.current = meta?.salones.find((s) => s.id === salonId)?.permiteMerienda ?? false;
+  }, [meta, salonId]);
 
   // Gate de sesion: solo se puede evaluar del lado del cliente (localStorage),
   // asi que necesariamente corre en un efecto post-montaje y actualiza estado
@@ -131,14 +142,18 @@ export default function HomePage() {
     Promise.all(
       meta.salones.map((s) =>
         getDia(fecha, s.id)
-          .then((data): [number, { almuerzo: number; cena: number }] => [
+          .then((data): [number, { almuerzo: number; cena: number; merienda: number }] => [
             s.id,
             {
               almuerzo: data.almuerzo.reservas.filter(tieneDatosCargados).length,
               cena: data.cena.reservas.filter(tieneDatosCargados).length,
+              merienda: data.merienda ? data.merienda.reservas.filter(tieneDatosCargados).length : 0,
             },
           ])
-          .catch((): [number, { almuerzo: number; cena: number }] => [s.id, { almuerzo: 0, cena: 0 }]),
+          .catch((): [number, { almuerzo: number; cena: number; merienda: number }] => [
+            s.id,
+            { almuerzo: 0, cena: 0, merienda: 0 },
+          ]),
       ),
     ).then((entradas) => {
       if (activo) setResumenSalones(Object.fromEntries(entradas));
@@ -148,10 +163,24 @@ export default function HomePage() {
     };
   }, [listo, meta?.salones, fecha]);
 
+  // Si el salon elegido deja de permitir Merienda (lo cambiaron desde
+  // /admin/salones, o se cambio de salon) mientras se estaba mirando ese
+  // turno, hay que sacarlo de ahi para no dejarlo viendo una pantalla de un
+  // turno que ya no puede elegir.
+  useEffect(() => {
+    if (!listo || !meta || salonId === null || turno !== "merienda") return;
+    const salon = meta.salones.find((s) => s.id === salonId);
+    if (salon && !salon.permiteMerienda) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTurno(turnoPorDefectoSinMerienda());
+    }
+  }, [listo, meta, salonId, turno]);
+
   const suscribirA = useCallback(async (f: string, s: number) => {
     const conexion = conexionRef.current;
     if (!conexion || conexion.state !== HubConnectionState.Connected) return;
     await conexion.invoke("Suscribirse", f, "almuerzo", s);
+    if (permiteMeriendaRef.current) await conexion.invoke("Suscribirse", f, "merienda", s);
     await conexion.invoke("Suscribirse", f, "cena", s);
   }, []);
 
@@ -159,6 +188,7 @@ export default function HomePage() {
     const conexion = conexionRef.current;
     if (!conexion || conexion.state !== HubConnectionState.Connected) return;
     await conexion.invoke("Desuscribirse", f, "almuerzo", s).catch(() => {});
+    if (permiteMeriendaRef.current) await conexion.invoke("Desuscribirse", f, "merienda", s).catch(() => {});
     await conexion.invoke("Desuscribirse", f, "cena", s).catch(() => {});
   }, []);
 
@@ -295,11 +325,13 @@ export default function HomePage() {
     if (salonId === null) return;
     setImprimiendo(true);
     try {
-      const [datosAlmuerzo, datosCena] = await Promise.all([
+      const permiteMeriendaActual = meta?.salones.find((s) => s.id === salonId)?.permiteMerienda ?? false;
+      const [datosAlmuerzo, datosCena, datosMerienda] = await Promise.all([
         getEspera(fecha, "almuerzo", salonId),
         getEspera(fecha, "cena", salonId),
+        permiteMeriendaActual ? getEspera(fecha, "merienda", salonId) : Promise.resolve([]),
       ]);
-      setEsperaImpresion({ almuerzo: datosAlmuerzo, cena: datosCena });
+      setEsperaImpresion({ almuerzo: datosAlmuerzo, cena: datosCena, merienda: datosMerienda });
       requestAnimationFrame(() => window.print());
     } catch {
       setError("No se pudo preparar la impresión del día");
@@ -376,7 +408,7 @@ export default function HomePage() {
             ⚠
           </span>
         )}
-        <TurnoToggle turno={turno} onCambiar={setTurno} />
+        <TurnoToggle turno={turno} onCambiar={setTurno} permiteMerienda={salonActual?.permiteMerienda ?? false} />
         <div className="flex items-center gap-3 text-sm text-tinta-suave">
           {nombre && <span>Hola, {nombre}</span>}
           {admin ? (
@@ -457,6 +489,25 @@ export default function HomePage() {
               admin={admin}
               onEsperaActualizada={setEspera}
             />
+          ) : turno === "merienda" ? (
+            dia.merienda ? (
+              <ShiftSection
+                titulo="Merienda"
+                fecha={fecha}
+                turno="merienda"
+                salonId={salonId}
+                salones={meta.salones}
+                data={dia.merienda}
+                mesas={dia.merienda.mesas}
+                espera={espera}
+                admin={admin}
+                onEsperaActualizada={setEspera}
+              />
+            ) : (
+              <div className="p-16 text-center text-tinta-suave">
+                Este salón no tiene habilitado el turno Merienda.
+              </div>
+            )
           ) : (
             <ShiftSection
               titulo="Cena"
@@ -482,8 +533,10 @@ export default function HomePage() {
           mesas={mesasDelSalon}
           almuerzo={dia.almuerzo}
           cena={dia.cena}
+          merienda={dia.merienda}
           esperaAlmuerzo={esperaImpresion.almuerzo}
           esperaCena={esperaImpresion.cena}
+          esperaMerienda={esperaImpresion.merienda}
         />
       )}
     </div>

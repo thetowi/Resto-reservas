@@ -16,4 +16,12 @@ public class Salon
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public int Orden { get; set; }
+
+    // Si este salon ofrece el turno Merienda (16:00 a 18:00, cada 30 min):
+    // pensado para el lobby bar, no para el salon principal. Con esto en
+    // false (default), DiaService.GetDiaAsync ni siquiera calcula ese turno
+    // para este salon (no tiene sentido generar filas vacias de merienda
+    // para un salon que nunca la usa), y el frontend no ofrece la opcion en
+    // el selector de turno.
+    public bool PermiteMerienda { get; set; } = false;
 }
