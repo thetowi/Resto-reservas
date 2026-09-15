@@ -94,6 +94,10 @@ const SNAP_TOLERANCIA = 6;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 1.5;
 const ZOOM_PASO = 0.1;
+// Zoom con el que arranca el plano al entrar (ver el useEffect de montaje
+// más abajo) y al que vuelve "Restablecer" — elegido a mano por el usuario,
+// no calculado.
+const ZOOM_DEFAULT = 0.92;
 
 // Factor de resolución del <canvas> que arma exportarPdf (ver
 // construirCanvasPlano): 2 = el doble de pixels por unidad de lienzo, para
@@ -521,7 +525,7 @@ export default function PlanoSalon({
   const [turnoData, setTurnoData] = useState<TurnoData | null>(null);
   const [elementos, setElementos] = useState<ElementoPlano[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [guiaActiva, setGuiaActiva] = useState<Guia>({ v: null, h: null });
   const [reservaDetalle, setReservaDetalle] = useState<Reserva | null>(null);
   // Mesa elegida en el plano (solo en modo edición): al seleccionarla
@@ -574,13 +578,10 @@ export default function PlanoSalon({
     setZoom(Math.max(ZOOM_MIN, Math.floor(ajuste * 100) / 100));
   }
 
-  // Al entrar al plano, arranca siempre ajustado a lo que entra en pantalla
-  // (en vez de fijo a 100%, que en la mayoría de las pantallas obligaba a
-  // scrollear para ver el salón completo).
-  useEffect(() => {
-    ajustarZoomAlContenedor();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Al entrar al plano arranca siempre en ZOOM_DEFAULT (ya seteado como
+  // estado inicial más arriba) en vez de recalcular un ajuste al contenedor:
+  // si en una pantalla puntual no entra todo sin scrollear, está el botón
+  // "Ajustar a pantalla" más abajo para eso.
 
   useEffect(
     () => () => {
@@ -1190,8 +1191,8 @@ export default function PlanoSalon({
             >
               +
             </button>
-            {zoom !== 1 && (
-              <button onClick={() => setZoom(1)} className="ml-0.5 text-tinta-suave underline">
+            {zoom !== ZOOM_DEFAULT && (
+              <button onClick={() => setZoom(ZOOM_DEFAULT)} className="ml-0.5 text-tinta-suave underline">
                 Restablecer
               </button>
             )}
