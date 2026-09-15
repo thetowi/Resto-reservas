@@ -219,11 +219,49 @@ public class MesasController : ControllerBase
             return BadRequest(new { error = $"las dos mitades tienen que sumar {padre.Capacidad} pax (la capacidad de la mesa)" });
         }
 
-        var yaDividida = await _db.DivisionesMesaTurno.AnyAsync(d =>
-            d.Fecha == req.Fecha && d.Turno == req.Turno && d.MesaBaseId == padre.Id);
-        if (yaDividida)
+        // La division "por turno" es SOLO para la fecha+turno pedida: el
+        // turno siguiente ya vuelve solo al default (GetTurnoAsync arriba
+        // filtra por fecha+turno exactos), no hace falta "Unir mesas" a mano
+        // para eso. El problema es otro: las dos mesas hijas son filas
+        // fisicas en la tabla Mesas (mismo codigo unico por salon que
+        // cualquier otra mesa) y no se autoborran solas al cambiar de turno
+        // — solo desaparecen cuando alguien las une o las volvemos a usar.
+        // Si quedo una division de un turno/dia anterior sin unir, sus
+        // "{padre.Codigo}a"/"b" seguian ocupando esos codigos para siempre y
+        // el insert de mas abajo reventaba con un error 500 (violacion de
+        // unicidad) en cuanto alguien volvia a dividir esa misma mesa. La
+        // division es independiente de fecha/turno para el usuario: no
+        // importa si esas mitades tuvieron una reserva o un walk-in en otro
+        // turno, esa division vieja ya es historia y no bloquea nada — la
+        // limpiamos siempre nosotros antes de crear la nueva (el borrado de
+        // la mesa hace cascade sobre sus ReservaMesas/WalkIns viejos: la
+        // reserva en si no se toca, solo deja de apuntar a esa mesa puntual).
+        var divisionVieja = await _db.DivisionesMesaTurno.FirstOrDefaultAsync(d => d.MesaBaseId == padre.Id);
+        if (divisionVieja is not null)
         {
-            return BadRequest(new { error = "esta mesa ya esta dividida en este turno" });
+            if (divisionVieja.Fecha == req.Fecha && divisionVieja.Turno == req.Turno)
+            {
+                return BadRequest(new { error = "esta mesa ya esta dividida en este turno" });
+            }
+
+            var hijaIdsViejas = new[] { divisionVieja.MesaHijaAId, divisionVieja.MesaHijaBId };
+            var hijasViejas = await _db.Mesas.Where(m => hijaIdsViejas.Contains(m.Id)).ToListAsync();
+            _db.DivisionesMesaTurno.Remove(divisionVieja);
+            _db.Mesas.RemoveRange(hijasViejas);
+            await _db.SaveChangesAsync();
+        }
+
+        // Red de seguridad adicional por si quedo una mesa hija huerfana sin
+        // su registro de DivisionMesaTurno (por ejemplo datos viejos de antes
+        // de este chequeo): evita el 500 igual, con un mensaje accionable.
+        var codigoA = $"{padre.Codigo}a";
+        var codigoB = $"{padre.Codigo}b";
+        if (await _db.Mesas.AnyAsync(m => m.SalonId == padre.SalonId && (m.Codigo == codigoA || m.Codigo == codigoB)))
+        {
+            return BadRequest(new
+            {
+                error = $"ya existe una mesa con código {codigoA} o {codigoB}: revisalo desde \"Administrar mesas\"",
+            });
         }
 
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
