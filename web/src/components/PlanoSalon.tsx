@@ -1393,6 +1393,15 @@ interface DetalleReservaModalProps {
 // /plano): junta lo esencial de la reserva sin tener que ir hasta la grilla
 // de reservas.
 function DetalleReservaModal({ reserva, onCerrar }: DetalleReservaModalProps) {
+  const nombre = reserva.nombre?.trim() || null;
+  const habTel = reserva.habTel?.trim() || null;
+  // Puede venir un huésped a una reserva y no dejar registrado su nombre
+  // (solo el número de habitación/teléfono, ver esReservaCompleta en
+  // lib/tolerancia.ts): en ese caso el título muestra el hab./tel. en vez de
+  // "Sin nombre", y la fila de abajo no lo repite. Con nombre cargado, la
+  // fila de hab./tel. solo aparece si además se cargó ese dato — si no, ni
+  // el título ni la lista dicen nada al respecto.
+  const titulo = nombre ?? (habTel ? `Hab: ${habTel}` : "Sin nombre");
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -1403,7 +1412,7 @@ function DetalleReservaModal({ reserva, onCerrar }: DetalleReservaModalProps) {
         className="w-full max-w-sm rounded-2xl border border-borde bg-superficie p-5 shadow-lg"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="text-base font-bold text-tinta">{reserva.nombre || "Sin nombre"}</h3>
+          <h3 className="text-base font-bold text-tinta">{titulo}</h3>
           <button
             onClick={onCerrar}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-tinta-suave hover:bg-arena-suave hover:text-tinta"
@@ -1425,10 +1434,12 @@ function DetalleReservaModal({ reserva, onCerrar }: DetalleReservaModalProps) {
             <dt className="text-tinta-suave">Pax</dt>
             <dd className="font-medium text-tinta">{reserva.pax ?? "—"}</dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-tinta-suave">Hab./Tel.</dt>
-            <dd className="font-medium text-tinta">{reserva.habTel || "—"}</dd>
-          </div>
+          {nombre && habTel && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-tinta-suave">Hab./Tel.</dt>
+              <dd className="font-medium text-tinta">{habTel}</dd>
+            </div>
+          )}
           {reserva.comentarios && (
             <div className="pt-1.5">
               <dt className="mb-0.5 text-tinta-suave">Comentarios</dt>

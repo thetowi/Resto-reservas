@@ -14,14 +14,28 @@ function fechaLocalYMD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-// ¿Esta reserva superó la tolerancia? Solo aplica a filas con datos reales
-// cargados (no a las filas vacías sembradas por horario default), del día
-// de HOY (fecha local del navegador), que todavía no se marcaron ni
-// "Asistió" ni "Se fue" — apenas se tilda cualquiera de las dos, el aviso
-// desaparece solo (ver ReservaRow.tsx).
+// Una reserva está "completa" cuando tiene mesa asignada, pax cargado, y
+// nombre O número de habitación — no hace falta el nombre en particular:
+// puede venir un huésped a una reserva y no dejar registrado su nombre,
+// alcanza con el número de habitación para poder ubicarlo. Una fila con
+// menos que eso todavía se está cargando (o es una fila vacía sembrada por
+// el horario default), así que no tiene sentido avisar que "no llegó".
+export function esReservaCompleta(reserva: Reserva): boolean {
+  return (
+    reserva.mesaIds.length > 0 &&
+    reserva.pax !== null &&
+    reserva.pax > 0 &&
+    (!!reserva.nombre?.trim() || !!reserva.habTel?.trim())
+  );
+}
+
+// ¿Esta reserva superó la tolerancia? Solo aplica a reservas completas (ver
+// esReservaCompleta) del día de HOY (fecha local del navegador), que
+// todavía no se marcaron ni "Asistió" ni "Se fue" — apenas se tilda
+// cualquiera de las dos, el aviso desaparece solo (ver ReservaRow.tsx).
 export function excedioTolerancia(reserva: Reserva, ahora: Date): boolean {
   if (reserva.asistio || reserva.retirada) return false;
-  if (!reserva.nombre || reserva.nombre.trim() === "") return false;
+  if (!esReservaCompleta(reserva)) return false;
   if (!reserva.hora) return false;
   if (reserva.fecha !== fechaLocalYMD(ahora)) return false;
 
