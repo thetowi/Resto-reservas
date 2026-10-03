@@ -18,6 +18,8 @@ public class BarrancasDbContext : DbContext
     public DbSet<CierreTurno> CierresTurno => Set<CierreTurno>();
     public DbSet<DivisionMesaTurno> DivisionesMesaTurno => Set<DivisionMesaTurno>();
     public DbSet<RenombreMesaTurno> RenombresMesaTurno => Set<RenombreMesaTurno>();
+    public DbSet<MesaReducida> MesasReducidas => Set<MesaReducida>();
+    public DbSet<DivisionMesaDefault> DivisionesMesaDefault => Set<DivisionMesaDefault>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -175,6 +177,43 @@ public class BarrancasDbContext : DbContext
             e.HasOne(x => x.Mesa)
                 .WithMany()
                 .HasForeignKey(x => x.MesaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MesaReducida>(e =>
+        {
+            // Una sola reducción activa por mesa y turno puntual (volver a
+            // confirmar el modal con la misma mesa tildada no crea una
+            // segunda fila — ver ReduccionesController.Set, que reemplaza
+            // el set completo).
+            e.HasIndex(x => new { x.Fecha, x.Turno, x.MesaId }).IsUnique();
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // Cascade (no Restrict): igual criterio que RenombreMesaTurno —
+            // es una anotación liviana sobre la mesa, si la mesa se borra
+            // la reducción no tiene sentido y desaparece con ella, sin
+            // bloquear el borrado.
+            e.HasOne(x => x.Mesa)
+                .WithMany()
+                .HasForeignKey(x => x.MesaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DivisionMesaDefault>(e =>
+        {
+            // Una sola fila de default por mesa base: volver a guardar pisa
+            // esta misma fila (ver GuardarDefaultDivision en
+            // MesasController), nunca crea una segunda.
+            e.HasIndex(x => x.MesaBaseId).IsUnique();
+            // Cascade (no Restrict): es una anotacion liviana sobre la mesa
+            // base (mismo criterio que RenombreMesaTurno) — si la mesa se
+            // borra, este default no tiene sentido y desaparece con ella,
+            // sin bloquear el borrado.
+            e.HasOne(x => x.MesaBase)
+                .WithMany()
+                .HasForeignKey(x => x.MesaBaseId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

@@ -17,6 +17,12 @@ export interface Salon {
   // Si este salón ofrece el turno Merienda (ver el comentario de Turno más
   // arriba) — pensado para el lobby bar, no para el salón principal.
   permiteMerienda: boolean;
+  // Si este salón aparece en el selector de uso diario (pantalla principal,
+  // /plano, /admin/mesas) — ver /lib/api.ts getMeta(), que solo trae los
+  // activos. Un salón inactivo sigue existiendo con toda su data (mesas,
+  // reservas, historial); solo /admin/salones lo sigue mostrando, para
+  // poder reactivarlo.
+  activo: boolean;
 }
 
 // después
@@ -55,6 +61,12 @@ export interface Mesa {
   // número nuevo a mostrar, y codigoOriginal guarda el número real de
   // /admin/mesas, para poder ofrecer "volver a llamarla codigoOriginal".
   codigoOriginal: string | null;
+  // true cuando esta mesa fue deshabilitada con "Reducir salón" para ESTE
+  // turno puntual (ver ShiftSection.tsx): sigue existiendo normalmente en el
+  // plano y en Meta.mesas, pero MesasPanel.tsx la saca de "Mesas disponibles"
+  // y ShiftSection.tsx no la cuenta en la capacidad del salón, hasta que
+  // termine el turno (o se la vuelva a tildar en el mismo modal).
+  reducida: boolean;
 }
 
 export interface Meta {

@@ -339,6 +339,14 @@ public class MesasController : ControllerBase
 
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
 
+        // Si esta mesa base ya tiene un layout guardado a mano (ver
+        // GuardarDefaultDivision), las mitades nuevas nacen acomodadas
+        // exactamente asi (posicion, forma, fijada y rotacion de cada una)
+        // en vez del default generico de mas abajo — el reparto de pax
+        // (PaxA/PaxB) NO viene de aca a proposito: eso lo sigue mandando el
+        // pedido, turno a turno, porque puede variar.
+        var layoutDefault = await _db.DivisionesMesaDefault.FirstOrDefaultAsync(d => d.MesaBaseId == padre.Id);
+
         var hijaA = new Mesa
         {
             Codigo = $"{padre.Codigo}a",
@@ -347,7 +355,9 @@ public class MesasController : ControllerBase
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
             EsTemporal = true,
-            Forma = padre.Forma,
+            Forma = layoutDefault?.FormaA ?? padre.Forma,
+            Fijada = layoutDefault?.FijadaA ?? false,
+            Rotacion = layoutDefault?.RotacionA ?? 0,
         };
         var hijaB = new Mesa
         {
@@ -357,13 +367,22 @@ public class MesasController : ControllerBase
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
             EsTemporal = true,
-            Forma = padre.Forma,
+            Forma = layoutDefault?.FormaB ?? padre.Forma,
+            Fijada = layoutDefault?.FijadaB ?? false,
+            Rotacion = layoutDefault?.RotacionB ?? 0,
         };
+        if (layoutDefault is not null)
+        {
+            hijaA.PosX = layoutDefault.PosXA;
+            hijaA.PosY = layoutDefault.PosYA;
+            hijaB.PosX = layoutDefault.PosXB;
+            hijaB.PosY = layoutDefault.PosYB;
+        }
         // Este turno ya no dibuja a la base (DiaService.GetTurnoAsync la
         // oculta mientras esta dividida): las dos mitades toman su lugar en
         // el plano, separadas entre si, en vez de nacer en la grilla por
         // defecto.
-        if (padre.PosX is not null && padre.PosY is not null)
+        else if (padre.PosX is not null && padre.PosY is not null)
         {
             hijaA.PosX = padre.PosX;
             hijaA.PosY = padre.PosY;
@@ -423,6 +442,63 @@ public class MesasController : ControllerBase
 
         await BroadcastMesasAsync();
         await BroadcastTurnoAsync(req.Fecha, req.Turno, division.SalonId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Guarda (o actualiza) el layout visual "default" de las dos mitades de
+    /// la division temporal activa que contiene a la mesa indicada (ver
+    /// Models/DivisionMesaDefault.cs y el uso en <see cref="DividirPorTurno"/>):
+    /// posicion, forma, fijada y rotacion de CADA mitad, tal como estan
+    /// acomodadas ahora mismo en el plano. La proxima vez que se divida esta
+    /// misma mesa base (en cualquier turno o dia), las mitades nuevas nacen
+    /// con este layout en vez de arrancar de cero. A proposito NO guarda el
+    /// reparto de pax entre las mitades: eso se sigue cargando a mano cada
+    /// vez, porque puede variar turno a turno. Se puede pedir con el Id de
+    /// CUALQUIERA de las dos mitades (no hace falta saber cual es la "a" y
+    /// cual la "b") — se identifica la division activa a partir de ese Id.
+    /// Volver a guardar sobre la misma base actualiza el default ya
+    /// guardado, no crea uno segundo.
+    /// </summary>
+    [HttpPost("{id:int}/guardar-default-division")]
+    public async Task<ActionResult> GuardarDefaultDivision(int id)
+    {
+        var division = await _db.DivisionesMesaTurno.FirstOrDefaultAsync(d =>
+            d.MesaHijaAId == id || d.MesaHijaBId == id);
+        if (division is null)
+        {
+            return NotFound(new { error = "esta mesa no es parte de una division activa" });
+        }
+
+        var hijaA = await _db.Mesas.FirstOrDefaultAsync(m => m.Id == division.MesaHijaAId);
+        var hijaB = await _db.Mesas.FirstOrDefaultAsync(m => m.Id == division.MesaHijaBId);
+        if (hijaA is null || hijaB is null)
+        {
+            return NotFound(new { error = "no se encontraron las mitades de esta division" });
+        }
+
+        var layoutDefault = await _db.DivisionesMesaDefault.FirstOrDefaultAsync(d => d.MesaBaseId == division.MesaBaseId);
+        if (layoutDefault is null)
+        {
+            layoutDefault = new DivisionMesaDefault { MesaBaseId = division.MesaBaseId };
+            _db.DivisionesMesaDefault.Add(layoutDefault);
+        }
+
+        layoutDefault.PosXA = hijaA.PosX;
+        layoutDefault.PosYA = hijaA.PosY;
+        layoutDefault.FormaA = hijaA.Forma;
+        layoutDefault.FijadaA = hijaA.Fijada;
+        layoutDefault.RotacionA = hijaA.Rotacion;
+
+        layoutDefault.PosXB = hijaB.PosX;
+        layoutDefault.PosYB = hijaB.PosY;
+        layoutDefault.FormaB = hijaB.Forma;
+        layoutDefault.FijadaB = hijaB.Fijada;
+        layoutDefault.RotacionB = hijaB.Rotacion;
+
+        layoutDefault.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
         return NoContent();
     }
 

@@ -132,6 +132,21 @@ public class DiaService
                 : m)
             .ToList();
 
+        // Mesas reducidas para este turno puntual (ver "Reducir salón" /
+        // ReduccionesController, Models/MesaReducida.cs): no se ocultan ni
+        // se filtran de esta lista (el plano y el resto de la app siguen
+        // viéndolas normal) — solo se marcan con Reducida=true para que el
+        // frontend (MesasPanel.tsx) las saque puntualmente de "Mesas
+        // disponibles".
+        var reducidas = (await _db.MesasReducidas
+            .Where(x => x.Fecha == fecha && x.Turno == turno && x.SalonId == salonId)
+            .Select(x => x.MesaId)
+            .ToListAsync()).ToHashSet();
+
+        mesas = mesas
+            .Select(m => reducidas.Contains(m.Id) ? m with { Reducida = true } : m)
+            .ToList();
+
         return new TurnoDataDto(
             fecha, turno, salonId, reservas, totalPax, totalAsistio, mesasOcupadas, mesasPedidas, mesasWalkIn,
             cierre is not null, cierre?.Motivo, mesas);

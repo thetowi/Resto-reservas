@@ -133,35 +133,50 @@ export default function HomePage() {
 
   // Resumen de reservas de TODOS los salones para la fecha elegida (no solo
   // el que está en pantalla): sirve para avisar en el SalonSelector cuando
-  // otro salón tiene algo cargado. Depende de "meta.salones" (no de "meta"
+  // otro salón tiene algo cargado. Ojo: NO estamos suscriptos por SignalR a
+  // los salones que no son el elegido (suscribirA solo pide los grupos del
+  // salon activo), así que esto no se actualiza solo cuando alguien carga
+  // una reserva en otro salón mientras vos mirás este — por eso se repite
+  // cada minuto (setInterval) y además cada vez que cambiás de salón
+  // (salonId en las deps): ese es el momento en que más importa tener la
+  // foto al día, porque es cuando el selector recién va a mostrar cuál de
+  // los otros salones avisa. Depende de "meta.salones" (no de "meta"
   // entero) para no repetirse cada vez que llega un broadcast de mesas, que
   // cambia la referencia de "meta" pero no la lista de salones.
   useEffect(() => {
     if (!listo || !meta) return;
     let activo = true;
-    Promise.all(
-      meta.salones.map((s) =>
-        getDia(fecha, s.id)
-          .then((data): [number, { almuerzo: number; cena: number; merienda: number }] => [
-            s.id,
-            {
-              almuerzo: data.almuerzo.reservas.filter(tieneDatosCargados).length,
-              cena: data.cena.reservas.filter(tieneDatosCargados).length,
-              merienda: data.merienda ? data.merienda.reservas.filter(tieneDatosCargados).length : 0,
-            },
-          ])
-          .catch((): [number, { almuerzo: number; cena: number; merienda: number }] => [
-            s.id,
-            { almuerzo: 0, cena: 0, merienda: 0 },
-          ]),
-      ),
-    ).then((entradas) => {
-      if (activo) setResumenSalones(Object.fromEntries(entradas));
-    });
+
+    function cargarResumen() {
+      Promise.all(
+        meta.salones.map((s) =>
+          getDia(fecha, s.id)
+            .then((data): [number, { almuerzo: number; cena: number; merienda: number }] => [
+              s.id,
+              {
+                almuerzo: data.almuerzo.reservas.filter(tieneDatosCargados).length,
+                cena: data.cena.reservas.filter(tieneDatosCargados).length,
+                merienda: data.merienda ? data.merienda.reservas.filter(tieneDatosCargados).length : 0,
+              },
+            ])
+            .catch((): [number, { almuerzo: number; cena: number; merienda: number }] => [
+              s.id,
+              { almuerzo: 0, cena: 0, merienda: 0 },
+            ]),
+        ),
+      ).then((entradas) => {
+        if (activo) setResumenSalones(Object.fromEntries(entradas));
+      });
+    }
+
+    cargarResumen();
+    const id = setInterval(cargarResumen, 60_000);
+
     return () => {
       activo = false;
+      clearInterval(id);
     };
-  }, [listo, meta?.salones, fecha]);
+  }, [listo, meta?.salones, fecha, salonId]);
 
   // Si el salon elegido deja de permitir Merienda (lo cambiaron desde
   // /admin/salones, o se cambio de salon) mientras se estaba mirando ese
@@ -213,7 +228,12 @@ export default function HomePage() {
     });
 
     conexion.on("SalonesActualizados", (salones: Salon[]) => {
-      setMeta((prev) => (prev ? { ...prev, salones } : prev));
+      // Esta pantalla solo trabaja con salones ACTIVOS (mismo filtro que ya
+      // aplica getMeta() en el fetch inicial, ver /lib/api.ts): el broadcast
+      // en sí trae TODOS (activos e inactivos, lo necesita /admin/salones),
+      // así que sin este filtro un salón recién desactivado por otra
+      // persona volvía a aparecer acá en vivo.
+      setMeta((prev) => (prev ? { ...prev, salones: salones.filter((s) => s.activo) } : prev));
     });
 
     // La lista de espera viaja en el mismo grupo fecha:turno:salon que las
@@ -351,13 +371,45 @@ export default function HomePage() {
   const mesasDelSalon = meta?.mesas.filter((m) => m.salonId === salonId) ?? [];
   const salonActual = meta?.salones.find((s) => s.id === salonId) ?? null;
   // Salones (distintos al elegido) que tienen alguna reserva cargada en el
-  // turno que estás mirando ahora — se lo pasamos al selector para que
-  // avise con un símbolo. Si está vacío en ese turno, no se marca nada.
+  // turno que estás mirando ahora — se lo pasamos al selector (ver
+  // SalonSelector.tsx) para que anime el botón correspondiente. Si está
+  // vacío en ese turno, no se marca nada.
+  //
+  // Caso especial (Merienda): si el salón donde estás parado NO ofrece
+  // Merienda (ej. Restaurant), nunca vas a poder pararte en ese turno para
+  // que el chequeo de arriba la detecte solo — "turno" siempre va a ser
+  // almuerzo o cena ahí, así que una reserva de Merienda en OTRO salón
+  // quedaría invisible para siempre. Por eso, en ese caso puntual, también
+  // se suma el conteo de Merienda de los demás salones — pero SOLO si
+  // estás mirando Almuerzo: si ya estás en Cena, la Merienda (16-18hs) ya
+  // pasó, así que avisarla sería ruido, no una ayuda.
   const salonesConReservas = new Set(
     meta?.salones
-      .filter((s) => s.id !== salonId && (resumenSalones[s.id]?.[turno] ?? 0) > 0)
+      .filter((s) => {
+        if (s.id === salonId) return false;
+        if ((resumenSalones[s.id]?.[turno] ?? 0) > 0) return true;
+        if (turno === "almuerzo" && !salonActual?.permiteMerienda && (resumenSalones[s.id]?.merienda ?? 0) > 0) {
+          return true;
+        }
+        return false;
+      })
       .map((s) => s.id) ?? [],
   );
+  // Una vez que ya estás parado en el salón correcto (el que sí ofrece
+  // Merienda y tiene la reserva), el aviso de Salones ya cumplió su función
+  // de "traerte hasta acá" — lo que falta es terminar de guiarte hasta el
+  // turno Merienda en sí, por si seguís mirando Almuerzo de ese mismo
+  // salón. Mismo anillo rojo, ahora en TurnoToggle. Mismo criterio que
+  // arriba: solo desde Almuerzo (en Cena la Merienda ya pasó).
+  const turnosConAviso = new Set<Turno>();
+  if (
+    salonId !== null &&
+    salonActual?.permiteMerienda &&
+    turno === "almuerzo" &&
+    (resumenSalones[salonId]?.merienda ?? 0) > 0
+  ) {
+    turnosConAviso.add("merienda");
+  }
 
   // Link a "Mapa del salón"/"Plano": lleva la fecha, turno y salón tal cual
   // están elegidos acá, para que /plano abra mostrando exactamente lo mismo
@@ -371,96 +423,123 @@ export default function HomePage() {
           quedar en el papel es ReporteImpresion (mas abajo, "hidden
           print:block"). */}
       <div className="print:hidden">
-      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-6 border-b border-borde bg-superficie px-7 py-4.5">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.png"
-            alt="Barrancas"
-            width={42}
-            height={42}
-            className="h-10.5 w-10.5 rounded-[10px] border border-borde"
-          />
-          <div>
-            <div className="text-sm font-bold tracking-wide">BARRANCAS</div>
-            <div className="text-xs text-tinta-suave">Restaurant · Reservas</div>
+      {/* Una sola fila con dos columnas en vez de una pila de renglones
+          sueltos: la columna izquierda (marca+fecha arriba, acciones de
+          usuario abajo) se estira a la misma altura que la columna derecha
+          (Salones+Turno, que es más alta por la leyenda de "Hay reservas")
+          — así no queda un hueco vacío al lado de esas cajas, y "Hola,
+          Admin" cae justo debajo de la marca en vez de perdido en su
+          propio renglón de ancho completo. Ningún cambio de ancho en un
+          lado reacomoda al otro: son hermanos de flex, no se pisan. */}
+      <header className="sticky top-0 z-10 flex flex-wrap items-stretch justify-between gap-10 overflow-x-auto border-b border-borde bg-superficie px-7 py-4">
+        <div className="flex flex-col justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-12">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                alt="Barrancas"
+                width={42}
+                height={42}
+                className="h-10.5 w-10.5 rounded-[10px] border border-borde"
+              />
+              <div>
+                <div className="text-sm font-bold tracking-wide">BARRANCAS</div>
+                <div className="text-xs text-tinta-suave">Restaurant · Reservas</div>
+              </div>
+            </div>
+            <DateNav
+              fecha={fecha}
+              titulo={formatFechaLarga(fecha)}
+              esHoy={fecha === todayISO()}
+              onPrev={() => setFecha((f) => addDays(f, -1))}
+              onNext={() => setFecha((f) => addDays(f, 1))}
+              onHoy={() => setFecha(todayISO())}
+              onFecha={setFecha}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-start gap-3 text-sm text-tinta-suave">
+            {nombre && <span>Hola, {nombre}</span>}
+            {admin ? (
+              <>
+                <Link
+                  href="/admin/mesas"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Mesas
+                </Link>
+                <Link
+                  href={hrefPlano}
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Mapa del salón
+                </Link>
+                <Link
+                  href="/admin/salones"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Salones
+                </Link>
+                <Link
+                  href="/admin/usuarios"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Usuarios
+                </Link>
+                <Link
+                  href="/reportes"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Reportes
+                </Link>
+              </>
+            ) : (
+              // El Staff solo puede "ver el plano... para estudiarlo": nada
+              // de crear/mover mesas, eso es exclusivo de /admin/mesas.
+              <Link href={hrefPlano} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
+                Plano
+              </Link>
+            )}
+            <button
+              onClick={imprimir}
+              disabled={imprimiendo}
+              className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave disabled:opacity-50"
+            >
+              {imprimiendo ? "Preparando…" : "Imprimir"}
+            </button>
+            <button onClick={salir} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
+              Salir
+            </button>
           </div>
         </div>
-        <DateNav
-          fecha={fecha}
-          titulo={formatFechaLarga(fecha)}
-          esHoy={fecha === todayISO()}
-          onPrev={() => setFecha((f) => addDays(f, -1))}
-          onNext={() => setFecha((f) => addDays(f, 1))}
-          onHoy={() => setFecha(todayISO())}
-          onFecha={setFecha}
-        />
-        {meta && salonId !== null && (
-          <SalonSelector salones={meta.salones} salonId={salonId} onCambiar={setSalonId} />
-        )}
-        {salonesConReservas.size > 0 && (
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-aviso bg-aviso-suave text-lg text-aviso"
-            title={`Hay reservas cargadas en: ${[...salonesConReservas]
-              .map((id) => meta?.salones.find((s) => s.id === id)?.nombre)
-              .filter(Boolean)
-              .join(", ")}`}
-          >
-            ⚠
-          </span>
-        )}
-        <TurnoToggle turno={turno} onCambiar={setTurno} permiteMerienda={salonActual?.permiteMerienda ?? false} />
-        <div className="flex items-center gap-3 text-sm text-tinta-suave">
-          {nombre && <span>Hola, {nombre}</span>}
-          {admin ? (
-            <>
-              <Link
-                href="/admin/mesas"
-                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-              >
-                Mesas
-              </Link>
-              <Link
-                href={hrefPlano}
-                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-              >
-                Mapa del salón
-              </Link>
-              <Link
-                href="/admin/salones"
-                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-              >
-                Salones
-              </Link>
-              <Link
-                href="/admin/usuarios"
-                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-              >
-                Usuarios
-              </Link>
-              <Link
-                href="/reportes"
-                className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-              >
-                Reportes
-              </Link>
-            </>
-          ) : (
-            // El Staff solo puede "ver el plano... para estudiarlo": nada de
-            // crear/mover mesas, eso es exclusivo de /admin/mesas.
-            <Link href={hrefPlano} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
-              Plano
-            </Link>
-          )}
-                    <button
-            onClick={imprimir}
-            disabled={imprimiendo}
-            className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave disabled:opacity-50"
-          >
-            {imprimiendo ? "Preparando…" : "Imprimir"}
-          </button>
-          <button onClick={salir} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
-            Salir
-          </button>
+        <div className="flex items-stretch gap-3">
+          <div className="flex flex-col items-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
+            <span className="text-base font-bold tracking-wide text-tinta">Salones</span>
+            {meta && salonId !== null && (
+              <SalonSelector
+                salones={meta.salones}
+                salonId={salonId}
+                onCambiar={setSalonId}
+                salonesConAviso={salonesConReservas}
+              />
+            )}
+            {/* Referencia de qué significa el borde animado de un salón
+                (ver boton-salon-aviso en globals.css): mismo anillo rojo
+                girando, en miniatura, para que se entienda sin acercarse
+                a leer el title="" de cada botón. */}
+            <div className="flex items-center gap-1.5 text-[11px] text-tinta-suave">
+              <span className="leyenda-salon-aviso" aria-hidden="true" />
+              Hay reservas
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
+            <span className="text-base font-bold tracking-wide text-tinta">Turno</span>
+            <TurnoToggle
+              turno={turno}
+              onCambiar={setTurno}
+              permiteMerienda={salonActual?.permiteMerienda ?? false}
+              turnosConAviso={turnosConAviso}
+            />
+          </div>
         </div>
       </header>
 

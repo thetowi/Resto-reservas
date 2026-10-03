@@ -38,6 +38,14 @@ interface Props {
   // más abajo). No mueve ni redimensiona la mesa, solo cambia mesa.rotacion.
   // Mismo criterio de opcionalidad: no aplica en modo lectura.
   onRotar?: (mesa: Mesa, rotacion: number) => void;
+  // Guarda el layout visual actual (posición/forma/fijada/rotación) de las
+  // dos mitades de una división por turno como "default" para la próxima
+  // vez que se divida esta misma mesa base (ver dividirMesaPorTurno en el
+  // backend). Solo tiene sentido — y solo se muestra el botón — sobre una
+  // mitad de una división temporal (mesa.esTemporal && mesa.mesaPadreId !=
+  // null). Mismo criterio de opcionalidad que onRotar: no aplica en modo
+  // lectura.
+  onGuardarDefaultDivision?: (mesa: Mesa) => void;
   // Modo lectura (usado en /plano, la vista de Staff "para estudiar" el
   // salón): sin arrastre de mesas ni carteles, sin agregar/editar/borrar
   // carteles — solo mirar la disposición y la ocupación en vivo. Sí permite
@@ -514,6 +522,7 @@ export default function PlanoSalon({
   onCambiarForma,
   onFijar,
   onRotar,
+  onGuardarDefaultDivision,
   soloLectura = false,
   fechaInicial,
   turnoInicial,
@@ -1343,6 +1352,9 @@ export default function PlanoSalon({
                 onElegir={(forma) => onCambiarForma(mesaSeleccionada, forma)}
                 onFijar={onFijar ? (fijada) => onFijar(mesaSeleccionada, fijada) : undefined}
                 onRotar={onRotar ? (rotacion) => onRotar(mesaSeleccionada, rotacion) : undefined}
+                onGuardarDefaultDivision={
+                  onGuardarDefaultDivision ? () => onGuardarDefaultDivision(mesaSeleccionada) : undefined
+                }
                 onCerrar={() => setMesaSeleccionadaId(null)}
               />
             )}
@@ -1462,6 +1474,11 @@ interface SelectorFormaProps {
   // Opcional: si no viene, no se muestra el botón de rotar (mismo criterio
   // que onFijar).
   onRotar?: (rotacion: number) => void;
+  // Opcional: si no viene, no se muestra el botón de "Guardar como default"
+  // (mismo criterio que onFijar/onRotar) — y ADEMÁS solo se muestra sobre
+  // una mitad de una división por turno (ver el chequeo esTemporal/
+  // mesaPadreId en el componente padre).
+  onGuardarDefaultDivision?: () => void | Promise<void>;
   onCerrar: () => void;
 }
 
@@ -1471,8 +1488,39 @@ interface SelectorFormaProps {
 // MesaCaja.onPointerDown más abajo). Vive en el mismo sistema de
 // coordenadas que las mesas (dentro del lienzo escalado por el zoom), así
 // que se mueve y escala junto con el plano.
-function SelectorForma({ mesa, rect, onElegir, onFijar, onRotar, onCerrar }: SelectorFormaProps) {
+function SelectorForma({
+  mesa,
+  rect,
+  onElegir,
+  onFijar,
+  onRotar,
+  onGuardarDefaultDivision,
+  onCerrar,
+}: SelectorFormaProps) {
   const arriba = rect.y > 44;
+  // Feedback local y transitorio del botón "Guardar como default": no hay
+  // sistema de toasts en esta app (ver ConfirmProvider.tsx), así que el
+  // propio botón cambia de texto un momento y vuelve solo — no hace falta
+  // guardar esto en ningún lado más.
+  const [guardandoDefault, setGuardandoDefault] = useState(false);
+  const [defaultGuardado, setDefaultGuardado] = useState(false);
+  const puedeGuardarDefault = onGuardarDefaultDivision && mesa.esTemporal && mesa.mesaPadreId !== null;
+
+  async function handleGuardarDefault() {
+    if (!onGuardarDefaultDivision || guardandoDefault) return;
+    setGuardandoDefault(true);
+    try {
+      await onGuardarDefaultDivision();
+      setDefaultGuardado(true);
+      setTimeout(() => setDefaultGuardado(false), 2000);
+    } catch {
+      // El error ya queda reflejado en la pantalla (ver setError en el
+      // handler del componente padre) — acá solo evitamos marcar
+      // "Guardado ✓" si en realidad falló.
+    } finally {
+      setGuardandoDefault(false);
+    }
+  }
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -1528,6 +1576,20 @@ function SelectorForma({ mesa, rect, onElegir, onFijar, onRotar, onCerrar }: Sel
           className="rounded-md border border-borde px-2 py-1 text-[11px] font-medium text-tinta-suave hover:bg-arena-suave"
         >
           ⟳ Rotar
+        </button>
+      )}
+      {puedeGuardarDefault && (
+        <button
+          onClick={handleGuardarDefault}
+          disabled={guardandoDefault}
+          title="Recordar la posición/forma/fijado/rotación de esta mitad para la próxima vez que se divida esta mesa"
+          className={`rounded-md border px-2 py-1 text-[11px] font-medium disabled:opacity-60 ${
+            defaultGuardado
+              ? "border-marca bg-marca text-white"
+              : "border-borde text-tinta-suave hover:bg-arena-suave"
+          }`}
+        >
+          {defaultGuardado ? "Guardado ✓" : "Guardar como default"}
         </button>
       )}
       <button

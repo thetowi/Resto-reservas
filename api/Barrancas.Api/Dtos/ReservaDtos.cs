@@ -53,7 +53,11 @@ public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena, T
 // tiene un renombre por turno activo (ver DiaService / RenombreMesaTurno):
 // ahi Codigo ya es el nuevo numero para mostrar, y CodigoOriginal guarda el
 // numero real de /admin/mesas, para poder ofrecer "revertir" en el frontend.
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, int Rotacion, string? CodigoOriginal = null);
+// Reducida viene en false salvo en TurnoDataDto.Mesas cuando esta mesa fue
+// deshabilitada con "Reducir salón" para ESE turno puntual (ver DiaService /
+// MesaReducida): el frontend la saca de "Mesas disponibles" sin tocar el
+// resto (sigue en Meta.mesas y en el plano normalmente).
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, int Rotacion, string? CodigoOriginal = null, bool Reducida = false);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual

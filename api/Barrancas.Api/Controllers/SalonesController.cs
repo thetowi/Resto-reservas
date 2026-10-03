@@ -11,10 +11,12 @@ namespace Barrancas.Api.Controllers;
 
 /// <summary>
 /// Administracion de salones (Restaurant, Bar, Aqua Bar, etc — ver
-/// Models/Salon.cs): crear, renombrar y borrar. GetLista queda abierta a
-/// cualquier autenticado (todos necesitan la lista completa para el
-/// selector de salon en pantalla); crear/editar/borrar es exclusivo de
-/// Admin, igual patron que MesasController/ElementosPlanoController.
+/// Models/Salon.cs): crear, renombrar, activar/desactivar y borrar. GetLista
+/// trae TODOS los salones (activos e inactivos — la usa /admin/salones para
+/// poder reactivarlos); MetaController.GetMeta, en cambio, solo trae los
+/// activos (alimenta el selector de uso diario). Crear/editar/desactivar/
+/// borrar es exclusivo de Admin, igual patron que
+/// MesasController/ElementosPlanoController.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -81,6 +83,24 @@ public class SalonesController : ControllerBase
         if (req.Orden is not null) salon.Orden = req.Orden.Value;
         if (req.PermiteMerienda is not null) salon.PermiteMerienda = req.PermiteMerienda.Value;
 
+        if (req.Activo is not null)
+        {
+            // Mismo criterio que UsuariosController al desactivar el unico
+            // Admin activo: siempre tiene que quedar al menos un salon
+            // ACTIVO (no uno a secas — ya podia haber inactivos de antes),
+            // para que el selector de la pantalla principal nunca se quede
+            // sin ninguna opcion.
+            if (!req.Activo.Value)
+            {
+                var otrosActivos = await _db.Salones.CountAsync(s => s.Id != id && s.Activo);
+                if (otrosActivos == 0)
+                {
+                    return BadRequest(new { error = "tiene que quedar al menos un salón activo" });
+                }
+            }
+            salon.Activo = req.Activo.Value;
+        }
+
         await _db.SaveChangesAsync();
 
         return Ok(await BroadcastAsync());
@@ -107,6 +127,31 @@ public class SalonesController : ControllerBase
         {
             return BadRequest(new { error = "este salón todavía tiene mesas: borralas primero desde \"Administrar mesas\"" });
         }
+        // El resto de las tablas que cuelgan de un salon (reservas, lista de
+        // espera, cierres de turno, carteles de referencia del plano) tienen
+        // su propia FK en RESTRICT contra Salones — nunca dependen de que
+        // existan mesas, asi que el chequeo de arriba no las cubre. Sin este
+        // chequeo, intentar borrar un salon con cualquiera de estos todavia
+        // cargados tiraba una excepcion cruda de Postgres (23001) en vez de
+        // un mensaje entendible. Para un salon que ya no se usa pero tiene
+        // historial real (el caso mas comun), la opcion correcta es
+        // "Desactivar" (ver mas arriba) en vez de borrar: eso no pierde nada.
+        if (await _db.Reservas.AnyAsync(r => r.SalonId == id))
+        {
+            return BadRequest(new { error = "este salón todavía tiene reservas cargadas: no se puede borrar (podés desactivarlo en vez de borrarlo)" });
+        }
+        if (await _db.Esperas.AnyAsync(e => e.SalonId == id))
+        {
+            return BadRequest(new { error = "este salón todavía tiene lista de espera cargada: no se puede borrar (podés desactivarlo en vez de borrarlo)" });
+        }
+        if (await _db.CierresTurno.AnyAsync(c => c.SalonId == id))
+        {
+            return BadRequest(new { error = "este salón todavía tiene turnos cerrados registrados: no se puede borrar (podés desactivarlo en vez de borrarlo)" });
+        }
+        if (await _db.ElementosPlano.AnyAsync(e => e.SalonId == id))
+        {
+            return BadRequest(new { error = "este salón todavía tiene carteles de referencia en el plano: borralos primero desde \"Administrar mesas\"" });
+        }
 
         _db.Salones.Remove(salon);
         await _db.SaveChangesAsync();
@@ -118,7 +163,7 @@ public class SalonesController : ControllerBase
     {
         return await _db.Salones
             .OrderBy(s => s.Orden)
-            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda))
+            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo))
             .ToListAsync();
     }
 

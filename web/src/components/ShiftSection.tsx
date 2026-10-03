@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { crearReserva, toggleCierre } from "@/lib/api";
+import { ApiError, crearReserva, reducirSalonPorTurno, toggleCierre } from "@/lib/api";
 import type { Espera, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
 import { excedioTolerancia } from "@/lib/tolerancia";
 import EsperaPanel from "./EsperaPanel";
@@ -38,6 +38,26 @@ export default function ShiftSection({
   const { reservas, totalPax, totalAsistio, mesasOcupadas } = data;
   const [enviandoCierre, setEnviandoCierre] = useState(false);
 
+  // "Reducir salón" (ver ReduccionesController del lado del backend): sacar
+  // de circulación algunas mesas LIBRES de este turno puntual cuando hay
+  // poco personal, sin tocar la estructura real del salón — vuelven a verse
+  // normal solo, en cualquier otro turno o día. Las mesas ya reducidas
+  // llegan marcadas (mesa.reducida) dentro del mismo prop "mesas" de
+  // siempre (ver DiaService/MesaDto), MesasPanel.tsx las saca de "Mesas
+  // disponibles" por su cuenta.
+  const [reduciendoSalon, setReduciendoSalon] = useState(false);
+  const [mesasAReducir, setMesasAReducir] = useState<Set<number>>(new Set());
+  const [enviandoReduccion, setEnviandoReduccion] = useState(false);
+  const [errorReduccion, setErrorReduccion] = useState<string | null>(null);
+  const mesasReducidasActuales = mesas.filter((m) => m.reducida);
+  // Candidatas para el modal: cualquier mesa de este turno que no esté
+  // ocupada por una reserva real ni por un walk-in — da igual si ya está
+  // reducida (hay que poder destildarla para devolverla a circulación), lo
+  // único que no tiene sentido es ofrecer una mesa que ya tiene gente.
+  const candidatasReduccion = mesas.filter(
+    (m) => !mesasOcupadas.includes(m.id) && !data.mesasWalkIn.includes(m.id),
+  );
+
   // Reloj compartido para el aviso de tolerancia (ver ReservaRow.tsx / lib/
   // tolerancia.ts): un solo timer acá en vez de uno por fila, y también
   // alimenta el contador del encabezado de abajo. 30s alcanza de sobra para
@@ -51,8 +71,13 @@ export default function ShiftSection({
 
   // Aviso de sobreventa: cuando el pax reservado de este turno llega al 80%
   // de la capacidad total del salon (todas las mesas, bases y divisiones),
-  // conviene que el staff lo note antes de que se termine de llenar.
-  const capacidadSalon = mesas.reduce((acc, m) => acc + m.capacidad, 0);
+  // conviene que el staff lo note antes de que se termine de llenar. Resta
+  // las mesas reducidas (ver más arriba): si se achicó el salón a propósito
+  // por poco personal, el techo real para este turno es ese, no el de
+  // siempre.
+  const capacidadSalon = mesas
+    .filter((m) => !m.reducida)
+    .reduce((acc, m) => acc + m.capacidad, 0);
   const porcentajeOcupacion = capacidadSalon > 0 ? Math.round((totalPax / capacidadSalon) * 100) : 0;
   const cercaDeLlenarse = capacidadSalon > 0 && totalPax / capacidadSalon >= 0.8;
 
@@ -93,6 +118,36 @@ export default function ShiftSection({
     }
   }
 
+  function onAbrirReducir() {
+    // Arranca con las que ya estaban reducidas tildadas, para poder tanto
+    // sumar como sacar reducciones en esta misma confirmación.
+    setMesasAReducir(new Set(mesasReducidasActuales.map((m) => m.id)));
+    setErrorReduccion(null);
+    setReduciendoSalon(true);
+  }
+
+  function onToggleMesaAReducir(mesaId: number) {
+    setMesasAReducir((prev) => {
+      const siguiente = new Set(prev);
+      if (siguiente.has(mesaId)) siguiente.delete(mesaId);
+      else siguiente.add(mesaId);
+      return siguiente;
+    });
+  }
+
+  async function onConfirmarReducir() {
+    setEnviandoReduccion(true);
+    setErrorReduccion(null);
+    try {
+      await reducirSalonPorTurno(fecha, turno, salonId, [...mesasAReducir]);
+      setReduciendoSalon(false);
+    } catch (e) {
+      setErrorReduccion(e instanceof ApiError ? e.message : "No se pudo reducir el salón");
+    } finally {
+      setEnviandoReduccion(false);
+    }
+  }
+
   if (data.estaCerrado) {
     return (
       <section>
@@ -122,15 +177,32 @@ export default function ShiftSection({
           <div className="mb-3 flex items-center justify-between gap-2 border-l-4 border-arena pl-2.5">
             <h2 className="text-base tracking-wide uppercase">{titulo}</h2>
             {admin && (
-              <button
-                onClick={onCerrar}
-                disabled={enviandoCierre}
-                className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-ocupada hover:text-ocupada disabled:opacity-50"
-              >
-                Cerrar turno
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onAbrirReducir}
+                  className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-arena hover:text-tinta"
+                >
+                  {mesasReducidasActuales.length > 0
+                    ? `Reducir salón (${mesasReducidasActuales.length})`
+                    : "Reducir salón"}
+                </button>
+                <button
+                  onClick={onCerrar}
+                  disabled={enviandoCierre}
+                  className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-ocupada hover:text-ocupada disabled:opacity-50"
+                >
+                  Cerrar turno
+                </button>
+              </div>
             )}
           </div>
+
+          {mesasReducidasActuales.length > 0 && (
+            <div className="mb-3 rounded-lg bg-arena-suave px-3 py-2 text-xs text-tinta-suave">
+              Salón reducido para este turno: {mesasReducidasActuales.length === 1 ? "mesa" : "mesas"}{" "}
+              {mesasReducidasActuales.map((m) => m.codigo).join(", ")} fuera de "Mesas disponibles".
+            </div>
+          )}
 
           {cercaDeLlenarse && (
             <div className="mb-3 rounded-lg bg-aviso-suave px-3 py-2 text-xs text-aviso">
@@ -222,6 +294,75 @@ export default function ShiftSection({
           />
         </div>
       </div>
+
+      {reduciendoSalon && (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            className="fixed inset-0 z-40 cursor-default bg-tinta/30"
+            onClick={() => setReduciendoSalon(false)}
+          />
+          <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-borde bg-superficie p-5 shadow-lg">
+            <h3 className="mb-1.5 text-base font-bold">Reducir salón — {titulo}</h3>
+            <p className="mb-3 text-xs text-tinta-suave">
+              Tildá las mesas libres que querés sacar de circulación para este turno puntual
+              (por poco personal, por ejemplo). Dejan de listarse en "Mesas disponibles" solo
+              hasta que termine este turno — destildalas acá para devolverlas antes.
+            </p>
+
+            {errorReduccion && (
+              <div className="mb-3 rounded-lg bg-ocupada-suave px-2.5 py-2 text-xs text-ocupada">
+                {errorReduccion}
+              </div>
+            )}
+
+            {candidatasReduccion.length === 0 ? (
+              <p className="mb-3 text-xs text-tinta-suave">
+                No hay mesas libres en este turno para reducir — todas están ocupadas o con un
+                walk-in.
+              </p>
+            ) : (
+              <div className="mb-3 grid max-h-64 grid-cols-4 gap-1.5 overflow-y-auto">
+                {candidatasReduccion.map((m) => {
+                  const tildada = mesasAReducir.has(m.id);
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => onToggleMesaAReducir(m.id)}
+                      className={`rounded-lg border px-1 py-2 text-center text-xs font-semibold ${
+                        tildada
+                          ? "border-ocupada bg-ocupada-suave text-ocupada"
+                          : "border-borde bg-libre text-tinta-suave hover:bg-arena-suave"
+                      }`}
+                    >
+                      {m.codigo}
+                      <span className="block text-[9px] font-normal opacity-75">{m.capacidad}p</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setReduciendoSalon(false)}
+                className="rounded-lg px-3 py-1.5 text-sm text-tinta-suave hover:bg-arena-suave"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onConfirmarReducir}
+                disabled={enviandoReduccion}
+                className="rounded-lg bg-marca px-3.5 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                {enviandoReduccion ? "Guardando…" : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

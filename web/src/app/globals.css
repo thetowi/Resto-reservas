@@ -163,6 +163,134 @@
   .chip-pedida {
     animation: none;
   }
+  .boton-salon-aviso {
+    animation: none;
+  }
+  .boton-salon-aviso::before {
+    animation: none;
+    background: var(--color-ocupada);
+    opacity: 0.6;
+  }
+}
+
+/* Aviso animado compartido por dos selectores (misma clase, mismo look, para
+   que se lea como "un solo lenguaje" en todo el header):
+   - SalonSelector.tsx: un salón que NO es el elegido ahora pero tiene
+     alguna reserva cargada en el turno que se está mirando (ver
+     salonesConReservas en app/page.tsx) — con el caso especial de Merienda
+     (un salón sin Merienda, como Restaurant, nunca va a poder "mirar" ese
+     turno para detectarlo solo, así que ahí se avisa sin importar el turno
+     elegido).
+   - TurnoToggle.tsx: una vez parado en el salón correcto, el turno Merienda
+     de ESE salón si tiene reservas pero no es el que se está mirando (ver
+     turnosConAviso en app/page.tsx) — termina de "navegar" hasta la
+     reserva después de que el selector de arriba ya trajo hasta el salón.
+   Dos animaciones corriendo juntas, las dos en --color-ocupada — rojo
+   elegido a propósito a pesar de ser el mismo tono que "mesa ocupada" en
+   el plano (se evaluaron ámbar/violeta/verde-azulado también, pero se
+   terminó eligiendo el rojo igual):
+   1) un "cometa" que recorre el borde entero del botón sin parar, con un
+      rastro largo que se apaga de a poco (en vez de un aro parejo
+      prendiendo/apagando) — con mask-composite recortado a solo la franja
+      del borde, igual idea que .anillo-pedida arriba pero sin tapar nunca
+      el texto del botón.
+   2) el fondo del botón, que descansa en transparente y cada ciclo da una
+      sola "respirada" (se marca y vuelve a desaparecer) en vez de oscilar
+      todo el tiempo — más tranquilo para un mostrador que lo tiene
+      prendido toda la jornada. */
+@property --angulo-cometa-salon {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.boton-salon-aviso {
+  animation: respirar-fondo-salon 4s ease-in-out infinite;
+}
+
+.boton-salon-aviso::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9px;
+  padding: 2.5px;
+  background: conic-gradient(
+    from var(--angulo-cometa-salon),
+    transparent 0deg,
+    transparent 205deg,
+    color-mix(in srgb, var(--color-ocupada) 0%, transparent) 230deg,
+    color-mix(in srgb, var(--color-ocupada) 55%, transparent) 300deg,
+    var(--color-ocupada) 345deg,
+    var(--color-ocupada) 352deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-ocupada) 70%, transparent));
+  animation: cometa-salon-rotar 2.3s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes cometa-salon-rotar {
+  from {
+    --angulo-cometa-salon: 0deg;
+  }
+  to {
+    --angulo-cometa-salon: 360deg;
+  }
+}
+
+@keyframes respirar-fondo-salon {
+  0%,
+  42% {
+    background-color: transparent;
+  }
+  65% {
+    background-color: color-mix(in srgb, var(--color-ocupada) 26%, transparent);
+  }
+  88%,
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Referencia chica dentro de la caja "Salones" del header (ver page.tsx):
+   un anillo en miniatura con el mismo "cometa" rojo girando sin parar que
+   .boton-salon-aviso — para que el que mire el header entienda de una qué
+   significa ese borde animado cuando aparece en un salón, sin tener que
+   acercarse a leer el title="" del botón. */
+.leyenda-salon-aviso {
+  position: relative;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  flex: none;
+  background: conic-gradient(
+    from var(--angulo-cometa-salon),
+    transparent 0deg,
+    transparent 205deg,
+    color-mix(in srgb, var(--color-ocupada) 0%, transparent) 230deg,
+    color-mix(in srgb, var(--color-ocupada) 55%, transparent) 300deg,
+    var(--color-ocupada) 345deg,
+    var(--color-ocupada) 352deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff calc(100% - 2.5px));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-ocupada) 70%, transparent));
+  animation: cometa-salon-rotar 2.3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leyenda-salon-aviso {
+    animation: none;
+    background: var(--color-ocupada);
+    opacity: 0.7;
+  }
 }
 
 body {

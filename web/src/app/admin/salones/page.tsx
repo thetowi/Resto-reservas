@@ -91,8 +91,28 @@ export default function AdminSalonesPage() {
     }
   }
 
+  // Desactivar/activar (ver Models/Salon.cs del lado del backend): a
+  // diferencia de Borrar, no toca ningún dato — solo saca (o devuelve) este
+  // salón del selector de uso diario. Es la forma recomendada de "sacar de
+  // circulación" un salón que ya tiene reservas u otro historial cargado
+  // (eso es justo lo que hace que Borrar no se pueda).
+  async function onCambiarActivo(salon: Salon, activo: boolean) {
+    try {
+      setSalones(await patchSalon(salon.id, { activo }));
+      setError(null);
+    } catch (e) {
+      manejarError(e);
+    }
+  }
+
   async function onBorrar(salon: Salon) {
-    if (!window.confirm(`¿Borrar el salón "${salon.nombre}"? Tiene que estar vacío (sin mesas).`)) return;
+    if (
+      !window.confirm(
+        `¿Borrar el salón "${salon.nombre}"? Tiene que estar vacío (sin mesas, reservas, lista de espera ni cierres de turno) — esto no se puede deshacer. Si solo querés sacarlo de circulación sin perder nada, usá "Desactivar".`,
+      )
+    ) {
+      return;
+    }
     try {
       setSalones(await borrarSalon(salon.id));
       setError(null);
@@ -114,8 +134,12 @@ export default function AdminSalonesPage() {
 
       <p className="mb-4 text-sm text-tinta-suave">
         Cada salón (Restaurant, Bar, Aqua Bar, etc.) tiene sus propias mesas, su propio plano y sus
-        propias reservas, igual lógica que hoy pero por separado. Para borrar un salón primero hay
-        que borrar (o pasar a otro salón) todas sus mesas desde{" "}
+        propias reservas, igual lógica que hoy pero por separado. Un salón que ya no usás (de
+        temporada, cerrado, etc.) se puede <strong>desactivar</strong>: deja de aparecer en el
+        selector de la pantalla principal, pero no se pierde nada de su historial, y se puede
+        reactivar en cualquier momento. <strong>Borrar</strong> es distinto y definitivo: solo
+        funciona con un salón completamente vacío (sin mesas, reservas, lista de espera ni cierres
+        de turno) — las mesas se borran (o se pasan a otro salón) desde{" "}
         <Link href="/admin/mesas" className="underline hover:text-tinta">
           Administrar mesas
         </Link>
@@ -138,6 +162,7 @@ export default function AdminSalonesPage() {
                 onRenombrar={onRenombrar}
                 onBorrar={onBorrar}
                 onCambiarPermiteMerienda={onCambiarPermiteMerienda}
+                onCambiarActivo={onCambiarActivo}
               />
             ))}
           </div>
@@ -169,11 +194,13 @@ function FilaSalon({
   onRenombrar,
   onBorrar,
   onCambiarPermiteMerienda,
+  onCambiarActivo,
 }: {
   salon: Salon;
   onRenombrar: (salon: Salon, nombre: string) => void;
   onBorrar: (salon: Salon) => void;
   onCambiarPermiteMerienda: (salon: Salon, permiteMerienda: boolean) => void;
+  onCambiarActivo: (salon: Salon, activo: boolean) => void;
 }) {
   const [nombre, setNombre] = useState(salon.nombre);
 
@@ -181,13 +208,18 @@ function FilaSalon({
   useEffect(() => setNombre(salon.nombre), [salon.nombre]);
 
   return (
-    <div className="flex items-center gap-2.5 p-3.5">
+    <div className={`flex items-center gap-2.5 p-3.5 ${salon.activo ? "" : "opacity-60"}`}>
       <input
         className="w-48 rounded-lg border border-borde px-2.5 py-1.5 text-sm font-semibold"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
         onBlur={() => onRenombrar(salon, nombre)}
       />
+      {!salon.activo && (
+        <span className="rounded-full bg-arena-suave px-2 py-0.5 text-[11px] font-medium text-tinta-suave">
+          Inactivo
+        </span>
+      )}
       <label className="flex items-center gap-1.5 text-xs text-tinta-suave">
         <input
           type="checkbox"
@@ -196,12 +228,25 @@ function FilaSalon({
         />
         Permite merienda
       </label>
-      <button
-        onClick={() => onBorrar(salon)}
-        className="ml-auto rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:bg-ocupada-suave hover:text-ocupada"
-      >
-        Borrar
-      </button>
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={() => onCambiarActivo(salon, !salon.activo)}
+          title={
+            salon.activo
+              ? "Sacarlo del selector de uso diario sin borrar nada (se puede reactivar en cualquier momento)"
+              : "Devolverlo al selector de uso diario"
+          }
+          className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
+        >
+          {salon.activo ? "Desactivar" : "Activar"}
+        </button>
+        <button
+          onClick={() => onBorrar(salon)}
+          className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:bg-ocupada-suave hover:text-ocupada"
+        >
+          Borrar
+        </button>
+      </div>
     </div>
   );
 }

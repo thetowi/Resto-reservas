@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiError, getDia, getMeta, patchMesa } from "@/lib/api";
+import { ApiError, getDia, getMeta, guardarDefaultDivisionMesa, patchMesa } from "@/lib/api";
 import { esAdmin, haySesion } from "@/lib/auth";
 import { formatFechaLarga, todayISO } from "@/lib/date";
 import { turnoPorDefecto } from "@/lib/turno";
@@ -187,6 +187,22 @@ function PlanoPageInterno() {
     }
   }
 
+  // A diferencia de onMoverMesa/onCambiarForma/onFijar/onRotar, esto no
+  // cambia ninguna propiedad visible de la mesa en sí (no hay nada que
+  // actualizar en el estado local "mesas") — solo guarda, del lado del
+  // backend, el layout actual de las dos mitades como default para la
+  // próxima división de esta misma mesa base (ver
+  // MesasController.GuardarDefaultDivision).
+  async function onGuardarDefaultDivision(mesa: Mesa) {
+    try {
+      await guardarDefaultDivisionMesa(mesa.id);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo guardar el default de esta división");
+      throw e;
+    }
+  }
+
   const puedeEditar = esAdmin();
   const permiteMerienda = salones.find((s) => s.id === salonId)?.permiteMerienda ?? false;
 
@@ -234,6 +250,7 @@ function PlanoPageInterno() {
           onCambiarForma={onCambiarForma}
           onFijar={onFijar}
           onRotar={onRotar}
+          onGuardarDefaultDivision={onGuardarDefaultDivision}
           soloLectura={!puedeEditar}
           fechaInicial={fecha}
           turnoInicial={turno}

@@ -64,11 +64,17 @@ export default function MesasPanel({
   const pedidas = new Set(mesasPedidas);
   const walkIns = new Set(mesasWalkIn);
 
-  // El total de pax del salon suma TODAS las mesas que ve este turno (bases
-  // y mitades, temporales o permanentes): la lista que llega por props ya
-  // viene filtrada por turno desde el backend, asi que sumar todo es
-  // correcto sin duplicar nada.
-  const totalPax = mesas.reduce((acc, m) => acc + m.capacidad, 0);
+  // Mesas deshabilitadas para este turno puntual por "Reducir salón" (ver
+  // ShiftSection.tsx): no cuentan como disponibles ni suman al total, hasta
+  // que termine el turno o se las vuelva a habilitar desde el mismo modal.
+  const mesasReducidas = mesas.filter((m) => m.reducida);
+  const mesasDisponibles = mesas.filter((m) => !m.reducida);
+
+  // El total de pax del salon suma todas las mesas que ve este turno (bases
+  // y mitades, temporales o permanentes) salvo las reducidas: la lista que
+  // llega por props ya viene filtrada por turno desde el backend, asi que
+  // sumar el resto es correcto sin duplicar nada.
+  const totalPax = mesasDisponibles.reduce((acc, m) => acc + m.capacidad, 0);
 
   // El panel se muestra ordenado de menor a mayor por número de mesa (no por
   // el orden estructural de /admin/mesas, que puede no coincidir — por
@@ -76,7 +82,7 @@ export default function MesasPanel({
   // si esta mesa tiene un renombre por turno activo). "numeric: true" hace
   // que compare el valor numérico de cada código en vez de compararlo como
   // texto, así "45a"/"45b" quedan pegadas a "45" y antes de "46".
-  const mesasOrdenadas = [...mesas].sort((a, b) =>
+  const mesasOrdenadas = [...mesasDisponibles].sort((a, b) =>
     a.codigo.localeCompare(b.codigo, undefined, { numeric: true, sensitivity: "base" }),
   );
 
@@ -433,6 +439,12 @@ export default function MesasPanel({
           Administrar mesas
         </Link>
       </div>
+      {mesasReducidas.length > 0 && (
+        <div className="mt-2 rounded-lg bg-arena-suave px-2.5 py-1.5 text-[11px] text-tinta-suave">
+          Salón reducido para este turno: {mesasReducidas.length === 1 ? "mesa" : "mesas"}{" "}
+          {mesasReducidas.map((m) => m.codigo).join(", ")} fuera de "Mesas disponibles".
+        </div>
+      )}
     </div>
   );
 }

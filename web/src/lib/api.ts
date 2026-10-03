@@ -130,6 +130,22 @@ export function toggleCierre(fecha: string, turno: Turno, salonId: number, motiv
   });
 }
 
+// Reemplaza el set completo de mesas "reducidas" (deshabilitadas por falta
+// de personal) para este turno puntual (ver ShiftSection.tsx, botón
+// "Reducir salón"). mesaIds es la lista FINAL de mesas a dejar fuera de
+// "Mesas disponibles" — mandar [] vuelve todo a la normalidad.
+export function reducirSalonPorTurno(
+  fecha: string,
+  turno: Turno,
+  salonId: number,
+  mesaIds: number[],
+) {
+  return request<TurnoData>("/api/reducciones/set", {
+    method: "POST",
+    body: JSON.stringify({ fecha, turno, salonId, mesaIds }),
+  });
+}
+
 // --- Administracion de mesas (/admin/mesas) ---
 
 export function crearMesa(codigo: string, capacidad: number, salonId: number) {
@@ -196,6 +212,20 @@ export function revertirNombreMesaPorTurno(fecha: string, turno: Turno, mesaId: 
   return request<void>(`/api/mesas/${mesaId}/revertir-nombre-turno`, {
     method: "POST",
     body: JSON.stringify({ fecha, turno }),
+  });
+}
+
+// Guarda (o actualiza) el layout visual "default" de las dos mitades de la
+// división temporal activa que contiene a esta mesa (ver dividirMesaPorTurno
+// y el botón "Guardar como default" en PlanoSalon.tsx): posición, forma,
+// fijada y rotación de cada mitad, tal como están acomodadas ahora mismo.
+// La próxima vez que se divida esta misma mesa base (en cualquier turno o
+// día), las mitades nuevas nacen ya con este layout. A propósito NO guarda
+// el reparto de pax entre las mitades — eso se sigue cargando a mano cada
+// vez. Se puede pedir con el Id de cualquiera de las dos mitades.
+export function guardarDefaultDivisionMesa(mesaId: number) {
+  return request<void>(`/api/mesas/${mesaId}/guardar-default-division`, {
+    method: "POST",
   });
 }
 
@@ -325,7 +355,10 @@ export function crearSalon(nombre: string) {
   });
 }
 
-export function patchSalon(id: number, payload: Partial<{ nombre: string; orden: number; permiteMerienda: boolean }>) {
+export function patchSalon(
+  id: number,
+  payload: Partial<{ nombre: string; orden: number; permiteMerienda: boolean; activo: boolean }>,
+) {
   return request<Salon[]>(`/api/salones/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),

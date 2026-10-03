@@ -61,7 +61,10 @@ export default function AdminMesasPage() {
     if (!listo) return;
     const conexion = crearConexion();
     conexion.on("MesasActualizado", (data: Mesa[]) => setTodasLasMesas(data));
-    conexion.on("SalonesActualizados", (data: Salon[]) => setSalones(data));
+    // Mismo filtro que el fetch inicial de getMeta() (ver /lib/api.ts): esta
+    // pantalla solo trabaja con salones ACTIVOS, aunque el broadcast en sí
+    // trae todos (activos e inactivos, lo necesita /admin/salones).
+    conexion.on("SalonesActualizados", (data: Salon[]) => setSalones(data.filter((s) => s.activo)));
     conexion.start().catch(() => {});
     return () => {
       conexion.stop();
