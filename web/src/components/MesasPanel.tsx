@@ -442,7 +442,7 @@ export default function MesasPanel({
       {mesasReducidas.length > 0 && (
         <div className="mt-2 rounded-lg bg-arena-suave px-2.5 py-1.5 text-[11px] text-tinta-suave">
           Salón reducido para este turno: {mesasReducidas.length === 1 ? "mesa" : "mesas"}{" "}
-          {mesasReducidas.map((m) => m.codigo).join(", ")} fuera de "Mesas disponibles".
+          {mesasReducidas.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
         </div>
       )}
     </div>

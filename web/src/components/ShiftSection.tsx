@@ -200,7 +200,7 @@ export default function ShiftSection({
           {mesasReducidasActuales.length > 0 && (
             <div className="mb-3 rounded-lg bg-arena-suave px-3 py-2 text-xs text-tinta-suave">
               Salón reducido para este turno: {mesasReducidasActuales.length === 1 ? "mesa" : "mesas"}{" "}
-              {mesasReducidasActuales.map((m) => m.codigo).join(", ")} fuera de "Mesas disponibles".
+              {mesasReducidasActuales.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
             </div>
           )}
 
@@ -307,7 +307,7 @@ export default function ShiftSection({
             <h3 className="mb-1.5 text-base font-bold">Reducir salón — {titulo}</h3>
             <p className="mb-3 text-xs text-tinta-suave">
               Tildá las mesas libres que querés sacar de circulación para este turno puntual
-              (por poco personal, por ejemplo). Dejan de listarse en "Mesas disponibles" solo
+              (por poco personal, por ejemplo). Dejan de listarse en &quot;Mesas disponibles&quot; solo
               hasta que termine este turno — destildalas acá para devolverlas antes.
             </p>
 

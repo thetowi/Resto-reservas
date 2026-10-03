@@ -146,10 +146,17 @@ export default function HomePage() {
   useEffect(() => {
     if (!listo || !meta) return;
     let activo = true;
+    // Capturado en una variable propia (en vez de usar "meta.salones"
+    // directo adentro de cargarResumen): TypeScript no puede garantizar que
+    // "meta" siga sin ser null para cuando corra el closure pasado a
+    // setInterval más abajo (podría ejecutarse mucho después del chequeo de
+    // arriba), así que no deja usar meta.salones ahí adentro sin repetir el
+    // chequeo. Esto resuelve ese error de build sin cambiar el comportamiento.
+    const salones = meta.salones;
 
     function cargarResumen() {
       Promise.all(
-        meta.salones.map((s) =>
+        salones.map((s) =>
           getDia(fecha, s.id)
             .then((data): [number, { almuerzo: number; cena: number; merienda: number }] => [
               s.id,
