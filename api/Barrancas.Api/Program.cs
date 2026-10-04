@@ -24,6 +24,18 @@ builder.Services.AddDbContext<BarrancasDbContext>(options =>
 builder.Services.AddScoped<DiaService>();
 builder.Services.AddScoped<TokenService>();
 
+// --- Bot de WhatsApp (ver claude/whatsapp-bot-reservas.md en el proyecto) ---
+// AddHttpClient (no AddScoped a secas): le da a cada cliente su propio
+// HttpClient maniobrado por el HttpClientFactory de .NET (pooling de
+// conexiones, sin los problemas de agotar sockets de "new HttpClient()" a
+// mano). Las credenciales (WhatsApp:*/Anthropic:*) se leen recien al usarlos,
+// no aca — mientras no esten configuradas el resto de la API sigue andando
+// normal, ver WhatsAppClient/AnthropicClient.
+builder.Services.AddScoped<ReservaBotService>();
+builder.Services.AddScoped<ClaudeAgentService>();
+builder.Services.AddHttpClient<WhatsAppClient>();
+builder.Services.AddHttpClient<AnthropicClient>();
+
 // --- JWT ---
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? Environment.GetEnvironmentVariable("JWT_SECRET")

@@ -64,7 +64,7 @@ public class DiaService
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.MesaId).ToList(),
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.Mesa.Codigo).ToList(),
                 r.Pax, r.Nombre, r.HabTel, r.Comentarios, r.Asistio, r.PidioMesa, r.Retirada,
-                r.UpdatedAt))
+                r.UpdatedAt, r.Origen, r.Estado))
             .ToListAsync();
 
         var totalPax = reservas.Sum(r => r.Pax ?? 0);

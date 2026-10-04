@@ -23,7 +23,14 @@ public record ReservaDto(
     // dejan de contar como ocupadas (ver TurnoDataDto.MesasOcupadas /
     // DiaService) — quedan libres para un walk-in u otra reserva.
     bool Retirada,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    // De donde vino esta reserva y, si vino del chatbot de WhatsApp, si la
+    // pudo confirmar sola o quedo pendiente de que el staff la resuelva a
+    // mano (ver Models/OrigenReserva.cs / Models/EstadoReserva.cs). En una
+    // reserva cargada por el staff (el caso de siempre) estos vienen en sus
+    // defaults — Staff / Confirmada — y no significan nada especial.
+    OrigenReserva Origen,
+    EstadoReserva Estado
 );
 
 // después

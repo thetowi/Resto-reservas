@@ -20,6 +20,8 @@ public class BarrancasDbContext : DbContext
     public DbSet<RenombreMesaTurno> RenombresMesaTurno => Set<RenombreMesaTurno>();
     public DbSet<MesaReducida> MesasReducidas => Set<MesaReducida>();
     public DbSet<DivisionMesaDefault> DivisionesMesaDefault => Set<DivisionMesaDefault>();
+    public DbSet<FechaBloqueadaBot> FechasBloqueadasBot => Set<FechaBloqueadaBot>();
+    public DbSet<ConversacionBot> ConversacionesBot => Set<ConversacionBot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -215,6 +217,23 @@ public class BarrancasDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.MesaBaseId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FechaBloqueadaBot>(e =>
+        {
+            // Una sola fila por fecha: no tiene sentido bloquearla dos
+            // veces (ver FechasBloqueadasBotController, que valida esto
+            // ademas con un mensaje mas claro antes de llegar a este
+            // indice).
+            e.HasIndex(x => x.Fecha).IsUnique();
+        });
+
+        modelBuilder.Entity<ConversacionBot>(e =>
+        {
+            // Una sola conversacion por numero de telefono: identifica de
+            // forma unica con quien se esta hablando (ver
+            // Models/ConversacionBot.cs).
+            e.HasIndex(x => x.Telefono).IsUnique();
         });
     }
 }

@@ -50,5 +50,13 @@ public class Reserva
     // "Asistio", segun como lo use cada turno.
     public bool Retirada { get; set; }
 
+    // De donde vino esta reserva (ver Models/OrigenReserva.cs) y, si vino del
+    // chatbot de WhatsApp, si pudo confirmarla sola o quedo pendiente de que
+    // el staff la termine de resolver (ver Models/EstadoReserva.cs). Para
+    // una reserva cargada por el staff (el caso de siempre) estos dos quedan
+    // en sus defaults — Staff / Confirmada — y no significan nada especial.
+    public OrigenReserva Origen { get; set; } = OrigenReserva.Staff;
+    public EstadoReserva Estado { get; set; } = EstadoReserva.Confirmada;
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
