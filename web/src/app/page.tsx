@@ -538,7 +538,12 @@ export default function HomePage() {
               Hay reservas
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
+          {/* Sin justify-center (a diferencia de antes): misma estructura que
+              la caja de Salones, arriba de todo — así el título "Turno" y el
+              toggle quedan a la misma altura que el título "Salones" y su
+              selector, en vez de centrados verticalmente (y desfasados) en
+              una caja que es igual de alta por la leyenda "Hay reservas". */}
+          <div className="flex flex-col items-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
             <span className="text-base font-bold tracking-wide text-tinta">Turno</span>
             <TurnoToggle
               turno={turno}

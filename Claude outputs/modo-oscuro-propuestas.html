@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barrancas · Modo oscuro</title>
+<style>
+/* ===== Paletas: mismos nombres de variables que web/src/app/globals.css ===== */
+.app[data-pal="actual"]{
+  --fondo:#0b202e; --superficie:#143d58; --tinta:#f0f3f6; --tinta-suave:#8da1af; --borde:#236b9a;
+  --libre:#1c5479; --arena:#2777ab; --arena-suave:#1c5479; --marca:#2777ab;
+  --ocupada:#e0001a; --ocupada-suave:#3a1216; --asistio:#32b49d; --asistio-suave:#19555c;
+  --walkin:#8f5ad1; --aviso:#e0a942; --aviso-suave:#362a10; --pedida-rgb:184,114,44; --pedida:#b8722c;
+  --fila-zebra:#164462; --fila-zebra-hover:#194b6c; --fila-asistio:#2f8f5b;
+  --silla:#2a5773; --silla-borde:#3d7196; --referencia:#d1a94f; --referencia-suave:#4a3d1f;
+}
+.app[data-pal="grafito"]{
+  --fondo:#0a0a0b; --superficie:#141416; --tinta:#ececee; --tinta-suave:#8e8e96; --borde:#2a2a2e;
+  --libre:#1e1e21; --arena:#a1a1aa; --arena-suave:#232326; --marca:#3f3f46;
+  --ocupada:#e0001a; --ocupada-suave:#2a1215; --asistio:#32b49d; --asistio-suave:#133a33;
+  --walkin:#8f5ad1; --aviso:#e0a942; --aviso-suave:#2a2210; --pedida-rgb:184,114,44; --pedida:#b8722c;
+  --fila-zebra:#18181b; --fila-zebra-hover:#1f1f23; --fila-asistio:#1e4d36;
+  --silla:#2c2c31; --silla-borde:#3f3f46; --referencia:#c9a14a; --referencia-suave:#2b2416;
+}
+.app[data-pal="carbon"]{
+  --fondo:#0b0e12; --superficie:#12161c; --tinta:#e6e9ee; --tinta-suave:#8b95a3; --borde:#252c36;
+  --libre:#1b212a; --arena:#5b8fc4; --arena-suave:#1c232d; --marca:#1f5582;
+  --ocupada:#e0001a; --ocupada-suave:#2b1418; --asistio:#32b49d; --asistio-suave:#12352f;
+  --walkin:#8f5ad1; --aviso:#e0a942; --aviso-suave:#2a2210; --pedida-rgb:184,114,44; --pedida:#b8722c;
+  --fila-zebra:#161b22; --fila-zebra-hover:#1b212a; --fila-asistio:#1e4f3c;
+  --silla:#262e39; --silla-borde:#364152; --referencia:#d1a94f; --referencia-suave:#2d2615;
+}
+.app[data-pal="onix"]{
+  --fondo:#000000; --superficie:#0e0e0f; --tinta:#f2f2f2; --tinta-suave:#8c8c8c; --borde:#242426;
+  --libre:#1a1a1c; --arena:#4d8ab8; --arena-suave:#1c1c1f; --marca:#174a6e;
+  --ocupada:#e0001a; --ocupada-suave:#260f12; --asistio:#32b49d; --asistio-suave:#102f29;
+  --walkin:#8f5ad1; --aviso:#e0a942; --aviso-suave:#2a2210; --pedida-rgb:184,114,44; --pedida:#b8722c;
+  --fila-zebra:#141416; --fila-zebra-hover:#1a1a1d; --fila-asistio:#1d4a35;
+  --silla:#232326; --silla-borde:#36363a; --referencia:#d1a94f; --referencia-suave:#2a2414;
+}
+
+/* ===== Chrome del mockup (fuera de la app) ===== */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#050506;color:#d4d4d8;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px}
+.barra{position:sticky;top:0;z-index:100;background:#050506;border-bottom:1px solid #222;padding:14px 16px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+.barra h1{margin:0;font-size:15px;font-weight:600;color:#fafafa;letter-spacing:.01em}
+.barra p{margin:2px 0 0;font-size:12px;color:#8a8a92}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{border:1px solid #2a2a2e;background:#111113;color:#c4c4cc;border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tab:hover{border-color:#3f3f46}
+.tab[aria-pressed="true"]{background:#fafafa;color:#0a0a0b;border-color:#fafafa}
+.tab:focus-visible{outline:2px solid #5b8fc4;outline-offset:2px}
+.tab .sw{display:inline-flex;border-radius:4px;overflow:hidden;border:1px solid #333}
+.tab .sw i{width:9px;height:14px;display:block}
+.nota{padding:12px 16px 0;max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;font-size:12.5px;color:#a1a1aa}
+.nota strong{color:#fafafa;font-weight:600}
+.tokens{display:flex;flex-wrap:wrap;gap:6px}
+.tok{display:flex;align-items:center;gap:6px;border:1px solid #222;border-radius:6px;padding:3px 8px 3px 3px;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#a1a1aa}
+.tok i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.12)}
+.marco{max-width:1400px;margin:14px auto 40px;padding:0 16px}
+
+/* ===== Replica de la app (clases equivalentes a las de Tailwind del repo) ===== */
+.app{background:var(--fondo);color:var(--tinta);border:1px solid #222;border-radius:14px;overflow:hidden;transition:background .25s}
+.app *{transition:background-color .25s,border-color .25s,color .25s}
+header.hdr{display:flex;flex-wrap:wrap;align-items:stretch;justify-content:space-between;gap:24px 40px;border-bottom:1px solid var(--borde);background:var(--superficie);padding:16px 28px}
+.col{display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.fila{display:flex;flex-wrap:wrap;align-items:center}
+.logo{width:42px;height:42px;border-radius:10px;border:1px solid var(--borde);background:linear-gradient(135deg,#0c2637,#143d58);display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;letter-spacing:.02em}
+.marca-txt b{display:block;font-size:14px;letter-spacing:.04em}
+.marca-txt span{font-size:12px;color:var(--tinta-suave)}
+.pill-fecha{min-width:190px;border-radius:999px;background:var(--arena-suave);padding:6px 14px;text-align:center;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--tinta-suave);text-transform:uppercase}
+.btn{border:1px solid var(--borde);border-radius:8px;padding:6px 12px;background:transparent;color:var(--tinta-suave);font:inherit;font-size:14px;cursor:pointer}
+.btn:hover{background:var(--arena-suave)}
+.btn.sq{width:32px;height:32px;padding:0;font-size:18px;line-height:1;background:var(--superficie);color:var(--tinta)}
+.input{border:1px solid var(--borde);border-radius:8px;background:var(--superficie);color:var(--tinta);padding:6px 10px;font:inherit;font-size:14px;color-scheme:dark}
+.primario{background:var(--marca);color:#fff;border:0;border-radius:8px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer}
+.caja{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--borde);border-radius:12px;background:color-mix(in srgb,var(--arena-suave) 40%,transparent);padding:8px 16px}
+.caja>b{font-size:16px;letter-spacing:.03em}
+.seg{display:inline-flex;gap:4px;border:1px solid var(--borde);border-radius:8px;background:color-mix(in srgb,var(--arena-suave) 60%,transparent);padding:4px}
+.seg button{position:relative;isolation:isolate;border:0;background:transparent;border-radius:6px;padding:6px 16px;font:inherit;font-size:14px;font-weight:500;color:var(--tinta-suave);cursor:pointer;white-space:nowrap}
+.seg button:hover{background:var(--superficie)}
+.seg button.on{background:var(--marca);color:#fff}
+.leyenda{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tinta-suave)}
+
+main.cuerpo{padding:24px 28px 56px}
+.grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media (min-width:1024px){.grid{grid-template-columns:1fr 260px}}
+.card{border:1px solid var(--borde);background:var(--superficie);border-radius:16px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.titulo-turno{display:flex;align-items:center;justify-content:space-between;gap:8px;border-left:4px solid var(--arena);padding-left:10px;margin-bottom:12px}
+.titulo-turno h2{margin:0;font-size:16px;font-weight:400;letter-spacing:.05em;text-transform:uppercase}
+.btn-xs{border:1px solid var(--borde);border-radius:8px;padding:4px 10px;background:transparent;color:var(--tinta-suave);font:inherit;font-size:12px;cursor:pointer}
+.btn-xs:hover{border-color:var(--arena);color:var(--tinta)}
+.btn-xs.peligro:hover{border-color:var(--ocupada);color:var(--ocupada)}
+.banner{margin-bottom:12px;border-radius:8px;padding:8px 12px;font-size:12px}
+.banner.aviso{background:var(--aviso-suave);color:var(--aviso)}
+.banner.info{background:var(--arena-suave);color:var(--tinta-suave)}
+.scroll{overflow-x:auto}
+table{width:100%;min-width:860px;border-collapse:collapse;font-size:14px}
+thead tr{border-bottom:2px solid var(--borde);font-size:11px;letter-spacing:.05em;color:var(--tinta-suave);text-transform:uppercase}
+th{padding:6px;text-align:left;font-weight:700}
+td{padding:0}
+.celda{width:100%;border:1px solid transparent;background:transparent;padding:6px;border-radius:6px;font-size:13.5px;color:var(--tinta);font-family:inherit}
+.celda:focus{border-color:var(--arena);background:var(--superficie);outline:none}
+.celda::placeholder{color:var(--tinta-suave);opacity:0}
+.celda:hover::placeholder,.celda:focus::placeholder{opacity:.75}
+tr.zebra{background:var(--fila-zebra)}
+tbody tr:hover{background:var(--fila-zebra-hover)}
+tr.asistio,tr.asistio:hover{background:var(--fila-asistio)}
+tr.tol,tr.tol:hover{background:var(--aviso-suave)}
+tr.ret{opacity:.6}
+.ck{width:18px;height:18px;cursor:pointer;accent-color:var(--marca)}
+.c{text-align:center}
+.mesa-sel{display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:pointer}
+.mesa-sel.rojo{color:var(--ocupada)}
+.mesa-sel.tachada span:first-child{text-decoration:line-through}
+.rel{position:relative}
+.reloj{position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:999px;background:var(--aviso);color:#fff;font-size:9px;display:grid;place-items:center;box-shadow:0 1px 2px rgba(0,0,0,.4);border:0}
+.quitar{color:var(--tinta-suave);opacity:.4;background:none;border:0;font-size:16px;cursor:pointer}
+.quitar:hover{opacity:1;color:var(--ocupada)}
+.pie{margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--borde);padding-top:10px}
+.btn-agregar{border:1px dashed var(--arena);border-radius:8px;padding:6px 14px;background:transparent;color:var(--tinta);font:inherit;font-size:14px;cursor:pointer}
+.btn-agregar:hover{background:var(--arena-suave)}
+.totales{display:flex;gap:18px;font-size:14px;color:var(--tinta-suave)}
+.totales strong{color:var(--tinta)}
+
+.lateral{display:flex;flex-direction:column;gap:20px;align-self:start}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--tinta-suave);text-transform:uppercase}
+.mini{font-size:12px;color:var(--tinta-suave)}
+.mini strong{color:var(--tinta)}
+.mesas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mesa{position:relative;width:100%;border:1px solid var(--borde);background:var(--libre);color:var(--tinta-suave);border-radius:8px;padding:8px 4px;text-align:center;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.mesa:hover{background:var(--arena-suave)}
+.mesa small{display:block;font-size:9px;font-weight:400;opacity:.75}
+.mesa.ocupada{background:var(--ocupada);border-color:var(--ocupada);color:#fff}
+.mesa.walkin{background:var(--walkin);border-color:var(--walkin);color:#fff}
+.ley{margin-top:12px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-size:11px;color:var(--tinta-suave)}
+.ley>div{display:flex;flex-wrap:wrap;gap:14px}
+.ley span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+.ley a{color:inherit}
+
+@keyframes pedida-pulso{0%,100%{box-shadow:0 0 0 2px rgba(var(--pedida-rgb),.55),0 0 8px 2px rgba(var(--pedida-rgb),.35)}50%{box-shadow:0 0 0 3px rgba(var(--pedida-rgb),.9),0 0 13px 3px rgba(var(--pedida-rgb),.55)}}
+.anillo-pedida{animation:pedida-pulso 1.8s ease-in-out infinite;border-color:var(--pedida)!important}
+@keyframes chip-pulso{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+.chip-pedida{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:999px;background:var(--ocupada);border:2px solid #fff;animation:chip-pulso 1.8s ease-in-out infinite;pointer-events:none}
+
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes rotar{from{--ang:0deg}to{--ang:360deg}}
+@keyframes respirar{0%,42%{background-color:transparent}65%{background-color:color-mix(in srgb,var(--ocupada) 26%,transparent)}88%,100%{background-color:transparent}}
+.aviso-salon{animation:respirar 4s ease-in-out infinite}
+.aviso-salon::before{content:"";position:absolute;inset:-3px;border-radius:9px;padding:2.5px;background:conic-gradient(from var(--ang),transparent 0deg,transparent 205deg,color-mix(in srgb,var(--ocupada) 0%,transparent) 230deg,color-mix(in srgb,var(--ocupada) 55%,transparent) 300deg,var(--ocupada) 345deg,var(--ocupada) 352deg,transparent 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--ocupada) 70%,transparent));animation:rotar 2.3s linear infinite;pointer-events:none;z-index:-1}
+.leyenda-aviso{position:relative;display:inline-block;width:12px;height:12px;border-radius:999px;background:conic-gradient(from var(--ang),transparent 0deg,transparent 205deg,color-mix(in srgb,var(--ocupada) 55%,transparent) 300deg,var(--ocupada) 345deg,transparent 360deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#fff calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 2.5px),#fff calc(100% - 2.5px));animation:rotar 2.3s linear infinite}
+
+.espera{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:6px}
+.espera li{border:1px solid var(--borde);border-radius:8px;padding:6px 8px}
+.espera li.ok{background:var(--fondo);opacity:.6}
+.espera .r1{display:flex;align-items:center;gap:6px}
+.num{width:20px;height:20px;flex:none;border-radius:999px;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--arena-suave);color:var(--tinta-suave)}
+.num.ok{background:var(--asistio-suave);color:var(--asistio)}
+.espera .nom{flex:1;min-width:0;font-size:12.5px}
+.espera .ok .nom{text-decoration:line-through}
+.sentar{flex:none;border:0;background:transparent;border-radius:4px;padding:1px 4px;font:inherit;font-size:10px;font-weight:600;color:var(--asistio);cursor:pointer}
+.sentar:hover{background:var(--asistio-suave)}
+.espera .r2{margin-top:4px;padding-left:26px;font-size:11px;color:var(--tinta-suave)}
+.form-espera{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--borde);padding-top:12px}
+.campo{border:1px solid var(--borde);border-radius:6px;background:transparent;color:var(--tinta);padding:5px 8px;font:inherit;font-size:12px;min-width:0}
+.campo::placeholder{color:var(--tinta-suave);opacity:.75}
+
+/* Plano (vista previa compacta) */
+.plano{margin-top:20px}
+.lienzo{position:relative;height:210px;border:1px solid var(--borde);border-radius:12px;background:var(--fondo);overflow:hidden;background-image:radial-gradient(color-mix(in srgb,var(--borde) 60%,transparent) 1px,transparent 1px);background-size:20px 20px}
+.pm{position:absolute;width:64px;height:48px;border-radius:8px;border:1px solid var(--borde);background:var(--libre);color:var(--tinta-suave);display:grid;place-items:center;font-size:12px;font-weight:700}
+.pm.ocupada{background:var(--ocupada);border-color:var(--ocupada);color:#fff}
+.pm.walkin{background:var(--walkin);border-color:var(--walkin);color:#fff}
+.silla{position:absolute;width:16px;height:9px;border-radius:4px;background:var(--silla);border:1px solid var(--silla-borde)}
+.ref{position:absolute;border:1px dashed var(--referencia);background:var(--referencia-suave);color:var(--referencia);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+
+.toggle-luna{position:absolute;right:16px;bottom:14px;width:44px;height:44px;color:#e7e2d8;opacity:.85}
+.app-wrap{position:relative}
+@media (prefers-reduced-motion:reduce){.anillo-pedida,.chip-pedida,.aviso-salon,.aviso-salon::before,.leyenda-aviso{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <div>
+    <h1>Modo oscuro — propuestas</h1>
+    <p>Pantalla principal de reservas (Cena · Restaurant), mismos componentes que la app de hoy. Solo cambian los colores.</p>
+  </div>
+  <div class="tabs" role="group" aria-label="Paleta">
+    <button class="tab" data-p="actual"><span class="sw"><i style="background:#0b202e"></i><i style="background:#143d58"></i><i style="background:#2777ab"></i></span>Actual · Navy</button>
+    <button class="tab" data-p="grafito" aria-pressed="true"><span class="sw"><i style="background:#0a0a0b"></i><i style="background:#141416"></i><i style="background:#3f3f46"></i></span>A · Grafito</button>
+    <button class="tab" data-p="carbon"><span class="sw"><i style="background:#0b0e12"></i><i style="background:#12161c"></i><i style="background:#1f5582"></i></span>B · Carbón</button>
+    <button class="tab" data-p="onix"><span class="sw"><i style="background:#000000"></i><i style="background:#0e0e0f"></i><i style="background:#174a6e"></i></span>C · Ónix</button>
+  </div>
+</div>
+
+<div class="nota">
+  <div id="desc"></div>
+  <div class="tokens" id="tokens"></div>
+</div>
+
+<div class="marco">
+<div class="app-wrap">
+<div class="app" id="app" data-pal="grafito">
+
+  <header class="hdr">
+    <div class="col">
+      <div class="fila" style="gap:48px">
+        <div class="fila" style="gap:12px">
+          <div class="logo">B</div>
+          <div class="marca-txt"><b>BARRANCAS</b><span>Restaurant · Reservas</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+          <div class="pill-fecha">Domingo 4 de octubre</div>
+          <div class="fila" style="gap:8px">
+            <button class="btn sq" title="Día anterior">‹</button>
+            <input class="input" type="date" value="2026-10-04" aria-label="Fecha">
+            <button class="btn sq" title="Día siguiente">›</button>
+            <button class="primario" style="visibility:hidden">Hoy</button>
+          </div>
+        </div>
+      </div>
+      <div class="fila" style="gap:12px;font-size:14px;color:var(--tinta-suave)">
+        <span>Hola, Tobias</span>
+        <button class="btn">Mesas</button>
+        <button class="btn">Mapa del salón</button>
+        <button class="btn">Salones</button>
+        <button class="btn">Usuarios</button>
+        <button class="btn">Reportes</button>
+        <button class="btn">Imprimir</button>
+        <button class="btn">Salir</button>
+      </div>
+    </div>
+    <div class="fila" style="gap:12px;align-items:stretch">
+      <div class="caja">
+        <b>Salones</b>
+        <div class="seg">
+          <button class="on">Restaurant</button>
+          <button class="aviso-salon" title="Hay reservas cargadas en Bar">Bar</button>
+          <button>Aqua Bar</button>
+        </div>
+        <div class="leyenda"><span class="leyenda-aviso" aria-hidden="true"></span>Hay reservas</div>
+      </div>
+      <div class="caja">
+        <b>Turno</b>
+        <div class="seg">
+          <button>Almuerzo</button>
+          <button class="on">Cena</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="cuerpo">
+    <div class="grid">
+      <div class="card">
+        <div class="titulo-turno">
+          <h2>Cena</h2>
+          <div class="fila" style="gap:8px">
+            <button class="btn-xs">Reducir salón (1)</button>
+            <button class="btn-xs peligro">Cerrar turno</button>
+          </div>
+        </div>
+        <div class="banner info">Salón reducido para este turno: mesa 24 fuera de "Mesas disponibles".</div>
+        <div class="banner aviso">⏰ 1 reserva superó los 15 minutos de tolerancia y todavía no llegó: movele el horario o liberale la mesa desde su fila.</div>
+
+        <div class="scroll">
+          <table>
+            <thead><tr>
+              <th>Hora</th><th>Mesa</th><th>Pidió</th><th>Pax</th><th>Apellido / Nombre</th><th>Hab / Tel</th><th>Comentarios</th><th>Asistió</th><th>Se fue</th><th></th>
+            </tr></thead>
+            <tbody id="filas"></tbody>
+          </table>
+        </div>
+        <div class="pie">
+          <button class="btn-agregar">+ Agregar reserva</button>
+          <div class="totales"><span>Total pax: <strong>32</strong></span><span>Asistió: <strong>2</strong></span></div>
+        </div>
+
+        <div class="plano">
+          <div class="panel-h"><div class="eyebrow">Mapa del salón · vista previa</div><div class="mini">mismas variables que /plano</div></div>
+          <div class="lienzo" id="lienzo"></div>
+        </div>
+      </div>
+
+      <div class="lateral">
+        <div class="card" style="padding:16px">
+          <div class="panel-h"><div class="eyebrow">Mesas disponibles</div><div class="mini">Total salón: <strong>58 pax</strong></div></div>
+          <div class="mesas" id="mesas"></div>
+          <div class="ley">
+            <div>
+              <span><i class="dot" style="background:var(--libre);border:1px solid var(--borde)"></i>Libre</span>
+              <span><i class="dot" style="background:var(--ocupada)"></i>Ocupada</span>
+              <span><i class="dot" style="background:var(--walkin)"></i>Walk-in</span>
+              <span><i class="dot anillo-pedida" style="background:var(--superficie);border:1px solid var(--borde)"></i>Pedida</span>
+            </div>
+            <a href="#" onclick="return false">Administrar mesas</a>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px">
+          <div class="panel-h"><div class="eyebrow">Lista de espera</div><div class="mini">2 esperando · 1 ubicada</div></div>
+          <ol class="espera">
+            <li><div class="r1"><span class="num">1</span><span class="nom">Benítez</span><button class="sentar">Sentar</button><button class="quitar" title="Quitar">×</button></div><div class="r2">Hab 220 · 3 pax</div></li>
+            <li><div class="r1"><span class="num">2</span><span class="nom">Torres, Julia</span><button class="sentar">Sentar</button><button class="quitar" title="Quitar">×</button></div><div class="r2">11-4433-2210 · 2 pax</div></li>
+            <li class="ok"><div class="r1"><span class="num ok">✓</span><span class="nom">Ruiz</span><button class="sentar" style="color:var(--tinta-suave)">↺</button><button class="quitar" title="Quitar">×</button></div><div class="r2">Hab 117 · 4 pax</div></li>
+          </ol>
+          <div class="form-espera">
+            <input class="campo" placeholder="Nombre o Apellido">
+            <div style="display:flex;gap:6px">
+              <input class="campo" style="width:64px" placeholder="Hab/Tel">
+              <input class="campo" style="width:48px;text-align:center" placeholder="Pax">
+              <button class="primario" style="flex:1;font-size:12px;font-weight:500;padding:6px 8px">+ Agregar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<svg class="toggle-luna" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+</div>
+</div>
+
+<script>
+const filas = [
+  {h:"20:00", m:"11", p:false, pax:2, n:"García, Martín", t:"214", c:"Aniversario", a:true, r:false},
+  {h:"20:00", m:"14, 15", p:false, pax:8, n:"Fernández", t:"2615-443210", c:"Cumpleaños, traen torta", a:false, r:false},
+  {h:"20:15", m:"22", p:true, pax:4, n:"Rossi, Laura", t:"108", c:"Mesa junto a la ventana", a:false, r:false},
+  {h:"20:30", m:"31", p:false, pax:3, n:"Pérez", t:"11-5523-0912", c:"", a:false, r:false, tol:true},
+  {h:"20:30", m:"12", p:false, pax:2, n:"López, Ana", t:"305", c:"Sin TACC", a:true, r:true},
+  {h:"20:45", m:"41", p:false, pax:5, n:"Martínez", t:"2614-778899", c:"Silla de bebé", a:false, r:false},
+  {h:"21:00", m:"52", p:false, pax:6, n:"Sosa, Diego", t:"412", c:"", a:false, r:false, cap:true},
+  {h:"21:15", m:"23", p:false, pax:2, n:"Gómez", t:"", c:"", a:false, r:true},
+  {h:"21:00", m:"", p:false, pax:null, n:"", t:"", c:"", a:false, r:false},
+  {h:"21:30", m:"", p:false, pax:null, n:"", t:"", c:"", a:false, r:false},
+  {h:"21:45", m:"", p:false, pax:null, n:"", t:"", c:"", a:false, r:false},
+];
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+document.getElementById("filas").innerHTML = filas.map((f,i)=>{
+  const cls = f.a ? "asistio" : f.r ? "ret" : f.tol ? "tol" : (i%2===1 ? "zebra" : "");
+  const mesaCls = ["celda","mesa-sel", f.p?"anillo-pedida":"", f.cap?"rojo":"", f.r?"tachada":""].join(" ");
+  return `<tr class="${cls}">
+    <td style="width:64px"><div class="rel"><input class="celda" value="${esc(f.h)}" placeholder="hh:mm">${f.tol?'<button class="reloj" title="Pasaron 15+ minutos">⏰</button>':''}</div></td>
+    <td style="width:96px"><div class="${mesaCls}" tabindex="0"><span>${f.m||"—"}</span>${f.cap?'<span title="Capacidad 4p, no alcanza para 6 pax">⚠</span>':''}</div></td>
+    <td class="c" style="width:56px"><input type="checkbox" class="ck" ${f.p?"checked":""}></td>
+    <td style="width:56px"><input class="celda c" value="${f.pax??""}" placeholder="Ej: 4"></td>
+    <td><input class="celda" value="${esc(f.n)}" placeholder="Apellido / Nombre"></td>
+    <td style="width:110px"><input class="celda" value="${esc(f.t)}" placeholder="Hab / Tel"></td>
+    <td><input class="celda" value="${esc(f.c)}" placeholder="Comentarios"></td>
+    <td class="c"><input type="checkbox" class="ck" ${f.a?"checked":""}></td>
+    <td class="c" style="width:56px"><input type="checkbox" class="ck" ${f.r?"checked":""}></td>
+    <td class="c" style="width:24px"><button class="quitar" title="Quitar fila">×</button></td>
+  </tr>`;
+}).join("");
+
+const mesas = [["11",2,"o"],["12",2,""],["13",4,"w"],["14",4,"o"],["15",4,"o"],["21",4,""],["22",4,"op"],["23",2,""],["31",4,"o"],["32",4,""],["33",6,"w"],["41",6,"o"],["42",6,""],["51",4,""],["52",4,"o"]];
+document.getElementById("mesas").innerHTML = mesas.map(([c,cap,e])=>{
+  const k = e.includes("o")?"ocupada":e==="w"?"walkin":"";
+  const p = e.includes("p");
+  return `<div class="rel"><button class="mesa ${k} ${p?"anillo-pedida":""}">${c}<small>${cap}p</small></button>${p?'<span class="chip-pedida"></span>':''}</div>`;
+}).join("");
+
+// Plano compacto: 6 mesas con sillas + carteles de referencia
+const lienzo = document.getElementById("lienzo");
+const pms = [["11",40,40,"ocupada"],["12",140,40,""],["13",240,40,"walkin"],["21",40,130,""],["22",140,130,"ocupada"],["23",240,130,""]];
+let html = "";
+pms.forEach(([c,x,y,k])=>{
+  html += `<div class="silla" style="left:${x+12}px;top:${y-12}px"></div><div class="silla" style="left:${x+36}px;top:${y-12}px"></div>`;
+  html += `<div class="silla" style="left:${x+12}px;top:${y+51}px"></div><div class="silla" style="left:${x+36}px;top:${y+51}px"></div>`;
+  html += `<div class="pm ${k}" style="left:${x}px;top:${y}px">${c}</div>`;
+});
+html += `<div class="ref" style="left:360px;top:46px">Ventana</div><div class="ref" style="left:360px;top:136px">Cocina</div>`;
+lienzo.innerHTML = html;
+
+const info = {
+  actual:{d:"<strong>Actual · Navy.</strong> Lo que hay hoy en producción: fondo y tarjetas azul marino, bordes azul medio.", k:["--fondo","--superficie","--borde","--marca","--fila-zebra","--fila-asistio"]},
+  grafito:{d:"<strong>A · Grafito.</strong> Negro neutro, sin tinte de color. Los botones activos pasan a gris oscuro: el color queda solo para los estados (ocupada, walk-in, asistió). Lo más sobrio.", k:["--fondo","--superficie","--borde","--marca","--fila-zebra","--fila-asistio"]},
+  carbon:{d:"<strong>B · Carbón.</strong> Casi negro con un tinte frío muy leve; conserva un azul de marca apagado en botones y en el filete del título. Sobrio pero sigue siendo Barrancas.", k:["--fondo","--superficie","--borde","--marca","--fila-zebra","--fila-asistio"]},
+  onix:{d:"<strong>C · Ónix.</strong> Negro puro de fondo y tarjetas apenas despegadas, con el navy original de la marca en los botones. Máximo contraste.", k:["--fondo","--superficie","--borde","--marca","--fila-zebra","--fila-asistio"]},
+};
+const app = document.getElementById("app");
+function elegir(p){
+  app.dataset.pal = p;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed", t.dataset.p===p ? "true":"false"));
+  document.getElementById("desc").innerHTML = info[p].d;
+  const cs = getComputedStyle(app);
+  document.getElementById("tokens").innerHTML = info[p].k.map(v=>{
+    const val = cs.getPropertyValue(v).trim();
+    return `<span class="tok"><i style="background:${val}"></i>${v.replace("--","")} ${val}</span>`;
+  }).join("");
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>elegir(t.dataset.p)));
+document.addEventListener("keydown",e=>{const m={"0":"actual","1":"grafito","2":"carbon","3":"onix"}[e.key]; if(m && !(e.target instanceof HTMLInputElement)) elegir(m);});
+elegir("grafito");
+</script>
+</body>
+</html>

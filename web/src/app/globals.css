@@ -8,6 +8,7 @@
    (--color-fondo en claro) mantiene el diseño limpio sin la dureza de un
    blanco puro. */
 :root {
+  color-scheme: light;
   --color-tinta: #13242e;
   --color-tinta-suave: #768188;
   --color-arena: #143d58;
@@ -367,6 +368,16 @@ select.celda {
   cursor: pointer;
 }
 
+/* Opciones de las listas desplegables (<select>): con los mismos colores
+   que el resto de la app en los dos temas, en vez de los del sistema
+   operativo. Chrome/Edge en Windows respetan esto; en otros navegadores
+   "color-scheme" (ver :root / :root[data-theme="dark"]) ya alcanza para
+   que la lista salga oscura en modo oscuro. */
+select option {
+  background-color: var(--color-superficie);
+  color: var(--color-tinta);
+}
+
 /* Reporte de impresion (ver ReporteImpresion.tsx): oculto en pantalla
    (Tailwind "hidden print:block" ya lo maneja), pero ademas normalizamos
    margenes/tamaño de pagina aca porque @page no tiene equivalente en
@@ -382,49 +393,60 @@ select.celda {
 /* Modo oscuro: se activa poniendo data-theme="dark" en <html> (lo hace
    ThemeToggle.tsx + el script de layout.tsx). Como casi todos los colores
    de la app ya son variables, alcanza con redefinirlas aca — el resto de
-   los componentes se re-tematiza solo, sin tocar ningun otro archivo. */
+   los componentes se re-tematiza solo, sin tocar ningun otro archivo.
+
+   Paleta "Onix" (reemplaza a la oscura "Navy" anterior, a pedido: algo mas
+   parecido al negro, mas sobrio/"enterprise"). Fondo negro puro, tarjetas
+   y bordes en grises neutros apenas despegados del fondo, y el navy de la
+   marca solo en botones activos/primarios. Los colores de ESTADO
+   (ocupada, walk-in, pedida, aviso, el teal de asistio) no cambian: son los
+   mismos que antes, para que el staff no tenga que re-aprender que
+   significa cada color. Mockup comparativo: "Claude outputs/
+   modo-oscuro-propuestas.html" (opcion C). */
 :root[data-theme="dark"] {
-  --color-fondo: #0b202e;
-  --color-superficie: #143d58;
-  --color-tinta: #f0f3f6;
-  --color-tinta-suave: #8da1af;
-  --color-borde: #236b9a;
-  --color-libre: #1c5479;
-  --color-ocupada-suave: #3a1216;
-  --color-asistio-suave: #19555c;
-  --color-walkin-suave: #30305c;
+  /* Le avisa al navegador que la pagina esta en oscuro, para que dibuje en
+     oscuro los controles NATIVOS que no se pueden estilar con nuestras
+     variables: la lista desplegable de los <select> (antes salia blanca,
+     con el texto casi invisible), el calendario del input de fecha, los
+     checkboxes y las barras de scroll. Ver tambien "color-scheme: light" en
+     :root y la regla de "select option" mas abajo. */
+  color-scheme: dark;
+  --color-fondo: #000000;
+  --color-superficie: #0e0e0f;
+  --color-tinta: #f2f2f2;
+  --color-tinta-suave: #8c8c8c;
+  --color-borde: #242426;
+  --color-libre: #1a1a1c;
+  --color-ocupada-suave: #260f12;
+  --color-asistio-suave: #102f29;
+  --color-walkin-suave: #221a33;
   --color-aviso: #e0a942;
-  --color-aviso-suave: #362a10;
-  --color-silla: #2a5773;
-  --color-silla-borde: #3d7196;
-  /* Ahora SI hace falta redefinir arena/marca en oscuro (algo que en la
-     paleta vieja no pasaba): el fondo oscuro es navy, asi que un boton o un
-     anillo de foco del mismo navy que el fondo desaparecerian. Un navy mas
-     claro los mantiene bien visibles y de texto blanco sigue leyendose
-     arriba (paso el chequeo de contraste). El teal de --color-asistio no se
-     redefine — es un acento fijo de "accion completada" en los dos temas. */
-  --color-arena: #2777ab;
-  --color-arena-suave: #1c5479;
-  --color-marca: #2777ab;
+  --color-aviso-suave: #2a2210;
+  --color-silla: #232326;
+  --color-silla-borde: #36363a;
+  /* arena = acento de foco/filete del titulo/borde punteado de "+ Agregar":
+     un azul acero que se lee sobre negro. marca = fondo de botones
+     primarios y de la pastilla activa (Salon/Turno): el navy de la marca,
+     con texto blanco arriba (contraste 9.4:1). El teal de --color-asistio
+     no se redefine — es un acento fijo de "accion completada" en los dos
+     temas. */
+  --color-arena: #4d8ab8;
+  --color-arena-suave: #1c1c1f;
+  --color-marca: #174a6e;
 
-  /* Mismo resultado visual que antes (arena-suave al 30%/60% de opacidad
-     sobre el fondo oscuro de la fila), ahora como valor solido propio — ver
-     el comentario junto a --color-fila-zebra en :root. El zebra de oscuro
-     no cambia con este pedido. --color-fila-asistio en oscuro es un
-     esmeralda propio (mas oscuro/solido que el lima de modo claro, a
-     pedido: el lima quedaba demasiado "prendido" sobre el fondo navy
-     oscuro) — con este tono el texto vuelve a ser claro en vez del oscuro
-     fijo que usa la fila en modo claro (ver el override de
-     ".bg-fila-asistio .celda" mas arriba en este archivo). */
-  --color-fila-zebra: #164462;
-  --color-fila-zebra-hover: #194b6c;
-  --color-fila-asistio: #2f8f5b;
+  /* Zebra apenas visible sobre la superficie (no compite con los colores
+     de estado). --color-fila-asistio: un verde oscuro y apagado — con este
+     tono el texto vuelve a ser claro en vez del oscuro fijo que usa la fila
+     en modo claro (ver el override de ".bg-fila-asistio .celda" mas arriba
+     en este archivo). */
+  --color-fila-zebra: #141416;
+  --color-fila-zebra-hover: #1a1a1d;
+  --color-fila-asistio: #1d4a35;
 
-  /* Mismo criterio que en claro: un khaki propio, mas claro/dorado para que
-     se note contra el fondo navy oscuro, distinto de --color-libre en
-     oscuro (#1c5479). */
+  /* Mismo criterio que en claro: un khaki propio, dorado para que se note
+     contra el fondo negro, distinto de --color-libre en oscuro. */
   --color-referencia: #d1a94f;
-  --color-referencia-suave: #4a3d1f;
+  --color-referencia-suave: #2a2414;
 }
 /* La impresion tiene que verse siempre igual (tinta oscura sobre papel
    blanco), sin importar si la pantalla estaba en modo oscuro al apretar
