@@ -121,25 +121,42 @@ export const NOMBRE_TURNO: Record<Turno, string> = {
   cena: "Cena",
 };
 
+// Fila de una tabla por turno: los mismos números de FilaSemanal más
+// "ocupacion", que es lo que pesa esa fila dentro de las reservas de SU
+// tabla (turno): reservas de la fila / reservas totales del turno en el mes,
+// de 0 a 100. Es lo que dibuja la "píldora" de la columna Ocupación — sirve
+// para ver de un vistazo qué día concentra más reservas. (Se mide en
+// reservas, no en pax, ni contra el mes entero: cada tabla es su propio
+// 100%, así que sus filas suman ~100.)
+export type FilaTabla = FilaSemanal & { ocupacion: number };
+
 // Una tabla por turno: los 7 días (Lunes a Domingo) más una fila de total de
 // ese turno en el mes.
 export interface TablaTurno {
   turno: Turno;
-  filas: FilaSemanal[];
-  total: Omit<FilaSemanal, "diaSemana" | "turno">;
+  filas: FilaTabla[];
+  // Mayor "ocupacion" entre las filas (0 si el turno no tuvo reservas): la
+  // pantalla y el PDF resaltan la/s fila/s que la alcanzan.
+  maxOcupacion: number;
+  total: Omit<FilaTabla, "diaSemana" | "turno">;
 }
 
 export function tablasPorTurno(porDiaYTurno: ReporteDia[], turnos: Turno[]): TablaTurno[] {
   const todas = agruparPorDiaSemana(porDiaYTurno, turnos);
   return ORDEN_TURNO.filter((t) => todas.some((f) => f.turno === t)).map((turno) => {
-    const filas = todas.filter((f) => f.turno === turno);
-    const dias = filas.reduce((acc, f) => acc + f.dias, 0);
-    const reservas = filas.reduce((acc, f) => acc + f.reservas, 0);
-    const pax = filas.reduce((acc, f) => acc + f.pax, 0);
-    const asistio = filas.reduce((acc, f) => acc + f.asistio, 0);
+    const delTurno = todas.filter((f) => f.turno === turno);
+    const dias = delTurno.reduce((acc, f) => acc + f.dias, 0);
+    const reservas = delTurno.reduce((acc, f) => acc + f.reservas, 0);
+    const pax = delTurno.reduce((acc, f) => acc + f.pax, 0);
+    const asistio = delTurno.reduce((acc, f) => acc + f.asistio, 0);
+    const filas: FilaTabla[] = delTurno.map((f) => ({
+      ...f,
+      ocupacion: reservas === 0 ? 0 : redondear1((100 * f.reservas) / reservas),
+    }));
     return {
       turno,
       filas,
+      maxOcupacion: filas.reduce((max, f) => Math.max(max, f.ocupacion), 0),
       total: {
         dias,
         reservas,
@@ -147,6 +164,7 @@ export function tablasPorTurno(porDiaYTurno: ReporteDia[], turnos: Turno[]): Tab
         asistio,
         porcentajeAsistencia: pax === 0 ? 0 : redondear1((100 * asistio) / pax),
         paxPromedio: dias === 0 ? 0 : redondear1(pax / dias),
+        ocupacion: reservas === 0 ? 0 : 100,
       },
     };
   });

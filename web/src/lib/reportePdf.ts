@@ -43,18 +43,30 @@ const ALTO_PIE = 10;
 
 // Columnas de cada tabla (anchos en mm, suman el ancho útil de un A4 vertical
 // con MARGEN de 14 a cada lado = 182). Los números van alineados a la
-// derecha para que se lean en columna. Hay una tabla por TURNO (Almuerzo,
+// derecha para que se lean en columna; la última (Ocupación) lleva una
+// "píldora" con el peso de la fila dentro de las reservas del turno (ver
+// FilaTabla en lib/reporteSemanal.ts). Hay una tabla por TURNO (Almuerzo,
 // Merienda, Cena) con una fila por día de la semana — todos los lunes del
-// mes juntos, etc. (ver lib/reporteSemanal.ts).
+// mes juntos, etc.
 const COLUMNAS: { titulo: string; ancho: number; derecha: boolean }[] = [
-  { titulo: "Día", ancho: 38, derecha: false },
-  { titulo: "Días", ancho: 18, derecha: true },
-  { titulo: "Reservas", ancho: 26, derecha: true },
-  { titulo: "Pax", ancho: 22, derecha: true },
-  { titulo: "Pax prom.", ancho: 28, derecha: true },
-  { titulo: "Asistió", ancho: 22, derecha: true },
-  { titulo: "% asistencia", ancho: 28, derecha: true },
+  { titulo: "Día", ancho: 28, derecha: false },
+  { titulo: "Días", ancho: 14, derecha: true },
+  { titulo: "Reservas", ancho: 22, derecha: true },
+  { titulo: "Pax", ancho: 16, derecha: true },
+  { titulo: "Pax prom.", ancho: 22, derecha: true },
+  { titulo: "Asistió", ancho: 18, derecha: true },
+  { titulo: "% asist.", ancho: 20, derecha: true },
+  { titulo: "Ocupación", ancho: 42, derecha: false },
 ];
+
+// Colores de la píldora (paleta clara de la app): pista gris azulada, relleno
+// azul medio para las filas comunes y el azul de marca para la/s de mayor
+// ocupación.
+const COLOR_PILDORA_PISTA = "#dae1e6";
+const COLOR_PILDORA = "#8fa9bd";
+const COLOR_PILDORA_MAX = "#143d58";
+const ANCHO_PILDORA = 24;
+const ALTO_PILDORA = 2.6;
 
 function ahoraTexto(): string {
   const a = new Date();
@@ -196,6 +208,24 @@ export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre
         doc.text(texto, x + col.ancho - 3, y + 4.2, { align: "right" });
         x += col.ancho;
       });
+
+      // Píldora de ocupación: pista completa = 100% de las reservas del
+      // turno; el relleno mide el peso de esta fila. La/s fila/s con la
+      // mayor ocupación (si es mayor a 0) van en azul de marca y el número
+      // en negrita, para encontrarlas de un vistazo.
+      const colOcup = COLUMNAS[COLUMNAS.length - 1];
+      const esMax = tabla.maxOcupacion > 0 && f.ocupacion === tabla.maxOcupacion;
+      const xPildora = x + 3;
+      const yPildora = y + (ALTO_FILA - ALTO_PILDORA) / 2;
+      doc.setFillColor(COLOR_PILDORA_PISTA);
+      doc.roundedRect(xPildora, yPildora, ANCHO_PILDORA, ALTO_PILDORA, ALTO_PILDORA / 2, ALTO_PILDORA / 2, "F");
+      if (f.ocupacion > 0) {
+        const anchoRelleno = Math.max((ANCHO_PILDORA * f.ocupacion) / 100, ALTO_PILDORA);
+        doc.setFillColor(esMax ? COLOR_PILDORA_MAX : COLOR_PILDORA);
+        doc.roundedRect(xPildora, yPildora, anchoRelleno, ALTO_PILDORA, ALTO_PILDORA / 2, ALTO_PILDORA / 2, "F");
+      }
+      doc.setFont("helvetica", esMax ? "bold" : "normal");
+      doc.text(`${f.ocupacion}%`, x + colOcup.ancho - 3, y + 4.2, { align: "right" });
       y += ALTO_FILA;
     });
 
@@ -214,7 +244,12 @@ export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre
       String(tabla.total.paxPromedio),
       String(tabla.total.asistio),
       `${tabla.total.porcentajeAsistencia}%`,
+      "",
     ]);
+    // El total de Ocupación (100%, o 0% si no hubo reservas) va a la derecha
+    // de su columna, alineado con los números de las píldoras de arriba y
+    // sin píldora propia.
+    doc.text(`${tabla.total.ocupacion}%`, MARGEN + anchoTabla - 3, y + 4.5, { align: "right" });
     y += ALTO_FILA + 0.5 + SEPARACION_TABLAS;
   });
 

@@ -221,9 +221,22 @@ export default function ReportesPage() {
                   {NOMBRE_TURNO[t.turno]}
                 </h2>
                 <div className="overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-sm">
-                  <table className="w-full min-w-[560px] border-collapse text-sm">
+                  <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+                    {/* Anchos fijos: así las columnas quedan alineadas entre
+                        la tabla de Almuerzo y la de Cena (con ancho
+                        automático cada una se ajustaba a su contenido). */}
+                    <colgroup>
+                      <col className="w-[17%]" />
+                      <col className="w-[7%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[7%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[13%]" />
+                      <col className="w-[25%]" />
+                    </colgroup>
                     <thead>
-                      <tr className="border-b-2 border-borde text-left text-[11px] tracking-wide text-tinta-suave uppercase">
+                      <tr className="border-b-2 border-borde text-left text-[11px] tracking-wide whitespace-nowrap text-tinta-suave uppercase">
                         <th className="px-3.5 py-2.5">Día</th>
                         <th className="px-3.5 py-2.5 text-right" title="Cuántos días de ese tipo tuvieron reservas en el mes">
                           Días
@@ -235,6 +248,12 @@ export default function ReportesPage() {
                         </th>
                         <th className="px-3.5 py-2.5 text-right">Asistió</th>
                         <th className="px-3.5 py-2.5 text-right">% asistencia</th>
+                        <th
+                          className="px-3.5 py-2.5"
+                          title="Qué parte del total de reservas de este turno en el mes corresponde a ese día (la barra llena es el 100%). El día con la barra más oscura es el de mayor ocupación."
+                        >
+                          Ocupación
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -247,16 +266,20 @@ export default function ReportesPage() {
                           <td className="px-3.5 py-2 text-right tabular-nums">{f.paxPromedio}</td>
                           <td className="px-3.5 py-2 text-right tabular-nums">{f.asistio}</td>
                           <td className="px-3.5 py-2 text-right tabular-nums">{f.porcentajeAsistencia}%</td>
+                          <td className="px-3.5 py-2">
+                            <PildoraOcupacion porcentaje={f.ocupacion} esMaximo={t.maxOcupacion > 0 && f.ocupacion === t.maxOcupacion} />
+                          </td>
                         </tr>
                       ))}
                       <tr className="border-t-2 border-tinta font-bold">
-                        <td className="px-3.5 py-2">Total {NOMBRE_TURNO[t.turno].toLowerCase()}</td>
+                        <td className="px-3.5 py-2 whitespace-nowrap">Total {NOMBRE_TURNO[t.turno].toLowerCase()}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.dias}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.reservas}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.pax}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.paxPromedio}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.asistio}</td>
                         <td className="px-3.5 py-2 text-right tabular-nums">{t.total.porcentajeAsistencia}%</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.ocupacion}%</td>
                       </tr>
                     </tbody>
                   </table>
@@ -324,6 +347,32 @@ function TarjetaResumen({ etiqueta, valor }: { etiqueta: string; valor: string |
     <div className="rounded-2xl border border-borde bg-superficie p-4 shadow-sm">
       <div className="text-[11px] tracking-wide text-tinta-suave uppercase">{etiqueta}</div>
       <div className="mt-1 text-2xl font-bold">{valor}</div>
+    </div>
+  );
+}
+
+// "Píldora" de la columna Ocupación: la pista completa es el 100% de las
+// reservas del turno en el mes y el relleno mide el peso de ese día (ver
+// FilaTabla en lib/reporteSemanal.ts). El día de mayor ocupación va con el
+// relleno sólido y el número en negrita; el resto, más tenue — así se ve de
+// un vistazo dónde se concentran las reservas.
+function PildoraOcupacion({ porcentaje, esMaximo }: { porcentaje: number; esMaximo: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className="h-2.5 min-w-24 flex-1 overflow-hidden rounded-full bg-arena-suave"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={porcentaje}
+        aria-label="Ocupación"
+      >
+        <div
+          className={`h-full rounded-full ${esMaximo ? "bg-arena" : "bg-arena/45"}`}
+          style={{ width: `${porcentaje}%`, minWidth: porcentaje > 0 ? "0.625rem" : 0 }}
+        />
+      </div>
+      <span className={`w-12 text-right tabular-nums ${esMaximo ? "font-bold" : ""}`}>{porcentaje}%</span>
     </div>
   );
 }
