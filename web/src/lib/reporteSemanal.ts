@@ -2,7 +2,9 @@ import type { ReporteDia, Salon, Turno } from "./types";
 
 // Agrupa el reporte mensual por DIA DE LA SEMANA + TURNO: todos los lunes
 // almuerzo del mes juntos, todos los lunes cena juntos, todos los martes
-// almuerzo, etc. (en vez de una fila por fecha). Lo usan la tabla de
+// almuerzo, etc. (en vez de una fila por fecha). tablasPorTurno() los arma
+// como una tabla separada por turno (Almuerzo / Merienda / Cena), con los
+// 7 días de la semana en cada una. Lo usan la pantalla de
 // app/reportes/page.tsx y el PDF de lib/reportePdf.ts, así los dos muestran
 // exactamente los mismos números.
 //
@@ -111,4 +113,41 @@ export function agruparPorDiaSemana(porDiaYTurno: ReporteDia[], turnos: Turno[])
     }
   }
   return filas;
+}
+
+export const NOMBRE_TURNO: Record<Turno, string> = {
+  almuerzo: "Almuerzo",
+  merienda: "Merienda",
+  cena: "Cena",
+};
+
+// Una tabla por turno: los 7 días (Lunes a Domingo) más una fila de total de
+// ese turno en el mes.
+export interface TablaTurno {
+  turno: Turno;
+  filas: FilaSemanal[];
+  total: Omit<FilaSemanal, "diaSemana" | "turno">;
+}
+
+export function tablasPorTurno(porDiaYTurno: ReporteDia[], turnos: Turno[]): TablaTurno[] {
+  const todas = agruparPorDiaSemana(porDiaYTurno, turnos);
+  return ORDEN_TURNO.filter((t) => todas.some((f) => f.turno === t)).map((turno) => {
+    const filas = todas.filter((f) => f.turno === turno);
+    const dias = filas.reduce((acc, f) => acc + f.dias, 0);
+    const reservas = filas.reduce((acc, f) => acc + f.reservas, 0);
+    const pax = filas.reduce((acc, f) => acc + f.pax, 0);
+    const asistio = filas.reduce((acc, f) => acc + f.asistio, 0);
+    return {
+      turno,
+      filas,
+      total: {
+        dias,
+        reservas,
+        pax,
+        asistio,
+        porcentajeAsistencia: pax === 0 ? 0 : redondear1((100 * asistio) / pax),
+        paxPromedio: dias === 0 ? 0 : redondear1(pax / dias),
+      },
+    };
+  });
 }

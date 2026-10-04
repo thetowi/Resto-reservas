@@ -1,5 +1,5 @@
 import type { jsPDF } from "jspdf";
-import { NOMBRES_DIA, agruparPorDiaSemana } from "./reporteSemanal";
+import { NOMBRES_DIA, NOMBRE_TURNO, tablasPorTurno } from "./reporteSemanal";
 import type { ReporteMensual, Turno } from "./types";
 
 // PDF del reporte mensual de asistencia (ver app/reportes/page.tsx, botón
@@ -36,27 +36,25 @@ const COLOR_MARCA = "#0c2637";
 const COLOR_ZEBRA = "#f0f3f6";
 
 const MARGEN = 14;
-const ALTO_FILA = 6.5;
+const ALTO_FILA = 6;
+const ALTO_TITULO_TABLA = 8;
+const SEPARACION_TABLAS = 4;
 const ALTO_PIE = 10;
 
-// Columnas de la tabla (anchos en mm, suman el ancho útil de un A4 vertical
+// Columnas de cada tabla (anchos en mm, suman el ancho útil de un A4 vertical
 // con MARGEN de 14 a cada lado = 182). Los números van alineados a la
-// derecha para que se lean en columna. Una fila por DÍA DE LA SEMANA +
-// TURNO (todos los lunes almuerzo juntos, etc. — ver lib/reporteSemanal.ts).
+// derecha para que se lean en columna. Hay una tabla por TURNO (Almuerzo,
+// Merienda, Cena) con una fila por día de la semana — todos los lunes del
+// mes juntos, etc. (ver lib/reporteSemanal.ts).
 const COLUMNAS: { titulo: string; ancho: number; derecha: boolean }[] = [
-  { titulo: "Día", ancho: 32, derecha: false },
-  { titulo: "Turno", ancho: 26, derecha: false },
-  { titulo: "Días", ancho: 16, derecha: true },
-  { titulo: "Reservas", ancho: 22, derecha: true },
-  { titulo: "Pax", ancho: 20, derecha: true },
-  { titulo: "Pax prom.", ancho: 24, derecha: true },
-  { titulo: "Asistió", ancho: 18, derecha: true },
-  { titulo: "% asistencia", ancho: 24, derecha: true },
+  { titulo: "Día", ancho: 38, derecha: false },
+  { titulo: "Días", ancho: 18, derecha: true },
+  { titulo: "Reservas", ancho: 26, derecha: true },
+  { titulo: "Pax", ancho: 22, derecha: true },
+  { titulo: "Pax prom.", ancho: 28, derecha: true },
+  { titulo: "Asistió", ancho: 22, derecha: true },
+  { titulo: "% asistencia", ancho: 28, derecha: true },
 ];
-
-function capitalizar(texto: string): string {
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
 
 function ahoraTexto(): string {
   const a = new Date();
@@ -149,80 +147,76 @@ export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre
     doc.text(valor, x + 4, yTarjetas + 14);
   });
 
-  // --- Tabla por día de la semana y turno ---
-  const filas = agruparPorDiaSemana(reporte.porDiaYTurno, turnos);
+  // --- Una tabla por turno (Almuerzo / Merienda / Cena) ---
+  const tablas = tablasPorTurno(reporte.porDiaYTurno, turnos);
   const anchoTabla = COLUMNAS.reduce((acc, c) => acc + c.ancho, 0);
+  const alturaTabla = ALTO_TITULO_TABLA + 7.5 + 7 * ALTO_FILA + ALTO_FILA + 0.5;
 
-  let y = dibujarEncabezadoTabla(doc, yTarjetas + altoTarjeta + 8);
+  let y = yTarjetas + altoTarjeta + 8;
 
-  // El zebra alterna por DÍA (no por fila): así "Lunes almuerzo" y "Lunes
-  // cena" quedan con el mismo fondo y se leen como un bloque.
-  let bloque = 0;
-  filas.forEach((f, i) => {
-    const primeroDelDia = i === 0 || filas[i - 1].diaSemana !== f.diaSemana;
-    if (primeroDelDia && i > 0) bloque += 1;
-
-    // Salto de página: la fila no entra antes del pie -> hoja nueva, con
-    // el encabezado de la tabla repetido arriba para no perder qué es
-    // cada columna.
-    if (y + ALTO_FILA > limiteInferior) {
+  tablas.forEach((tabla) => {
+    // Una tabla nunca se parte entre dos hojas: si no entera en lo que queda
+    // de la hoja, empieza en la siguiente.
+    if (y + alturaTabla > limiteInferior) {
       doc.addPage();
-      y = dibujarEncabezadoTabla(doc, MARGEN);
+      y = MARGEN;
     }
-    if (bloque % 2 === 1) {
-      doc.setFillColor(COLOR_ZEBRA);
-      doc.rect(MARGEN, y, anchoTabla, ALTO_FILA, "F");
-    }
-    if (primeroDelDia && i > 0) {
-      doc.setDrawColor(COLOR_BORDE);
-      doc.setLineWidth(0.3);
-      doc.line(MARGEN, y, MARGEN + anchoTabla, y);
-    }
+
+    // Título del turno, con un filete de color de marca a la izquierda.
+    doc.setFillColor(COLOR_MARCA);
+    doc.rect(MARGEN, y + 1, 1.2, 5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(COLOR_TINTA);
+    doc.text(NOMBRE_TURNO[tabla.turno], MARGEN + 3.5, y + 5.2);
+    y += ALTO_TITULO_TABLA;
+
+    y = dibujarEncabezadoTabla(doc, y);
+
+    tabla.filas.forEach((f, i) => {
+      if (i % 2 === 1) {
+        doc.setFillColor(COLOR_ZEBRA);
+        doc.rect(MARGEN, y, anchoTabla, ALTO_FILA, "F");
+      }
+      doc.setFontSize(9);
+      doc.setTextColor(COLOR_TINTA);
+      doc.setFont("helvetica", "bold");
+      doc.text(NOMBRES_DIA[f.diaSemana], MARGEN + 3, y + 4.2);
+      doc.setFont("helvetica", "normal");
+      let x = MARGEN + COLUMNAS[0].ancho;
+      [
+        String(f.dias),
+        String(f.reservas),
+        String(f.pax),
+        String(f.paxPromedio),
+        String(f.asistio),
+        `${f.porcentajeAsistencia}%`,
+      ].forEach((texto, k) => {
+        const col = COLUMNAS[k + 1];
+        doc.text(texto, x + col.ancho - 3, y + 4.2, { align: "right" });
+        x += col.ancho;
+      });
+      y += ALTO_FILA;
+    });
+
+    // Total del turno en el mes.
+    doc.setDrawColor(COLOR_TINTA);
+    doc.setLineWidth(0.4);
+    doc.line(MARGEN, y, MARGEN + anchoTabla, y);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(COLOR_TINTA);
-    // El nombre del día solo en la primera fila de cada día, en negrita.
-    doc.setFont("helvetica", "bold");
-    if (primeroDelDia) doc.text(NOMBRES_DIA[f.diaSemana], MARGEN + 3, y + 4.4);
-    doc.setFont("helvetica", "normal");
-    let x = MARGEN + COLUMNAS[0].ancho;
-    [
-      capitalizar(f.turno),
-      String(f.dias),
-      String(f.reservas),
-      String(f.pax),
-      String(f.paxPromedio),
-      String(f.asistio),
-      `${f.porcentajeAsistencia}%`,
-    ].forEach((texto, k) => {
-      const col = COLUMNAS[k + 1];
-      if (col.derecha) doc.text(texto, x + col.ancho - 3, y + 4.4, { align: "right" });
-      else doc.text(texto, x + 3, y + 4.4);
-      x += col.ancho;
-    });
-    y += ALTO_FILA;
+    dibujarFila(doc, y + 4.5, [
+      `Total ${NOMBRE_TURNO[tabla.turno].toLowerCase()}`,
+      String(tabla.total.dias),
+      String(tabla.total.reservas),
+      String(tabla.total.pax),
+      String(tabla.total.paxPromedio),
+      String(tabla.total.asistio),
+      `${tabla.total.porcentajeAsistencia}%`,
+    ]);
+    y += ALTO_FILA + 0.5 + SEPARACION_TABLAS;
   });
-
-  // Fila de total del mes al pie de la tabla.
-  if (y + ALTO_FILA + 1 > limiteInferior) {
-    doc.addPage();
-    y = dibujarEncabezadoTabla(doc, MARGEN);
-  }
-  doc.setDrawColor(COLOR_TINTA);
-  doc.setLineWidth(0.4);
-  doc.line(MARGEN, y, MARGEN + anchoTabla, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(COLOR_TINTA);
-  dibujarFila(doc, y + 4.9, [
-    "Total del mes",
-    "",
-    "",
-    String(reporte.totalReservas),
-    String(reporte.totalPax),
-    "",
-    String(reporte.totalAsistio),
-    `${reporte.porcentajeAsistencia}%`,
-  ]);
 
   // --- Pie en todas las hojas (se agrega al final para saber el total) ---
   const totalPaginas = doc.getNumberOfPages();

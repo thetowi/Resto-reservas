@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, getMeta, getReporteMensual } from "@/lib/api";
 import { esAdmin, haySesion } from "@/lib/auth";
 import { NOMBRES_MES, armarPdfReporte } from "@/lib/reportePdf";
-import { NOMBRES_DIA, agruparPorDiaSemana, turnosDelReporte } from "@/lib/reporteSemanal";
+import { NOMBRES_DIA, NOMBRE_TURNO, tablasPorTurno, turnosDelReporte } from "@/lib/reporteSemanal";
 import type { ReporteMensual, Salon } from "@/lib/types";
 
 function mesActual() {
@@ -141,11 +141,11 @@ export default function ReportesPage() {
 
   if (!listo) return null;
 
-  // Una fila por día de la semana + turno (todos los lunes almuerzo del mes
-  // juntos, todos los lunes cena, todos los martes almuerzo...) — ver
-  // lib/reporteSemanal.ts. Se calcula acá, en el frontend, a partir de las
-  // filas por fecha que ya devuelve el backend.
-  const filas = reporte ? agruparPorDiaSemana(reporte.porDiaYTurno, turnosDelReporte(salones, salonId)) : [];
+  // Una tabla por turno (Almuerzo, Merienda si el salón la ofrece, Cena), cada
+  // una con los 7 días de la semana — todos los lunes del mes juntos, todos
+  // los martes, etc. — ver lib/reporteSemanal.ts. Se calcula acá, en el
+  // frontend, a partir de las filas por fecha que ya devuelve el backend.
+  const tablas = reporte ? tablasPorTurno(reporte.porDiaYTurno, turnosDelReporte(salones, salonId)) : [];
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -214,48 +214,55 @@ export default function ReportesPage() {
             <TarjetaResumen etiqueta="% asistencia" valor={`${reporte.porcentajeAsistencia}%`} />
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-sm">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b-2 border-borde text-left text-[11px] tracking-wide text-tinta-suave uppercase">
-                  <th className="px-3.5 py-2.5">Día</th>
-                  <th className="px-3.5 py-2.5">Turno</th>
-                  <th className="px-3.5 py-2.5 text-right" title="Cuántos días de ese tipo tuvieron reservas en el mes">
-                    Días
-                  </th>
-                  <th className="px-3.5 py-2.5 text-right">Reservas</th>
-                  <th className="px-3.5 py-2.5 text-right">Pax</th>
-                  <th className="px-3.5 py-2.5 text-right" title="Pax promedio por día">
-                    Pax prom.
-                  </th>
-                  <th className="px-3.5 py-2.5 text-right">Asistió</th>
-                  <th className="px-3.5 py-2.5 text-right">% asistencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((f, i) => {
-                  // El nombre del día solo en la primera fila de cada día
-                  // (lunes almuerzo / lunes cena -> "Lunes" una sola vez), y
-                  // una línea más marcada al empezar un día nuevo.
-                  const primeroDelDia = i === 0 || filas[i - 1].diaSemana !== f.diaSemana;
-                  return (
-                    <tr
-                      key={`${f.diaSemana}:${f.turno}`}
-                      className={`border-b border-borde last:border-0 ${primeroDelDia && i > 0 ? "border-t-2" : ""}`}
-                    >
-                      <td className="px-3.5 py-2 font-semibold">{primeroDelDia ? NOMBRES_DIA[f.diaSemana] : ""}</td>
-                      <td className="px-3.5 py-2 capitalize">{f.turno}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.dias}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.reservas}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.pax}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.paxPromedio}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.asistio}</td>
-                      <td className="px-3.5 py-2 text-right tabular-nums">{f.porcentajeAsistencia}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-5">
+            {tablas.map((t) => (
+              <section key={t.turno}>
+                <h2 className="mb-2 border-l-4 border-arena pl-2.5 text-base tracking-wide uppercase">
+                  {NOMBRE_TURNO[t.turno]}
+                </h2>
+                <div className="overflow-x-auto rounded-2xl border border-borde bg-superficie shadow-sm">
+                  <table className="w-full min-w-[560px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-borde text-left text-[11px] tracking-wide text-tinta-suave uppercase">
+                        <th className="px-3.5 py-2.5">Día</th>
+                        <th className="px-3.5 py-2.5 text-right" title="Cuántos días de ese tipo tuvieron reservas en el mes">
+                          Días
+                        </th>
+                        <th className="px-3.5 py-2.5 text-right">Reservas</th>
+                        <th className="px-3.5 py-2.5 text-right">Pax</th>
+                        <th className="px-3.5 py-2.5 text-right" title="Pax promedio por día">
+                          Pax prom.
+                        </th>
+                        <th className="px-3.5 py-2.5 text-right">Asistió</th>
+                        <th className="px-3.5 py-2.5 text-right">% asistencia</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {t.filas.map((f) => (
+                        <tr key={f.diaSemana} className="border-b border-borde">
+                          <td className="px-3.5 py-2 font-semibold">{NOMBRES_DIA[f.diaSemana]}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.dias}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.reservas}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.pax}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.paxPromedio}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.asistio}</td>
+                          <td className="px-3.5 py-2 text-right tabular-nums">{f.porcentajeAsistencia}%</td>
+                        </tr>
+                      ))}
+                      <tr className="border-t-2 border-tinta font-bold">
+                        <td className="px-3.5 py-2">Total {NOMBRE_TURNO[t.turno].toLowerCase()}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.dias}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.reservas}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.pax}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.paxPromedio}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.asistio}</td>
+                        <td className="px-3.5 py-2 text-right tabular-nums">{t.total.porcentajeAsistencia}%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
           </div>
         </>
       )}
