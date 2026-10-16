@@ -1,10 +1,12 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Barrancas.Api.Data;
 using Barrancas.Api.Hubs;
 using Barrancas.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -35,6 +37,23 @@ builder.Services.AddScoped<ReservaBotService>();
 builder.Services.AddScoped<ClaudeAgentService>();
 builder.Services.AddHttpClient<WhatsAppClient>();
 builder.Services.AddHttpClient<AnthropicClient>();
+
+// --- Link publico de reservas (/reservar en el frontend, sin login) ---
+// ReservaOnlineService consulta disponibilidad y crea reservas con Origen=Web.
+// Como son endpoints anonimos, se limitan por IP: lectura generosa (el
+// cliente navega dias y horarios) y creacion acotada, contra abuso.
+builder.Services.AddScoped<ReservaOnlineService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("publico-lectura", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        IpCliente(ctx),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("publico-reserva", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        IpCliente(ctx),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 8, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+});
 
 // --- JWT ---
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -141,6 +160,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -150,6 +170,19 @@ app.MapHub<ReservasHub>("/hubs/reservas");
 app.MapGet("/api/health", () => Results.Ok(new { ok = true }));
 
 app.Run();
+
+// IP del cliente para el limite de pedidos del link publico. Detras del proxy
+// de Railway la IP de la conexion es la del proxy (seria la misma para todos),
+// asi que se toma la primera de X-Forwarded-For si viene.
+static string IpCliente(HttpContext ctx)
+{
+    var reenviada = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    if (!string.IsNullOrWhiteSpace(reenviada))
+    {
+        return reenviada.Split(',')[0].Trim();
+    }
+    return ctx.Connection.RemoteIpAddress?.ToString() ?? "desconocida";
+}
 
 static string NormalizarConnectionString(string raw)
 {

@@ -43,7 +43,11 @@ public class DiaService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<TurnoDataDto> GetTurnoAsync(DateOnly fecha, Turno turno, int salonId)
+    // sembrar=false: solo lectura, no genera las filas default si el turno
+    // esta vacio. Lo usa el link publico de reservas (ReservaOnlineService)
+    // para consultar disponibilidad de muchos dias sin dejar filas vacias
+    // creadas por cada consulta anonima.
+    public async Task<TurnoDataDto> GetTurnoAsync(DateOnly fecha, Turno turno, int salonId, bool sembrar = true)
     {
         var cierre = await _db.CierresTurno
             .FirstOrDefaultAsync(c => c.Fecha == fecha && c.Turno == turno && c.SalonId == salonId);
@@ -51,7 +55,7 @@ public class DiaService
         // Si esta cerrado no tiene sentido pre-generar las filas default del
         // turno (ver SeedTurnoSiVacioAsync): no se van a cargar reservas,
         // quedarian sin usarse hasta que alguien reabra.
-        if (cierre is null)
+        if (cierre is null && sembrar)
         {
             await SeedTurnoSiVacioAsync(fecha, turno, salonId);
         }

@@ -698,3 +698,210 @@ select option {
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
+
+/* ===== Link público de reservas (/reservar) =====
+   Ver app/reservar/page.tsx. Página para el cliente final: columna centrada
+   (de ancho completo en el celular), pantalla por pantalla, con la barra de
+   "Continuar" fija abajo. En Ónix el acento pasa a teal, como en el login. */
+.rv {
+  --rv-acento: #143d58;
+  --rv-acento-tx: #ffffff;
+  --rv-apagado: #eef1f4;
+  --rv-teal-tx: #1d7a69;
+  --rv-mesa: #143d58;
+  --rv-libre: rgba(20, 61, 88, 0.2);
+  min-height: 100vh;
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+}
+:root[data-theme="dark"] .rv {
+  --rv-acento: #32b49d;
+  --rv-acento-tx: #04221c;
+  --rv-apagado: #141416;
+  --rv-teal-tx: #6fd3bf;
+  --rv-mesa: #f2f2f2;
+  --rv-libre: rgba(242, 242, 242, 0.2);
+}
+.rv-pantalla {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-fondo);
+}
+@media (min-width: 700px) {
+  .rv { padding: 24px 16px; }
+  .rv-pantalla {
+    min-height: calc(100vh - 48px);
+    border: 1px solid var(--color-borde);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 30px 70px -45px rgba(0, 0, 0, 0.5);
+  }
+}
+.rv-pantalla > .rv-pie { margin-top: auto; padding-top: 18px; }
+.rv-cargando { padding: 60px 20px; text-align: center; color: var(--color-tinta-suave); }
+.rv-cargando.chico { padding: 14px 0; text-align: left; font-size: 13px; }
+
+.rv-hero { position: relative; overflow: hidden; padding: 28px 22px 22px; color: #f2f2f2;
+  background: linear-gradient(160deg, #0c2637, #143d58 60%, #1d5a6e); }
+:root[data-theme="dark"] .rv-hero { background: linear-gradient(160deg, #0e0e0f, #102a35); }
+.rv-hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%;
+  border: 14px dashed rgba(50, 180, 157, 0.3); }
+.rv-hero > * { position: relative; z-index: 1; }
+.rv-lugar { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; font-weight: 600; }
+.rv-hero-t { margin: 6px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.rv-hero p { margin: 0; font-size: 13.5px; opacity: 0.8; }
+.rv-datos { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; font-size: 12.5px; opacity: 0.85; }
+
+.rv-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-superficie); border-bottom: 1px solid var(--color-borde); }
+.rv-atras { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta);
+  display: grid; place-items: center; cursor: pointer; }
+.rv-lugar-c { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--color-tinta-suave); }
+.rv-progreso { display: flex; gap: 5px; padding: 12px 18px 0; }
+.rv-progreso i { flex: 1; height: 4px; border-radius: 99px; background: var(--color-borde); }
+.rv-progreso i.hecho { background: #32b49d; }
+
+.rv-vista { padding: 18px 18px 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 700px) { .rv-vista { padding: 24px 28px 28px; } .rv-progreso { padding-inline: 28px; } }
+.rv-titulo { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; outline: none; }
+.rv-contexto { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+.rv-contexto span { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--rv-apagado); color: var(--color-tinta-suave); }
+.rv-bloque { display: grid; gap: 10px; }
+.rv-et { font-size: 13px; font-weight: 600; color: var(--color-tinta-suave); text-transform: uppercase; letter-spacing: 0.08em; }
+.rv-sel { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; color: var(--color-tinta); }
+.rv-aviso { font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--color-aviso-suave); color: var(--color-aviso); }
+
+.rv-contador { display: flex; align-items: center; gap: 14px; }
+.rv-contador button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); font-size: 20px; cursor: pointer; }
+.rv-contador button:disabled { opacity: 0.4; cursor: not-allowed; }
+.rv-v { font-size: 22px; font-weight: 700; min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+.rv-v small { display: block; font-size: 12px; font-weight: 400; color: var(--color-tinta-suave); }
+
+.rv-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.rv-dia { flex: none; width: 62px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; display: grid; justify-items: center; gap: 1px; }
+.rv-dsem { font-size: 11px; text-transform: uppercase; color: var(--color-tinta-suave); letter-spacing: 0.05em; }
+.rv-num { font-size: 19px; font-weight: 700; }
+.rv-est { width: 6px; height: 6px; border-radius: 50%; background: #32b49d; margin-top: 3px; }
+.rv-dia.pocos .rv-est { background: var(--color-aviso); }
+.rv-dia.lleno, .rv-dia.bloqueado { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-dia.lleno .rv-est, .rv-dia.bloqueado .rv-est { background: transparent; border: 1px solid var(--color-tinta-suave); }
+.rv-dia[aria-pressed="true"] { background: var(--rv-acento); border-color: transparent; color: var(--rv-acento-tx); }
+.rv-dia[aria-pressed="true"] .rv-dsem { color: inherit; opacity: 0.8; }
+.rv-dia[aria-pressed="true"] .rv-est { background: currentColor; }
+.rv-ley { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--color-tinta-suave); }
+.rv-ley span { display: inline-flex; align-items: center; gap: 5px; }
+.rv-ley i { width: 7px; height: 7px; border-radius: 50%; background: #32b49d; }
+.rv-ley i.p { background: var(--color-aviso); }
+.rv-ley i.n { background: transparent; border: 1px solid var(--color-tinta-suave); }
+
+.rv-salones { display: grid; gap: 10px; align-content: start; }
+.rv-salon { text-align: left; display: grid; gap: 3px; justify-items: start; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--color-borde);
+  background: var(--color-superficie); color: var(--color-tinta); cursor: pointer; }
+.rv-sn { font-size: 17px; font-weight: 700; }
+.rv-sd { font-size: 13px; color: var(--color-tinta-suave); }
+.rv-sc { font-size: 12px; font-weight: 600; color: var(--rv-teal-tx); }
+.rv-sc.pend { color: var(--color-aviso); }
+.rv-salon[aria-pressed="true"] { border-color: var(--rv-acento); box-shadow: 0 0 0 2px var(--rv-acento) inset; }
+.rv-salon:disabled { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+
+.rv-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.rv-chip { font-size: 13.5px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; }
+.rv-chip[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); border-color: transparent; font-weight: 600; }
+.rv-horas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 700px) { .rv-horas { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); } }
+.rv-hora { min-height: 58px; font-weight: 600; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; display: grid; justify-items: center; align-content: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.rv-hora small { font-size: 10.5px; font-weight: 500; color: var(--rv-teal-tx); line-height: 1.2; }
+.rv-hora small.pocas { color: var(--color-aviso); }
+.rv-hora:disabled { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-hora:disabled small { color: var(--color-tinta-suave); }
+.rv-hora[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); border-color: transparent; }
+.rv-hora[aria-pressed="true"] small { color: inherit; }
+.rv-nota { margin: 0; font-size: 13px; color: var(--color-tinta-suave); }
+
+.rv-campo { display: grid; gap: 5px; }
+.rv-campo label { font-size: 12.5px; color: var(--color-tinta-suave); font-weight: 500; }
+.rv-campo input, .rv-campo textarea { width: 100%; min-width: 0; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta); }
+.rv-campo textarea { min-height: 76px; resize: vertical; }
+.rv-campo input:focus-visible, .rv-campo textarea:focus-visible { outline: none; border-color: #32b49d; box-shadow: 0 0 0 3px rgba(50, 180, 157, 0.2); }
+.rv-ayuda { font-size: 12px; color: var(--color-tinta-suave); }
+.rv-opc { font-weight: 400; }
+.rv-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  background: var(--color-superficie); border: 1px solid var(--color-borde); font-size: 14px; cursor: pointer; }
+.rv-switch input, .rv-check input { accent-color: #32b49d; width: 18px; height: 18px; flex: none; }
+.rv-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--color-tinta-suave); cursor: pointer; }
+.rv-check input { margin-top: 1px; }
+.rv-check a { color: var(--color-tinta); text-decoration: underline; }
+.rv-trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.rv-nota-ubic { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--color-aviso-suave);
+  color: var(--color-aviso); font-size: 13px; line-height: 1.45; text-align: left; }
+.rv-nota-ubic svg { flex: none; margin-top: 2px; }
+.rv-nota-ubic.conf { width: 100%; max-width: 380px; }
+.rv-resumen { width: 100%; background: var(--color-superficie); border: 1px solid var(--color-borde); border-radius: 16px; padding: 4px 16px; text-align: left; }
+.rv-resumen div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--color-borde); font-size: 14px; }
+.rv-resumen div:first-child { border-top: 0; }
+.rv-resumen span { color: var(--color-tinta-suave); }
+
+.rv-barra { position: sticky; bottom: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--color-borde);
+  background: color-mix(in srgb, var(--color-superficie) 92%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.rv-res { flex: 1; min-width: 0; font-size: 13px; color: var(--color-tinta-suave); }
+.rv-res b { display: block; color: var(--color-tinta); font-size: 14.5px; }
+.rv-cta { font-weight: 700; font-size: 15px; height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--rv-acento);
+  color: var(--rv-acento-tx); cursor: pointer; white-space: nowrap; }
+.rv-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+.rv-pie { padding: 0 18px 18px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-tinta-suave); }
+
+.rv-final { padding: 34px 22px 18px; display: grid; gap: 16px; justify-items: center; text-align: center; }
+.rv-final h1 { margin: 0; font-size: 22px; font-weight: 700; outline: none; }
+.rv-final p { margin: 0; color: var(--color-tinta-suave); max-width: 40ch; font-size: 14px; }
+.rv-final .rv-resumen { max-width: 380px; }
+
+/* Animacion final (opcion A del mockup): el circulo se traza, adentro se
+   dibuja el check (o el reloj, si queda como solicitud), un pulso suave, y
+   despues sube el texto de a uno. Mientras espera la respuesta, la pantalla
+   muestra .rv-enviando con las sillas del simbolo girando. */
+.rv-pantalla { position: relative; }
+/* La capa cubre toda la pantalla (aunque el cliente haya bajado hasta el
+   boton); el contenido queda "pegado" al medio de lo que se ve. */
+.rv-enviando { position: absolute; inset: 0; z-index: 5; background: var(--color-fondo); animation: rv-aparecer 0.2s ease both; }
+.rv-env-in { position: sticky; top: calc(50vh - 50px); display: grid; justify-items: center; gap: 12px; padding-top: 18px;
+  color: var(--color-tinta-suave); font-size: 14px; }
+.rv-loader path { stroke: var(--rv-libre); animation: rv-cargar 1s linear infinite; animation-delay: calc(var(--i) * 0.125s); }
+.rv-loader circle { fill: var(--rv-mesa); }
+@keyframes rv-cargar { 0%, 20% { stroke: #32b49d; } 60%, 100% { stroke: var(--rv-libre); } }
+@keyframes rv-aparecer { from { opacity: 0; } }
+
+.rv-ok { position: relative; width: 76px; height: 76px; }
+.rv-ok svg { position: relative; z-index: 1; display: block; border-radius: 50%; background: var(--color-asistio-suave);
+  animation: rv-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.05s both; }
+.rv-ok-circ { fill: none; stroke: #32b49d; stroke-width: 3; stroke-dasharray: 100; animation: rv-dibujar 0.6s ease-out 0.05s both; }
+.rv-ok-trazo { fill: none; stroke: #32b49d; stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100;
+  animation: rv-dibujar 0.45s ease-out 0.5s both; }
+.rv-ok-pulso { position: absolute; inset: 0; border-radius: 50%; border: 2px solid #32b49d; opacity: 0; animation: rv-pulso 1s ease-out 0.8s both; }
+.rv-final.pend .rv-ok svg { background: var(--color-aviso-suave); }
+.rv-final.pend .rv-ok-circ, .rv-final.pend .rv-ok-trazo { stroke: var(--color-aviso); }
+.rv-final.pend .rv-ok-pulso { border-color: var(--color-aviso); }
+.rv-sube { animation: rv-subir 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.8s + var(--k, 0) * 0.1s); }
+@keyframes rv-dibujar { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes rv-pop { from { transform: scale(0.6); opacity: 0; } }
+@keyframes rv-pulso { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes rv-subir { from { opacity: 0; transform: translateY(14px); } }
+.rv-acciones { display: grid; gap: 8px; width: 100%; max-width: 380px; }
+.rv-sec { display: grid; place-items: center; height: 44px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); font-size: 14px; cursor: pointer; text-decoration: none; }
+.rv-volver { background: none; border: 0; color: var(--color-tinta-suave); text-decoration: underline; font-size: 13px; cursor: pointer; }
+.rv button:focus-visible, .rv a:focus-visible { outline: 2px solid #32b49d; outline-offset: 2px; }
+
+.rv-adelante { animation: rv-entrar-d 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rv-atras-anim { animation: rv-entrar-i 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes rv-entrar-d { from { opacity: 0; transform: translateX(24px); } }
+@keyframes rv-entrar-i { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .rv-adelante, .rv-atras-anim, .rv-enviando, .rv-loader path, .rv-ok svg, .rv-ok-circ, .rv-ok-trazo, .rv-ok-pulso, .rv-sube { animation: none; }
+}

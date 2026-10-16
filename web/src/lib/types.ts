@@ -99,6 +99,11 @@ export interface Reserva {
   // auto-tildan ni destildan entre sí.
   retirada: boolean;
   updatedAt: string;
+  // De dónde vino (la cargó el staff, el bot de WhatsApp o el cliente desde
+  // el link /reservar) y si una de esas dos últimas quedó a confirmar por el
+  // equipo. Opcionales para no romper filas armadas en el cliente.
+  origen?: "staff" | "bot" | "web";
+  estado?: "confirmada" | "pendienteBot";
 }
 
 // Una entrada en la lista de espera (gente sin reserva, esperando mesa).

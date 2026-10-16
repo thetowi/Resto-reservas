@@ -1,9 +1,13 @@
 namespace Barrancas.Api.Models;
 
-// Estado de una reserva frente al chatbot de WhatsApp (ver
-// claude/whatsapp-bot-reservas.md en el proyecto). Una reserva cargada por el
-// staff siempre es Confirmada (el default): este estado solo tiene sentido
-// real para las que vienen con OrigenReserva.Bot.
+// Estado de una reserva que entro sola, sin pasar por el staff: por el
+// chatbot de WhatsApp (ver claude/whatsapp-bot-reservas.md en el proyecto) o
+// por el link publico de reservas (OrigenReserva.Web, ver
+// ReservaOnlineService — mismas reglas). Una reserva cargada por el staff
+// siempre es Confirmada (el default): este estado solo tiene sentido real
+// para las que vienen con OrigenReserva.Bot o OrigenReserva.Web. El nombre
+// "PendienteBot" se mantiene por compatibilidad con la base: aplica igual a
+// las del link.
 public enum EstadoReserva
 {
     // El bot encontro mesa libre con la capacidad pedida y confirmo sola,

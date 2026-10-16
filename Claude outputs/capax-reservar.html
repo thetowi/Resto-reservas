@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reservar mesa</title>
+<style>
+:root {
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pg: #dde3e8; --pg-tinta: #13242e; --pg-suave: #5f6c74; --pg-borde: #c3ccd3;
+  --fondo: #f4f6f8; --sup: #ffffff; --tinta: #13242e; --suave: #6d7980; --borde: #d3dbe1;
+  --acento: #143d58; --acento-tx: #ffffff; --teal: #32b49d; --teal-suave: #e0f4f0; --teal-tx: #1d7a69;
+  --ambar: #b07a1c; --ambar-suave: #fbf1dc; --rojo: #c00000; --apagado: #eef1f4; --sim-m: #143d58;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --pg: #050505; --pg-tinta: #f2f2f2; --pg-suave: #8c8c8c; --pg-borde: #242426;
+  --fondo: #000; --sup: #0e0e0f; --tinta: #f2f2f2; --suave: #8c8c8c; --borde: #242426;
+  --acento: #32b49d; --acento-tx: #04221c; --teal-suave: #102f29; --teal-tx: #6fd3bf;
+  --ambar: #e0a942; --ambar-suave: #2a2210; --apagado: #141416; --sim-m: #f2f2f2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pg); color: var(--pg-tinta); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 24px; padding-block: 32px 64px; }
+.cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 20px; }
+.eyebrow { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--pg-suave); font-weight: 600; }
+h1 { margin: 6px 0 8px; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: -.015em; }
+.cab p { margin: 0; max-width: 68ch; color: var(--pg-suave); font-size: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--pg-borde); border-radius: 10px; padding: 3px; background: color-mix(in srgb, var(--sup) 70%, transparent); }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--pg-suave); padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #143d58; color: #fff; }
+.controles { display: flex; gap: 10px; flex-wrap: wrap; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+.escena { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; align-items: start; }
+.compartir { display: grid; gap: 14px; position: sticky; top: 20px; }
+.tarjeta-p { background: color-mix(in srgb, var(--sup) 80%, transparent); border: 1px solid var(--pg-borde); border-radius: 16px; padding: 16px; }
+.tarjeta-p h3 { margin: 0 0 6px; font-size: 14px; }
+.tarjeta-p p { margin: 0; font-size: 13px; color: var(--pg-suave); }
+.link { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--sup); border: 1px solid var(--pg-borde);
+  font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--pg-tinta); overflow: hidden; }
+.link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qr { width: 120px; height: 120px; margin-top: 10px; background: #fff; border-radius: 10px; padding: 8px; }
+.toggles { display: grid; gap: 6px; margin-top: 10px; }
+.toggles label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 10px;
+  background: var(--sup); border: 1px solid var(--pg-borde); font-size: 13.5px; color: var(--pg-tinta); cursor: pointer; }
+.toggles label small { color: var(--pg-suave); font-size: 11.5px; margin-left: 6px; }
+.toggles input { accent-color: #32b49d; width: 16px; height: 16px; }
+.donde { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--pg-suave); }
+
+/* Marco del dispositivo */
+.dispositivo { margin: 0 auto; width: 100%; transition: max-width .3s ease; }
+.dispositivo.movil { max-width: 400px; }
+.dispositivo.compu { max-width: 860px; }
+.pantalla { background: var(--fondo); color: var(--tinta); border-radius: 28px; border: 1px solid var(--pg-borde); overflow: hidden;
+  box-shadow: 0 30px 70px -40px rgba(0,0,0,.55); position: relative; height: 780px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; }
+.pantalla > * { flex: none; }
+.pantalla > .pie { margin-top: auto; padding-top: 18px; }
+.compu .pantalla { border-radius: 14px; height: 680px; }
+
+/* Página pública */
+.hero { padding: 28px 22px 22px; background: linear-gradient(160deg, #0c2637, #143d58 60%, #1d5a6e); color: #f2f2f2; position: relative; overflow: hidden; }
+:root[data-theme="dark"] .hero { background: linear-gradient(160deg, #0e0e0f, #102a35); }
+.hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%;
+  border: 14px dashed rgba(50,180,157,.35); }
+.hero > * { position: relative; z-index: 1; }
+.hero::after { z-index: 0; opacity: .7; }
+.hero .lugar { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; opacity: .75; font-weight: 600; }
+.hero h2 { margin: 6px 0 6px; font-size: 26px; letter-spacing: -.01em; }
+.hero p { margin: 0; font-size: 13.5px; opacity: .8; max-width: 40ch; }
+.hero .datos { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; font-size: 12.5px; opacity: .85; }
+.form { padding: 18px 18px 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.compu .form { padding: 24px 28px 24px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; }
+.compu .paso.ancho { grid-column: 1 / -1; }
+.paso { display: grid; gap: 10px; }
+.paso h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.paso h3 .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--acento); color: var(--acento-tx); }
+.paso h3 small { font-weight: 400; color: var(--suave); font-size: 12.5px; }
+.contador { display: flex; align-items: center; gap: 14px; }
+.contador button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); font-size: 20px; cursor: pointer; }
+.contador .v { font-size: 22px; font-weight: 700; min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+.contador .v small { display: block; font-size: 12px; font-weight: 400; color: var(--suave); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip-b { font: inherit; font-size: 13.5px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); cursor: pointer; }
+.chip-b[aria-pressed="true"] { background: var(--acento); color: var(--acento-tx); border-color: transparent; font-weight: 600; }
+.aviso { font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--ambar-suave); color: var(--ambar); }
+.dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.dia { flex: none; width: 62px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta);
+  font: inherit; cursor: pointer; display: grid; justify-items: center; gap: 1px; }
+.dia .dsem { font-size: 11px; text-transform: uppercase; color: var(--suave); letter-spacing: .05em; }
+.dia .num { font-size: 19px; font-weight: 700; }
+.dia .est { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); margin-top: 3px; }
+.dia.pocos .est { background: var(--ambar); }
+.dia.lleno, .dia.bloq { background: var(--apagado); color: var(--suave); cursor: not-allowed; }
+.dia.lleno .est, .dia.bloq .est { background: transparent; border: 1px solid var(--suave); }
+.dia[aria-pressed="true"] { background: var(--acento); border-color: transparent; color: var(--acento-tx); }
+.dia[aria-pressed="true"] .dsem { color: inherit; opacity: .8; }
+.dia[aria-pressed="true"] .est { background: currentColor; }
+.ley { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--suave); }
+.ley span { display: inline-flex; align-items: center; gap: 5px; }
+.ley i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+.ley i.p { background: var(--ambar); } .ley i.n { background: transparent; border: 1px solid var(--suave); }
+.horas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.compu .horas { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.hora { font: inherit; font-weight: 600; padding: 10px 0; border-radius: 12px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); cursor: pointer;
+  display: grid; justify-items: center; gap: 0; font-variant-numeric: tabular-nums; }
+.hora { min-height: 58px; align-content: center; gap: 2px; }
+.hora small { font-size: 10.5px; font-weight: 500; color: var(--teal-tx); line-height: 1.2; }
+.hora small.pocas { color: var(--ambar); }
+.hora:disabled { background: var(--apagado); color: var(--suave); cursor: not-allowed; }
+.hora:disabled small { color: var(--suave); }
+.hora[aria-pressed="true"] { background: var(--acento); color: var(--acento-tx); border-color: transparent; }
+.hora[aria-pressed="true"] small { color: inherit; }
+.campo { display: grid; gap: 5px; }
+.campo label { font-size: 12.5px; color: var(--suave); font-weight: 500; }
+.campo input, .campo textarea { font: inherit; font-size: 14.5px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); }
+.campo textarea { min-height: 70px; resize: vertical; }
+.fila2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.campo input, .campo textarea { width: 100%; min-width: 0; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--suave); }
+.check input { margin-top: 3px; accent-color: var(--teal); width: 16px; height: 16px; }
+.check a { color: var(--tinta); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--sup); border: 1px solid var(--borde); font-size: 14px; }
+.switch input { accent-color: var(--teal); width: 18px; height: 18px; }
+.barra-res { position: sticky; bottom: 0; padding: 12px 16px; background: color-mix(in srgb, var(--sup) 92%, transparent);
+  backdrop-filter: blur(8px); border-top: 1px solid var(--borde); display: flex; align-items: center; gap: 12px; }
+.barra-res .res { flex: 1; min-width: 0; font-size: 13px; color: var(--suave); }
+.barra-res .res b { display: block; color: var(--tinta); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cta { font: inherit; font-weight: 700; font-size: 15px; height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--acento); color: var(--acento-tx); cursor: pointer; white-space: nowrap; }
+.cta:disabled { opacity: .45; cursor: not-allowed; }
+.pie { padding: 0 18px 18px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 11.5px; color: var(--suave); }
+.pie .sim { color: var(--sim-m); } .pie .wmk { color: var(--tinta); }
+
+/* Confirmación */
+.ok { padding: 30px 22px 26px; display: grid; gap: 16px; justify-items: center; text-align: center; }
+.ok .circ { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--teal-suave); color: var(--teal-tx); }
+.ok.pend .circ { background: var(--ambar-suave); color: var(--ambar); }
+.ok h2 { margin: 0; font-size: 22px; }
+.ok p { margin: 0; color: var(--suave); max-width: 38ch; font-size: 14px; }
+.resumen { width: 100%; max-width: 360px; text-align: left; background: var(--sup); border: 1px solid var(--borde); border-radius: 16px; padding: 4px 16px; }
+.resumen div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--borde); font-size: 14px; }
+.resumen div:first-child { border-top: 0; }
+.resumen span { color: var(--suave); }
+.acciones { display: grid; gap: 8px; width: 100%; max-width: 360px; }
+.sec { font: inherit; font-size: 14px; height: 44px; border-radius: 12px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); cursor: pointer; }
+.volver { font: inherit; font-size: 13px; background: none; border: 0; color: var(--suave); text-decoration: underline; cursor: pointer; }
+
+
+/* Asistente pantalla por pantalla */
+.barra-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--sup); border-bottom: 1px solid var(--borde); }
+.atras { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); display: grid; place-items: center; cursor: pointer; }
+.lugar-c { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--suave); }
+.progreso { display: flex; gap: 5px; padding: 12px 18px 0; }
+.progreso i { flex: 1; height: 4px; border-radius: 99px; background: var(--borde); }
+.progreso i.hecho { background: var(--teal); }
+.vista { padding: 18px 18px 24px; display: grid; gap: 16px; }
+.compu .vista { max-width: 640px; width: 100%; margin: 0 auto; padding: 26px 28px 28px; }
+.compu .progreso { max-width: 640px; margin: 0 auto; padding-inline: 28px; }
+.titulo { margin: 0; font-size: 24px; letter-spacing: -.015em; line-height: 1.2; }
+.contexto { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+.contexto span { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--apagado); color: var(--suave); }
+.cuerpo-p { display: grid; gap: 16px; }
+.bloque { display: grid; gap: 10px; }
+.bloque .et { font-size: 13px; font-weight: 600; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; }
+.bloque .et .sel { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; color: var(--tinta); }
+.salones { display: grid; gap: 10px; align-content: start; }
+.salon-op { font: inherit; text-align: left; display: grid; gap: 3px; align-content: start; justify-items: start; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--borde); background: var(--sup); color: var(--tinta); cursor: pointer; }
+.salon-op .sn { font-size: 17px; font-weight: 700; }
+.salon-op .sd { font-size: 13px; color: var(--suave); }
+.salon-op .sc { font-size: 12px; font-weight: 600; color: var(--teal-tx); }
+.salon-op .sc.pend { color: var(--ambar); }
+.salon-op[aria-pressed="true"] { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento) inset; }
+.salon-op:disabled { background: var(--apagado); color: var(--suave); cursor: not-allowed; }
+.nota { margin: 0; font-size: 12.5px; color: var(--suave); }
+.nota-ubic { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--ambar-suave); color: var(--ambar); font-size: 13px; line-height: 1.45; }
+.nota-ubic svg { flex: none; margin-top: 2px; }
+.nota-ubic.conf { max-width: 360px; text-align: left; }
+.ayuda { font-size: 12px; color: var(--suave); }
+.opc { font-weight: 400; }
+.resumen.chico { max-width: none; }
+.adelante { animation: entrar-d .28s cubic-bezier(.2,.8,.2,1) both; }
+.atras-anim { animation: entrar-i .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes entrar-d { from { opacity: 0; transform: translateX(24px); } }
+@keyframes entrar-i { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) { .adelante, .atras-anim { animation: none; } }
+
+@media (max-width: 900px) { .escena { grid-template-columns: minmax(0, 1fr); } .compartir { position: static; order: 2; } }
+@media (max-width: 520px) { .wrap { padding-inline: 12px; } .compu .form { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .dispositivo { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="cab">
+    <div>
+      <div class="eyebrow">capax · reservas online</div>
+      <h1>El link para que el cliente reserve solo</h1>
+      <p>Una página pública con la marca del restaurante, <b>pantalla por pantalla</b>: primero cuántos son y qué día,
+        después el salón (solo si hay más de uno habilitado), el horario entre los que <b>realmente tienen lugar</b>, los
+        datos y un último paso con el resumen. La reserva aparece en el panel en tiempo real. Es interactiva: probala.
+        Datos de ejemplo.</p>
+    </div>
+    <div class="controles">
+      <div class="seg" role="group" aria-label="Dispositivo">
+        <button type="button" id="v-movil" aria-pressed="true">Celular</button>
+        <button type="button" id="v-compu" aria-pressed="false">Computadora</button>
+      </div>
+      <div class="seg" role="group" aria-label="Tema">
+        <button type="button" id="b-claro" aria-pressed="true">Claro</button>
+        <button type="button" id="b-oscuro" aria-pressed="false">Ónix</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="escena">
+    <aside class="compartir">
+      <div class="tarjeta-p">
+        <h3>El link</h3>
+        <p>Cada cliente de capax tiene el suyo, con su nombre.</p>
+        <div class="link"><span>reservas.capax.app/barrancas</span></div>
+      </div>
+      <div class="tarjeta-p">
+        <h3>Dónde se comparte</h3>
+        <ul class="donde"><li>Bio de Instagram y Google Maps</li><li>Respuesta automática de WhatsApp</li><li>QR en la mesa, el lobby o la habitación</li><li>Botón «Reservar» de la web del hotel</li></ul>
+        <svg class="qr" viewBox="0 0 29 29" aria-label="QR de ejemplo" role="img" id="qr"></svg>
+      </div>
+      <div class="tarjeta-p">
+        <h3>Probá: salones habilitados</h3>
+        <p>Como en /admin/salones. El link solo muestra los salones activos; si queda uno solo, ni siquiera pregunta «¿Dónde?».</p>
+        <div class="toggles" id="toggles"></div>
+      </div>
+      <div class="tarjeta-p">
+        <h3>Reglas (las mismas del bot)</h3>
+        <p>Se confirma sola si hay mesa libre, son menos de 6 y es en el Restaurant. Grupos grandes, otros salones o
+          fechas bloqueadas quedan como <b>solicitud</b> y el equipo confirma por WhatsApp.</p>
+      </div>
+    </aside>
+
+    <div class="dispositivo movil" id="disp">
+      <div class="pantalla" id="pantalla"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Salones como en /admin/salones: solo se ofrecen los activos. Todos tienen
+// Almuerzo y Cena; Merienda solo los que la tienen habilitada.
+const SALONES = [
+  { id: "restaurant", nombre: "Restaurant", activo: true, merienda: false, auto: true },
+  { id: "bar", nombre: "Bar", activo: true, merienda: false, auto: false },
+  { id: "parrilla", nombre: "Parrilla", activo: false, merienda: false, auto: false },
+  { id: "aqua", nombre: "Aqua Bar", activo: false, merienda: true, auto: false },
+];
+const turnosDe = s => ["almuerzo", ...(s.merienda ? ["merienda"] : []), "cena"];
+const activos = () => SALONES.filter(s => s.activo);
+// Horarios de la planilla (los mismos de HorariosDefault.cs): cada 15 minutos.
+const HORARIOS = {
+  almuerzo: ["12:30", "12:45", "13:00", "13:15", "13:30", "13:45", "14:00"],
+  merienda: ["16:00", "16:30", "17:00", "17:30", "18:00"],
+  cena: ["20:30", "20:45", "21:00", "21:15", "21:30", "21:45", "22:00"],
+};
+const NOMBRE_T = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
+const SEM = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+// 14 días desde el viernes 16/10/2026. Estado por día (de ejemplo).
+const HOY = new Date(2026, 9, 16);
+const DIAS = Array.from({ length: 14 }, (_, i) => {
+  const d = new Date(HOY); d.setDate(HOY.getDate() + i);
+  let est = "ok";
+  if (i === 1) est = "pocos";
+  if (i === 3) est = "bloq";       // fecha bloqueada para reservas online (ej. evento)
+  if (i === 8) est = "lleno";
+  if (i === 9) est = "pocos";
+  return { d, est, i };
+});
+// Disponibilidad de horarios (pseudoaleatoria y fija por día+turno+horario).
+function dispo(diaI, turno, h, pax) {
+  const k = (diaI * 31 + h.charCodeAt(1) * 7 + h.charCodeAt(3) * 13 + turno.length * 17) % 10;
+  const est = DIAS[diaI].est;
+  if (est === "lleno" || est === "bloq") return "no";
+  const umbral = est === "pocos" ? 5 : 2;
+  if (k < umbral || (pax >= 6 && k < umbral + 2)) return "no";
+  if (k < umbral + 2) return "pocas";
+  return "si";
+}
+
+const S = { pax: 2, salon: "restaurant", dia: 1, turno: "cena", hora: null, nombre: "", tel: "", huesped: false, hab: "", ocasion: null, coment: "", acepta: false, enviada: false, paso: 0, dir: 1 };
+function salonSel() {
+  const act = activos();
+  let s = act.find(x => x.id === S.salon);
+  if (!s) { s = act[0]; if (s) S.salon = s.id; }
+  return s;
+}
+// Pantallas del recorrido. «salon» solo aparece si hay más de un salón activo.
+function pasos() {
+  return ["cuando", ...(activos().length > 1 ? ["salon"] : []), "horario", "datos", "detalles"];
+}
+const fechaTxt = d => `${SEM[d.getDay()]} ${d.getDate()} de ${MES[d.getMonth()]}`;
+const personasTxt = n => `${n} ${n === 1 ? "persona" : "personas"}`;
+const confirmaSola = sal => S.pax < 6 && sal.auto;
+function libresDelDia(sal) {
+  return turnosDe(sal).reduce((acc, t) => acc + HORARIOS[t].filter(h => dispo(S.dia, t, h, S.pax) !== "no").length, 0);
+}
+function valido(paso) {
+  if (paso === "horario") return !!S.hora;
+  if (paso === "datos") return !!(S.nombre.trim() && S.tel.trim() && (!S.huesped || S.hab.trim()));
+  if (paso === "detalles") return S.acepta;
+  return true;
+}
+
+function pantalla() {
+  if (S.enviada) return confirmacion();
+  const sal = salonSel();
+  if (!sal) return `<div class="ok pend"><h2>Sin reservas online</h2><p>Por ahora no estamos tomando reservas por este medio. Escribinos por WhatsApp.</p></div>`;
+  if (!turnosDe(sal).includes(S.turno)) S.turno = turnosDe(sal)[0];
+  const lista = pasos();
+  S.paso = Math.min(S.paso, lista.length - 1);
+  const paso = lista[S.paso];
+  const dsel = DIAS[S.dia].d;
+  const varios = activos().length > 1;
+  const ultimo = S.paso === lista.length - 1;
+
+  // Lo ya elegido, como contexto arriba de cada pantalla (no en la primera)
+  const contexto = [];
+  if (S.paso > 0) contexto.push(personasTxt(S.pax), fechaTxt(dsel));
+  if (S.paso > lista.indexOf("salon") && varios) contexto.push(sal.nombre);
+  if (S.paso > lista.indexOf("horario")) contexto.push(`${S.hora} · ${NOMBRE_T[S.turno]}`);
+
+  let titulo = "", cuerpo = "";
+  if (paso === "cuando") {
+    titulo = "¿Cuántos son y qué día?";
+    cuerpo = `
+      <div class="bloque"><div class="et">Personas</div>
+        <div class="contador">
+          <button type="button" data-a="menos" aria-label="Una persona menos">−</button>
+          <div class="v">${S.pax}<small>${S.pax === 1 ? "persona" : "personas"}</small></div>
+          <button type="button" data-a="mas" aria-label="Una persona más">+</button>
+        </div>
+        ${S.pax >= 6 ? `<div class="aviso">Para grupos de 6 o más tomamos la solicitud y te confirmamos por WhatsApp.</div>` : ""}
+      </div>
+      <div class="bloque"><div class="et">Día <span class="sel">${fechaTxt(dsel)}</span></div>
+        <div class="dias" role="group" aria-label="Días">${DIAS.map(x => `<button type="button" class="dia ${x.est}" data-dia="${x.i}" aria-pressed="${x.i === S.dia}" ${x.est === "lleno" || x.est === "bloq" ? 'aria-disabled="true"' : ""} title="${x.est === "bloq" ? "Sin reservas online este día" : x.est === "lleno" ? "Completo" : x.est === "pocos" ? "Pocos lugares" : "Hay lugar"}"><span class="dsem">${x.i === 0 ? "Hoy" : SEM[x.d.getDay()]}</span><span class="num">${x.d.getDate()}</span><span class="est"></span></button>`).join("")}</div>
+        <div class="ley"><span><i></i>Hay lugar</span><span><i class="p"></i>Pocos lugares</span><span><i class="n"></i>Completo o sin reservas online</span></div>
+      </div>`;
+  } else if (paso === "salon") {
+    titulo = "¿En qué salón?";
+    cuerpo = `<div class="salones">${activos().map(x => {
+      const libres = libresDelDia(x), sola = confirmaSola(x);
+      return `<button type="button" class="salon-op" data-salon="${x.id}" aria-pressed="${x.id === S.salon}" ${libres ? "" : "disabled"}>
+        <span class="sn">${x.nombre}</span>
+        <span class="sd">${libres ? `${turnosDe(x).map(t => NOMBRE_T[t]).join(" · ")}` : "Sin lugar este día"}</span>
+        <span class="sc ${sola ? "si" : "pend"}">${libres ? (sola ? "Confirmación inmediata" : "Te confirmamos por WhatsApp") : ""}</span>
+      </button>`; }).join("")}</div>`;
+  } else if (paso === "horario") {
+    titulo = "¿A qué hora?";
+    cuerpo = `
+      <div class="chips">${turnosDe(sal).map(t => `<button type="button" class="chip-b" data-turno="${t}" aria-pressed="${t === S.turno}">${NOMBRE_T[t]}</button>`).join("")}</div>
+      <div class="horas" style="--n:${HORARIOS[S.turno].length}">${HORARIOS[S.turno].map(h => { const d = dispo(S.dia, S.turno, h, S.pax); return `<button type="button" class="hora" data-hora="${h}" aria-pressed="${h === S.hora}" ${d === "no" ? "disabled" : ""}>${h}${d === "pocas" ? '<small class="pocas">Últimas mesas</small>' : d === "no" ? "<small>Sin lugar</small>" : "<small>Disponible</small>"}</button>`; }).join("")}</div>
+      ${!varios ? `<p class="nota">${sal.nombre} · ${NOMBRE_T[S.turno].toLowerCase()} de ${HORARIOS[S.turno][0]} a ${HORARIOS[S.turno].at(-1)} h</p>` : ""}`;
+  } else if (paso === "datos") {
+    titulo = "Tus datos";
+    cuerpo = `
+      <div class="campo"><label for="f-nombre">Nombre y apellido</label><input id="f-nombre" data-f="nombre" value="${esc(S.nombre)}" autocomplete="name" placeholder="Ej. Laura Gómez"></div>
+      <div class="campo"><label for="f-tel">WhatsApp</label><input id="f-tel" data-f="tel" value="${esc(S.tel)}" inputmode="tel" autocomplete="tel" placeholder="11 5555-5555"><span class="ayuda">Te mandamos la confirmación por acá.</span></div>
+      <label class="switch" for="f-huesped">¿Estás alojado en el hotel?<input type="checkbox" id="f-huesped" data-f="huesped" ${S.huesped ? "checked" : ""}></label>
+      ${S.huesped ? `<div class="campo"><label for="f-hab">Número de habitación</label><input id="f-hab" data-f="hab" value="${esc(S.hab)}" inputmode="numeric"></div>` : ""}`;
+  } else {
+    titulo = "¿Algo que debamos saber?";
+    cuerpo = `
+      <div class="chips">${["Cumpleaños", "Aniversario", "Negocios", "Silla para bebé"].map(o => `<button type="button" class="chip-b" data-ocasion="${o}" aria-pressed="${o === S.ocasion}">${o}</button>`).join("")}</div>
+      <div class="campo"><label for="f-coment">Alergias, preferencias o pedidos <span class="opc">(opcional)</span></label><textarea id="f-coment" data-f="coment" placeholder="Ej. celíaco, mesa cerca de la ventana" aria-describedby="nota-ubic">${esc(S.coment)}</textarea></div>
+      <div class="nota-ubic" id="nota-ubic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>
+        <span>Los pedidos de ubicación, como <b>mesa cerca de la ventana</b>, están <b>sujetos a disponibilidad</b>: los tenemos en cuenta, pero no podemos garantizarlos.</span></div>
+      <div class="resumen chico">
+        <div><span>Día</span><b>${fechaTxt(dsel)}</b></div>
+        <div><span>Horario</span><b>${S.hora} · ${NOMBRE_T[S.turno]}</b></div>
+        <div><span>Personas</span><b>${S.pax}</b></div>
+        ${varios ? `<div><span>Salón</span><b>${sal.nombre}</b></div>` : ""}
+        <div><span>A nombre de</span><b>${esc(S.nombre)}</b></div>
+      </div>
+      <label class="check"><input type="checkbox" data-f="acepta" ${S.acepta ? "checked" : ""}><span>Acepto que Hotel Barrancas use mis datos para gestionar la reserva y avisarme por WhatsApp. <a href="#" onclick="return false">Política de privacidad</a></span></label>`;
+  }
+
+  const textoCta = ultimo ? (confirmaSola(sal) ? "Reservar" : "Enviar solicitud") : "Continuar";
+  return `
+  ${S.paso === 0 ? `<header class="hero">
+    <div class="lugar">Hotel Barrancas</div>
+    <h2>Reservá tu mesa</h2>
+    <p>Elegí el día y el horario entre los que tienen lugar.</p>
+    <div class="datos"><span>Almuerzo de 12:30 a 14:00 h</span>${activos().some(x => x.merienda) ? "<span>Merienda de 16:00 a 18:00 h</span>" : ""}<span>Cena de 20:30 a 22:00 h</span></div>
+  </header>` : `<header class="barra-top">
+    <button type="button" class="atras" data-a="atras" aria-label="Volver al paso anterior"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span class="lugar-c">Hotel Barrancas</span>
+  </header>`}
+  <div class="progreso" aria-hidden="true">${lista.map((_, i) => `<i class="${i <= S.paso ? "hecho" : ""}"></i>`).join("")}</div>
+  <div class="vista ${S.dir > 0 ? "adelante" : "atras-anim"}" aria-live="polite">
+    <h2 class="titulo">${titulo}</h2>
+    ${contexto.length ? `<div class="contexto">${contexto.map(c => `<span>${c}</span>`).join("")}</div>` : ""}
+    <div class="cuerpo-p">${cuerpo}</div>
+  </div>
+  <div class="pie">Reservas con <svg class="sim" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><g fill="none" stroke-width="5.2" stroke-linecap="round"><path d="M20.15 5.90A18.5 18.5 0 0 1 27.85 5.90" pathLength="100" class="capax-silla capax-s1 capax-ocupada" stroke="#32b49d"/><path d="M34.08 8.48A18.5 18.5 0 0 1 39.52 13.92" pathLength="100" class="capax-silla capax-s2 capax-ocupada" stroke="#32b49d"/><path d="M42.10 20.15A18.5 18.5 0 0 1 42.10 27.85" pathLength="100" class="capax-silla capax-s3 capax-ocupada" stroke="#32b49d"/><path d="M39.52 34.08A18.5 18.5 0 0 1 34.08 39.52" pathLength="100" class="capax-silla capax-s4 capax-ocupada" stroke="#32b49d"/><path d="M27.85 42.10A18.5 18.5 0 0 1 20.15 42.10" pathLength="100" class="capax-silla capax-s5 capax-ocupada" stroke="#32b49d"/><path d="M13.92 39.52A18.5 18.5 0 0 1 8.48 34.08" pathLength="100" class="capax-silla capax-s6" stroke="currentColor" stroke-opacity="0.26"/><path d="M5.90 27.85A18.5 18.5 0 0 1 5.90 20.15" pathLength="100" class="capax-silla capax-s7" stroke="currentColor" stroke-opacity="0.26"/><path d="M8.48 13.92A18.5 18.5 0 0 1 13.92 8.48" pathLength="100" class="capax-silla capax-s8" stroke="currentColor" stroke-opacity="0.26"/></g><circle cx="24" cy="24" r="9.5" fill="currentColor" class="capax-mesa"/></svg><svg class="wmk" viewBox="0 0 287.93 74.13" width="31.7" height="8.2" role="img" aria-label="capax" style="overflow:visible"><path d="M26.9 55.75Q19.17 55.75 13.06 52.32Q6.94 48.9 3.47 42.94Q0 36.97 0 29.44Q0 23.28 2.35 17.9Q4.69 12.52 8.8 8.51Q12.91 4.5 18.34 2.25Q23.77 0 30.03 0Q36.09 0 41.08 2.1Q46.06 4.21 49.49 7.92Q52.91 11.64 54.18 16.63L41.17 21.71Q40.1 17.7 37.07 15.45Q34.04 13.2 29.83 13.2Q25.43 13.2 22.15 15.45Q18.88 17.7 17.07 21.42Q15.26 25.14 15.26 29.44Q15.26 33.35 16.72 36.28Q18.19 39.22 20.88 40.88Q23.57 42.54 27.09 42.54Q31.69 42.54 35.11 40.1Q38.53 37.65 40.2 33.64L52.62 39.61Q50.76 44.3 46.99 47.97Q43.23 51.64 38.05 53.69Q32.86 55.75 26.9 55.75Z" pathLength="100" class="capax-letra capax-l1" fill="currentColor"/><path d="M73.94 55.75Q68.56 55.75 64.55 54.08Q60.54 52.42 58.34 49.15Q56.14 45.87 56.14 41.17Q56.14 35.89 58.83 32.23Q61.52 28.56 66.16 26.31Q70.81 24.06 76.68 23.18L92.42 20.73L92.62 19.36Q92.91 17.12 91.84 15.55Q90.76 13.99 88.8 13.11Q86.85 12.23 84.5 12.23Q80.3 12.23 76.97 14.52Q73.65 16.82 71.98 20.34L60.64 14.18Q62.69 9.68 66.41 6.55Q70.12 3.42 75.01 1.71Q79.9 0 85.38 0Q92.13 0 97.36 2.54Q102.59 5.09 105.38 9.58Q108.17 14.08 107.29 20.05L102.5 54.57H88.71L89.29 50.47Q88.61 50.95 88.02 51.44Q84.99 53.69 81.52 54.72Q78.05 55.75 73.94 55.75ZM90.96 31.59 78.73 33.84Q75.7 34.43 73.5 35.94Q71.3 37.46 71.3 40.29Q71.3 42.74 73.06 43.86Q74.82 44.99 77.56 44.99Q81.18 44.99 83.96 43.33Q86.75 41.66 88.56 38.93Q90.37 36.19 90.76 32.96Z" pathLength="100" class="capax-letra capax-l2" fill="currentColor"/><path d="M108.56 74.13 118.73 1.17H132.52L132.13 4.4Q133.89 3.03 136.04 2.05Q140.64 0 146.31 0Q153.75 0 159.52 3.47Q165.29 6.94 168.66 12.86Q172.03 18.78 172.03 26.21Q172.03 32.27 169.78 37.65Q167.54 43.03 163.57 47.09Q159.61 51.15 154.38 53.45Q149.15 55.75 143.08 55.75Q137.12 55.75 132.33 53.6Q129.29 52.32 127.14 50.37L123.92 74.13ZM141.52 42.54Q146.02 42.54 149.44 40.39Q152.86 38.24 154.82 34.52Q156.78 30.81 156.78 26.21Q156.78 22.4 155.21 19.46Q153.65 16.53 150.86 14.87Q148.07 13.2 144.26 13.2Q139.86 13.2 136.48 15.4Q133.11 17.6 131.25 21.32Q129.39 25.04 129.39 29.63Q129.39 33.45 130.91 36.38Q132.42 39.32 135.16 40.93Q137.9 42.54 141.52 42.54Z" pathLength="100" class="capax-letra capax-l3" fill="currentColor"/><path d="M192.77 55.75Q187.39 55.75 183.38 54.08Q179.37 52.42 177.17 49.15Q174.97 45.87 174.97 41.17Q174.97 35.89 177.66 32.23Q180.35 28.56 184.99 26.31Q189.64 24.06 195.51 23.18L211.25 20.73L211.45 19.36Q211.74 17.12 210.67 15.55Q209.59 13.99 207.63 13.11Q205.68 12.23 203.33 12.23Q199.13 12.23 195.8 14.52Q192.47 16.82 190.81 20.34L179.47 14.18Q181.52 9.68 185.24 6.55Q188.95 3.42 193.84 1.71Q198.73 0 204.21 0Q210.96 0 216.19 2.54Q221.42 5.09 224.21 9.58Q227 14.08 226.12 20.05L221.33 54.57H207.54L208.12 50.47Q207.44 50.95 206.85 51.44Q203.82 53.69 200.35 54.72Q196.88 55.75 192.77 55.75ZM209.79 31.59 197.56 33.84Q194.53 34.43 192.33 35.94Q190.13 37.46 190.13 40.29Q190.13 42.74 191.89 43.86Q193.65 44.99 196.39 44.99Q200.01 44.99 202.79 43.33Q205.58 41.66 207.39 38.93Q209.2 36.19 209.59 32.96Z" pathLength="100" class="capax-letra capax-l4" fill="currentColor"/><path d="M225.83 54.57 248.52 27.38 233.75 1.17H249.69L258 16.43L270.42 1.17H287.93L265.44 27.78L280.3 54.57H264.65L255.95 38.73L243.23 54.57Z" pathLength="100" class="capax-letra capax-l5" fill="#32b49d"/></svg></div>
+  <div class="barra-res">
+    <div class="res"><b>Paso ${S.paso + 1} de ${lista.length}</b>Sujeto a disponibilidad</div>
+    <button type="button" class="cta" data-a="${ultimo ? "enviar" : "seguir"}" ${valido(paso) ? "" : "disabled"}>${textoCta}</button>
+  </div>`;
+}
+
+function confirmacion() {
+  const sal = salonSel(), dsel = DIAS[S.dia].d;
+  const auto = S.pax < 6 && sal.auto;
+  const icono = auto
+    ? '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+  return `<div class="ok ${auto ? "" : "pend"}">
+    <div class="circ">${icono}</div>
+    <h2>${auto ? "¡Reserva confirmada!" : "Recibimos tu solicitud"}</h2>
+    <p>${auto ? `Te esperamos, ${esc(S.nombre.split(" ")[0] || "")}. Te mandamos la confirmación por WhatsApp y un recordatorio el día anterior.`
+              : `Te vamos a escribir por WhatsApp para confirmarla en las próximas horas. Todavía no está confirmada.`}</p>
+    <div class="resumen">
+      <div><span>Día</span><b>${SEM[dsel.getDay()]} ${dsel.getDate()} de ${MES[dsel.getMonth()]}</b></div>
+      <div><span>Horario</span><b>${S.hora} · ${NOMBRE_T[S.turno]}</b></div>
+      <div><span>Personas</span><b>${S.pax}</b></div>
+      <div><span>Lugar</span><b>${sal.nombre}</b></div>
+      ${auto ? `<div><span>Código</span><b>BAR-4821</b></div>` : ""}
+    </div>
+    ${S.coment.trim() ? `<div class="nota-ubic conf"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg><span>Anotamos tu pedido: «${esc(S.coment.trim())}». La ubicación de la mesa está sujeta a disponibilidad.</span></div>` : ""}
+    <div class="acciones">
+      ${auto ? '<button type="button" class="sec">Agregar al calendario</button><button type="button" class="sec">Cómo llegar</button><button type="button" class="sec">Cambiar o cancelar la reserva</button>' : '<button type="button" class="sec">Escribirnos por WhatsApp</button>'}
+    </div>
+    <button type="button" class="volver" data-a="reiniciar">Hacer otra reserva (volver al inicio del mockup)</button>
+  </div>
+  <div class="pie">Reservas con <svg class="sim" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><g fill="none" stroke-width="5.2" stroke-linecap="round"><path d="M20.15 5.90A18.5 18.5 0 0 1 27.85 5.90" pathLength="100" class="capax-silla capax-s1 capax-ocupada" stroke="#32b49d"/><path d="M34.08 8.48A18.5 18.5 0 0 1 39.52 13.92" pathLength="100" class="capax-silla capax-s2 capax-ocupada" stroke="#32b49d"/><path d="M42.10 20.15A18.5 18.5 0 0 1 42.10 27.85" pathLength="100" class="capax-silla capax-s3 capax-ocupada" stroke="#32b49d"/><path d="M39.52 34.08A18.5 18.5 0 0 1 34.08 39.52" pathLength="100" class="capax-silla capax-s4 capax-ocupada" stroke="#32b49d"/><path d="M27.85 42.10A18.5 18.5 0 0 1 20.15 42.10" pathLength="100" class="capax-silla capax-s5 capax-ocupada" stroke="#32b49d"/><path d="M13.92 39.52A18.5 18.5 0 0 1 8.48 34.08" pathLength="100" class="capax-silla capax-s6" stroke="currentColor" stroke-opacity="0.26"/><path d="M5.90 27.85A18.5 18.5 0 0 1 5.90 20.15" pathLength="100" class="capax-silla capax-s7" stroke="currentColor" stroke-opacity="0.26"/><path d="M8.48 13.92A18.5 18.5 0 0 1 13.92 8.48" pathLength="100" class="capax-silla capax-s8" stroke="currentColor" stroke-opacity="0.26"/></g><circle cx="24" cy="24" r="9.5" fill="currentColor" class="capax-mesa"/></svg><svg class="wmk" viewBox="0 0 287.93 74.13" width="31.7" height="8.2" role="img" aria-label="capax" style="overflow:visible"><path d="M26.9 55.75Q19.17 55.75 13.06 52.32Q6.94 48.9 3.47 42.94Q0 36.97 0 29.44Q0 23.28 2.35 17.9Q4.69 12.52 8.8 8.51Q12.91 4.5 18.34 2.25Q23.77 0 30.03 0Q36.09 0 41.08 2.1Q46.06 4.21 49.49 7.92Q52.91 11.64 54.18 16.63L41.17 21.71Q40.1 17.7 37.07 15.45Q34.04 13.2 29.83 13.2Q25.43 13.2 22.15 15.45Q18.88 17.7 17.07 21.42Q15.26 25.14 15.26 29.44Q15.26 33.35 16.72 36.28Q18.19 39.22 20.88 40.88Q23.57 42.54 27.09 42.54Q31.69 42.54 35.11 40.1Q38.53 37.65 40.2 33.64L52.62 39.61Q50.76 44.3 46.99 47.97Q43.23 51.64 38.05 53.69Q32.86 55.75 26.9 55.75Z" pathLength="100" class="capax-letra capax-l1" fill="currentColor"/><path d="M73.94 55.75Q68.56 55.75 64.55 54.08Q60.54 52.42 58.34 49.15Q56.14 45.87 56.14 41.17Q56.14 35.89 58.83 32.23Q61.52 28.56 66.16 26.31Q70.81 24.06 76.68 23.18L92.42 20.73L92.62 19.36Q92.91 17.12 91.84 15.55Q90.76 13.99 88.8 13.11Q86.85 12.23 84.5 12.23Q80.3 12.23 76.97 14.52Q73.65 16.82 71.98 20.34L60.64 14.18Q62.69 9.68 66.41 6.55Q70.12 3.42 75.01 1.71Q79.9 0 85.38 0Q92.13 0 97.36 2.54Q102.59 5.09 105.38 9.58Q108.17 14.08 107.29 20.05L102.5 54.57H88.71L89.29 50.47Q88.61 50.95 88.02 51.44Q84.99 53.69 81.52 54.72Q78.05 55.75 73.94 55.75ZM90.96 31.59 78.73 33.84Q75.7 34.43 73.5 35.94Q71.3 37.46 71.3 40.29Q71.3 42.74 73.06 43.86Q74.82 44.99 77.56 44.99Q81.18 44.99 83.96 43.33Q86.75 41.66 88.56 38.93Q90.37 36.19 90.76 32.96Z" pathLength="100" class="capax-letra capax-l2" fill="currentColor"/><path d="M108.56 74.13 118.73 1.17H132.52L132.13 4.4Q133.89 3.03 136.04 2.05Q140.64 0 146.31 0Q153.75 0 159.52 3.47Q165.29 6.94 168.66 12.86Q172.03 18.78 172.03 26.21Q172.03 32.27 169.78 37.65Q167.54 43.03 163.57 47.09Q159.61 51.15 154.38 53.45Q149.15 55.75 143.08 55.75Q137.12 55.75 132.33 53.6Q129.29 52.32 127.14 50.37L123.92 74.13ZM141.52 42.54Q146.02 42.54 149.44 40.39Q152.86 38.24 154.82 34.52Q156.78 30.81 156.78 26.21Q156.78 22.4 155.21 19.46Q153.65 16.53 150.86 14.87Q148.07 13.2 144.26 13.2Q139.86 13.2 136.48 15.4Q133.11 17.6 131.25 21.32Q129.39 25.04 129.39 29.63Q129.39 33.45 130.91 36.38Q132.42 39.32 135.16 40.93Q137.9 42.54 141.52 42.54Z" pathLength="100" class="capax-letra capax-l3" fill="currentColor"/><path d="M192.77 55.75Q187.39 55.75 183.38 54.08Q179.37 52.42 177.17 49.15Q174.97 45.87 174.97 41.17Q174.97 35.89 177.66 32.23Q180.35 28.56 184.99 26.31Q189.64 24.06 195.51 23.18L211.25 20.73L211.45 19.36Q211.74 17.12 210.67 15.55Q209.59 13.99 207.63 13.11Q205.68 12.23 203.33 12.23Q199.13 12.23 195.8 14.52Q192.47 16.82 190.81 20.34L179.47 14.18Q181.52 9.68 185.24 6.55Q188.95 3.42 193.84 1.71Q198.73 0 204.21 0Q210.96 0 216.19 2.54Q221.42 5.09 224.21 9.58Q227 14.08 226.12 20.05L221.33 54.57H207.54L208.12 50.47Q207.44 50.95 206.85 51.44Q203.82 53.69 200.35 54.72Q196.88 55.75 192.77 55.75ZM209.79 31.59 197.56 33.84Q194.53 34.43 192.33 35.94Q190.13 37.46 190.13 40.29Q190.13 42.74 191.89 43.86Q193.65 44.99 196.39 44.99Q200.01 44.99 202.79 43.33Q205.58 41.66 207.39 38.93Q209.2 36.19 209.59 32.96Z" pathLength="100" class="capax-letra capax-l4" fill="currentColor"/><path d="M225.83 54.57 248.52 27.38 233.75 1.17H249.69L258 16.43L270.42 1.17H287.93L265.44 27.78L280.3 54.57H264.65L255.95 38.73L243.23 54.57Z" pathLength="100" class="capax-letra capax-l5" fill="#32b49d"/></svg></div>`;
+}
+
+const P = document.getElementById("pantalla");
+function render(foco) {
+  P.innerHTML = pantalla();
+  if (foco) { const el = P.querySelector(`[data-f="${foco}"]`); if (el) { el.focus(); const v = el.value; if (el.setSelectionRange) el.setSelectionRange(v.length, v.length); } }
+}
+function irA(delta) { S.dir = delta; S.paso += delta; P.scrollTop = 0; }
+P.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.a === "menos") { S.pax = Math.max(1, S.pax - 1); S.hora = null; }
+  else if (b.dataset.a === "mas") { S.pax = Math.min(20, S.pax + 1); S.hora = null; }
+  else if (b.dataset.salon) { S.salon = b.dataset.salon; S.hora = null; }
+  else if (b.dataset.dia) { if (b.getAttribute("aria-disabled")) return; S.dia = +b.dataset.dia; S.hora = null; }
+  else if (b.dataset.turno) { S.turno = b.dataset.turno; S.hora = null; }
+  else if (b.dataset.hora) { S.hora = b.dataset.hora; }
+  else if (b.dataset.ocasion) { S.ocasion = S.ocasion === b.dataset.ocasion ? null : b.dataset.ocasion; }
+  else if (b.dataset.a === "seguir") { irA(1); }
+  else if (b.dataset.a === "atras") { irA(-1); }
+  else if (b.dataset.a === "enviar") { S.enviada = true; P.scrollTop = 0; }
+  else if (b.dataset.a === "reiniciar") { Object.assign(S, { hora: null, enviada: false, paso: 0, dir: -1, acepta: false }); }
+  else return;
+  // Mismo foco/animación: no re-animar al tocar opciones dentro de la misma pantalla
+  const cambiaPantalla = ["seguir", "atras", "enviar", "reiniciar"].includes(b.dataset.a);
+  render();
+  if (!cambiaPantalla) P.querySelector(".vista")?.classList.remove("adelante", "atras-anim");
+});
+P.addEventListener("input", (e) => {
+  const f = e.target.dataset.f; if (!f) return;
+  S[f] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+  if (e.target.type === "checkbox") { render(); P.querySelector(".vista")?.classList.remove("adelante", "atras-anim"); }
+  else {
+    const cta = P.querySelector(".cta"); if (cta) cta.disabled = !valido(pasos()[S.paso]);
+  }
+});
+render();
+
+// Simulador de salones habilitados (panel lateral)
+const T = document.getElementById("toggles");
+function pintarToggles() {
+  T.innerHTML = SALONES.map(s => `<label><span>${s.nombre}${s.merienda ? "<small>con merienda</small>" : ""}</span><input type="checkbox" data-sal="${s.id}" ${s.activo ? "checked" : ""}></label>`).join("");
+}
+T.addEventListener("change", (e) => {
+  const s = SALONES.find(x => x.id === e.target.dataset.sal); if (!s) return;
+  s.activo = e.target.checked; S.hora = null; S.enviada = false; S.paso = 0; S.dir = -1; render();
+});
+pintarToggles();
+
+// Dispositivo y tema
+const disp = document.getElementById("disp"), vm = document.getElementById("v-movil"), vc = document.getElementById("v-compu");
+function modo(m) { disp.className = "dispositivo " + m; vm.setAttribute("aria-pressed", m === "movil"); vc.setAttribute("aria-pressed", m === "compu"); }
+vm.addEventListener("click", () => modo("movil")); vc.addEventListener("click", () => modo("compu"));
+const raiz = document.documentElement, bc = document.getElementById("b-claro"), bo = document.getElementById("b-oscuro");
+function tema(t) { raiz.dataset.theme = t; bc.setAttribute("aria-pressed", t === "light"); bo.setAttribute("aria-pressed", t === "dark"); }
+bc.addEventListener("click", () => tema("light")); bo.addEventListener("click", () => tema("dark")); tema("light");
+
+// QR decorativo de ejemplo (no es un QR real)
+(function () {
+  const q = document.getElementById("qr"); let h = 7; const cel = [];
+  const fijo = (x, y) => [[0, 0], [22, 0], [0, 22]].some(([a, b]) => x >= a && x < a + 7 && y >= b && y < b + 7);
+  for (let y = 0; y < 29; y++) for (let x = 0; x < 29; x++) {
+    if (fijo(x, y)) continue; h = (h * 1103515245 + 12345) & 0x7fffffff; if (h % 100 < 46) cel.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+  }
+  const ojo = (a, b) => `<rect x="${a}" y="${b}" width="7" height="7"/><rect x="${a + 1}" y="${b + 1}" width="5" height="5" fill="#fff"/><rect x="${a + 2}" y="${b + 2}" width="3" height="3"/>`;
+  q.innerHTML = `<g fill="#13242e">${cel.join("")}${ojo(0, 0)}${ojo(22, 0)}${ojo(0, 22)}</g>`;
+})();
+</script>
+</body>
+</html>

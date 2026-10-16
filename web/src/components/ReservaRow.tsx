@@ -254,15 +254,18 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
         />
       </td>
       <td>
-        <input
-          className="celda"
-          value={local.nombre ?? ""}
-          onFocus={() => (focusedField.current = "nombre")}
-          onChange={(e) => commit("nombre", e.target.value)}
-          onBlur={() => onBlurTexto("nombre")}
-          onKeyDown={alPresionarTecla}
-          placeholder="Apellido / Nombre"
-        />
+        <div className="flex items-center gap-1">
+          <input
+            className="celda"
+            value={local.nombre ?? ""}
+            onFocus={() => (focusedField.current = "nombre")}
+            onChange={(e) => commit("nombre", e.target.value)}
+            onBlur={() => onBlurTexto("nombre")}
+            onKeyDown={alPresionarTecla}
+            placeholder="Apellido / Nombre"
+          />
+          <EtiquetaOrigen origen={reserva.origen} estado={reserva.estado} />
+        </div>
       </td>
       <td className="w-24">
         <input
@@ -480,5 +483,31 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, retirada, pax, ocupadas
         </>
       )}
     </div>
+  );
+}
+
+// Marca las reservas que entraron solas: por el link público (/reservar) o
+// por el bot de WhatsApp. Las que quedaron "a confirmar" (grupos grandes,
+// otros salones, sin mesa libre) se resaltan para que el equipo las llame.
+function EtiquetaOrigen({ origen, estado }: { origen?: Reserva["origen"]; estado?: Reserva["estado"] }) {
+  if (!origen || origen === "staff") return null;
+  const canal = origen === "web" ? "Web" : "WhatsApp";
+  if (estado === "pendienteBot") {
+    return (
+      <span
+        className="shrink-0 rounded-full bg-aviso-suave px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-aviso"
+        title={`Pedido por ${canal === "Web" ? "el link de reservas" : "WhatsApp"}: falta confirmarlo con el cliente`}
+      >
+        {canal} · a confirmar
+      </span>
+    );
+  }
+  return (
+    <span
+      className="shrink-0 rounded-full bg-asistio-suave px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-asistio"
+      title={`Reserva hecha por el cliente ${canal === "Web" ? "desde el link de reservas" : "por WhatsApp"}`}
+    >
+      {canal}
+    </span>
   );
 }

@@ -1,0 +1,436 @@
+<title>Confirmación en uso</title>
+<style>
+:root {
+  color-scheme: light;
+  --color-tinta: #13242e; --color-tinta-suave: #768188; --color-fondo: #f0f3f6; --color-borde: #c8d2da; --color-superficie: #ffffff;
+  --color-asistio-suave: #e0f4f0; --color-aviso: #8a5a00; --color-aviso-suave: #fbf0d9;
+  --mesa: #143d58; --libre: rgba(20,61,88,.2); --teal: #32b49d;
+  --pg: #e4e9ee; --pg-t: #13242e; --pg-s: #5d6a73; --pg-b: #cdd6dd; --pg-sup: #ffffff; --bisel: #0d1a22;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-fondo: #000000; --color-superficie: #0e0e0f; --color-tinta: #f2f2f2; --color-tinta-suave: #8c8c8c; --color-borde: #242426;
+  --color-asistio-suave: #102f29; --color-aviso: #e0a942; --color-aviso-suave: #2a2210;
+  --mesa: #f2f2f2; --libre: rgba(242,242,242,.2);
+  --pg: #111214; --pg-t: #eceef0; --pg-s: #969ca2; --pg-b: #2a2c30; --pg-sup: #1a1b1e; --bisel: #2a2c30;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pg); color: var(--pg-t); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; padding: 28px 16px 48px; }
+.cab { max-width: 980px; margin: 0 auto 22px; display: grid; gap: 12px; }
+.eyebrow { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--pg-s); font-weight: 600; }
+.cab h1 { margin: 0; font-size: clamp(24px, 3vw, 31px); line-height: 1.15; letter-spacing: -.015em; text-wrap: balance; }
+.cab p { margin: 0; color: var(--pg-s); max-width: 70ch; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.grupo { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--pg-s); }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--pg-sup); border: 1px solid var(--pg-b); }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--pg-s); padding: 5px 11px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--pg-t); color: var(--pg); font-weight: 600; }
+.btn { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 10px; border: 1px solid var(--pg-b); background: var(--pg-sup); color: var(--pg-t); cursor: pointer; }
+.btn.pri { background: #32b49d; border-color: transparent; color: #04221c; }
+button:focus-visible { outline: 2px solid #32b49d; outline-offset: 2px; }
+
+.duo { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 28px; justify-items: center; }
+.caso { margin: 0; display: grid; gap: 12px; justify-items: center; width: 100%; max-width: 392px; }
+.caso figcaption { display: flex; align-items: center; gap: 10px; width: 100%; }
+.letra { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--pg-sup); border: 1px solid var(--pg-b); }
+.caso h2 { margin: 0; font-size: 16px; }
+.caso .nota { margin: 0; font-size: 13px; color: var(--pg-s); width: 100%; }
+.marco { width: 100%; max-width: 392px; padding: 14px; border-radius: 46px; background: var(--bisel); box-shadow: 0 40px 70px -40px rgba(0,0,0,.55); }
+.tel { position: relative; height: 720px; border-radius: 34px; overflow: hidden; background: var(--color-fondo); isolation: isolate; }
+.capa { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; background: var(--color-fondo); }
+.capa::-webkit-scrollbar { display: none; }
+.capa > .rv { min-height: 100%; display: flex; flex-direction: column; }
+.capa .rv-pantalla { flex: 1; min-height: 0; }
+.rv { font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+.rv button { font-family: inherit; }
+
+/* Pista para tocar */
+.pista { position: absolute; right: 18px; bottom: 74px; z-index: 6; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+  background: var(--pg-t); color: var(--pg); pointer-events: none; animation: flotar 1.4s ease-in-out infinite; }
+.pista::after { content: ""; position: absolute; right: 26px; bottom: -5px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--pg-t); }
+@keyframes flotar { 50% { transform: translateY(-4px); } }
+
+/* Capa de "confirmando" (A) */
+.enviando { display: grid; place-items: center; z-index: 4; animation: fade-in .2s ease both; }
+.enviando.sale { animation: fade-out .3s ease both; }
+.env-in { display: grid; justify-items: center; gap: 12px; font-size: 13.5px; color: var(--color-tinta-suave); }
+.loader path { stroke: var(--libre); animation: cargar 1s linear infinite; animation-delay: calc(var(--i) * .125s); }
+.loader .l-mesa { fill: var(--mesa); }
+@keyframes cargar { 0%, 20% { stroke: var(--teal); } 60%, 100% { stroke: var(--libre); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+
+/* Texto de la confirmación: sube de a uno */
+.llega .sube { animation: subir .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--d0) + var(--k) * .1s); }
+@keyframes subir { from { opacity: 0; transform: translateY(14px); } }
+
+/* ---- A · el check se dibuja (igual al mockup) ---- */
+.icoA { position: relative; width: 76px; height: 76px; }
+.icoA svg { position: relative; z-index: 1; display: block; border-radius: 50%; background: var(--color-asistio-suave); }
+.pend .icoA svg { background: var(--color-aviso-suave); }
+.c-circ { fill: none; stroke: var(--teal); stroke-width: 3; stroke-dasharray: 100; }
+.c-check, .c-reloj { fill: none; stroke: var(--teal); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; }
+.pend .c-circ, .pend .c-reloj { stroke: var(--color-aviso); }
+.pulso { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--teal); opacity: 0; }
+.pend .pulso { border-color: var(--color-aviso); }
+.llega .icoA svg { animation: pop .5s cubic-bezier(.3,1.6,.5,1) .05s both; }
+.llega .c-circ { animation: dibujar .6s ease-out .05s both; }
+.llega .c-check, .llega .c-reloj { animation: dibujar .45s ease-out .5s both; }
+.llega .pulso { animation: pulso 1s ease-out .8s both; }
+@keyframes dibujar { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+@keyframes pulso { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
+.vA { --d0: .8s; }
+
+/* ---- C · el botón se transforma ---- */
+.rv-cta { position: relative; transition: width .45s cubic-bezier(.4,0,.2,1), padding .45s, border-radius .45s, color .15s; }
+.rv-cta.mo { width: 48px !important; padding: 0; border-radius: 24px; color: transparent; opacity: 1 !important; cursor: default; }
+.rv-cta.mo::after { content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+  border: 2.5px solid color-mix(in srgb, var(--rv-acento-tx) 30%, transparent); border-top-color: var(--rv-acento-tx);
+  animation: girar .7s linear infinite, fade-in .2s ease .3s both; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.vuelo { position: absolute; z-index: 5; border-radius: 50%; display: grid; place-items: center; pointer-events: none; }
+.vuelo .giro { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+  animation: girar .7s linear infinite; }
+:root[data-theme="dark"] .vuelo .giro { border-color: rgba(4,34,28,.3); border-top-color: #04221c; }
+.ico-c path { fill: none; stroke: var(--teal); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; }
+.pend .ico-c path { stroke: var(--color-aviso); }
+.vuelo .ico-c path { stroke-dashoffset: 100; }
+.vuelo.dibuja .ico-c path { animation: dibujar .45s ease-out both; }
+.c-espera .rv-circ { visibility: hidden; }
+.capa.c-entra { animation: fade-in .3s ease both; }
+.vC { --d0: .5s; }
+.rv-circ.grande { width: 76px; height: 76px; }
+
+/* Botones de la confirmación que no hacen nada en el mockup */
+.rv-sec { width: 100%; font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition: none !important; }
+  .pista { animation: none; }
+}
+</style>
+<style>/* ===== Link público de reservas (/reservar) =====
+   Ver app/reservar/page.tsx. Página para el cliente final: columna centrada
+   (de ancho completo en el celular), pantalla por pantalla, con la barra de
+   "Continuar" fija abajo. En Ónix el acento pasa a teal, como en el login. */
+.rv {
+  --rv-acento: #143d58;
+  --rv-acento-tx: #ffffff;
+  --rv-apagado: #eef1f4;
+  --rv-teal-tx: #1d7a69;
+  min-height: 100%;
+  background: var(--color-fondo);
+  color: var(--color-tinta);
+}
+:root[data-theme="dark"] .rv {
+  --rv-acento: #32b49d;
+  --rv-acento-tx: #04221c;
+  --rv-apagado: #141416;
+  --rv-teal-tx: #6fd3bf;
+}
+.rv-pantalla {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-fondo);
+}
+
+.rv-pantalla > .rv-pie { margin-top: auto; padding-top: 18px; }
+.rv-cargando { padding: 60px 20px; text-align: center; color: var(--color-tinta-suave); }
+.rv-cargando.chico { padding: 14px 0; text-align: left; font-size: 13px; }
+
+.rv-hero { position: relative; overflow: hidden; padding: 28px 22px 22px; color: #f2f2f2;
+  background: linear-gradient(160deg, #0c2637, #143d58 60%, #1d5a6e); }
+:root[data-theme="dark"] .rv-hero { background: linear-gradient(160deg, #0e0e0f, #102a35); }
+.rv-hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%;
+  border: 14px dashed rgba(50, 180, 157, 0.3); }
+.rv-hero > * { position: relative; z-index: 1; }
+.rv-lugar { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; font-weight: 600; }
+.rv-hero-t { margin: 6px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.rv-hero p { margin: 0; font-size: 13.5px; opacity: 0.8; }
+.rv-datos { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; font-size: 12.5px; opacity: 0.85; }
+
+.rv-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-superficie); border-bottom: 1px solid var(--color-borde); }
+.rv-atras { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta);
+  display: grid; place-items: center; cursor: pointer; }
+.rv-lugar-c { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--color-tinta-suave); }
+.rv-progreso { display: flex; gap: 5px; padding: 12px 18px 0; }
+.rv-progreso i { flex: 1; height: 4px; border-radius: 99px; background: var(--color-borde); }
+.rv-progreso i.hecho { background: #32b49d; }
+
+.rv-vista { padding: 18px 18px 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+.rv-titulo { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; outline: none; }
+.rv-contexto { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+.rv-contexto span { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--rv-apagado); color: var(--color-tinta-suave); }
+.rv-bloque { display: grid; gap: 10px; }
+.rv-et { font-size: 13px; font-weight: 600; color: var(--color-tinta-suave); text-transform: uppercase; letter-spacing: 0.08em; }
+.rv-sel { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; color: var(--color-tinta); }
+.rv-aviso { font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--color-aviso-suave); color: var(--color-aviso); }
+
+.rv-contador { display: flex; align-items: center; gap: 14px; }
+.rv-contador button { width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); font-size: 20px; cursor: pointer; }
+.rv-contador button:disabled { opacity: 0.4; cursor: not-allowed; }
+.rv-v { font-size: 22px; font-weight: 700; min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+.rv-v small { display: block; font-size: 12px; font-weight: 400; color: var(--color-tinta-suave); }
+
+.rv-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.rv-dia { flex: none; width: 62px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; display: grid; justify-items: center; gap: 1px; }
+.rv-dsem { font-size: 11px; text-transform: uppercase; color: var(--color-tinta-suave); letter-spacing: 0.05em; }
+.rv-num { font-size: 19px; font-weight: 700; }
+.rv-est { width: 6px; height: 6px; border-radius: 50%; background: #32b49d; margin-top: 3px; }
+.rv-dia.pocos .rv-est { background: var(--color-aviso); }
+.rv-dia.lleno, .rv-dia.bloqueado { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-dia.lleno .rv-est, .rv-dia.bloqueado .rv-est { background: transparent; border: 1px solid var(--color-tinta-suave); }
+.rv-dia[aria-pressed="true"] { background: var(--rv-acento); border-color: transparent; color: var(--rv-acento-tx); }
+.rv-dia[aria-pressed="true"] .rv-dsem { color: inherit; opacity: 0.8; }
+.rv-dia[aria-pressed="true"] .rv-est { background: currentColor; }
+.rv-ley { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--color-tinta-suave); }
+.rv-ley span { display: inline-flex; align-items: center; gap: 5px; }
+.rv-ley i { width: 7px; height: 7px; border-radius: 50%; background: #32b49d; }
+.rv-ley i.p { background: var(--color-aviso); }
+.rv-ley i.n { background: transparent; border: 1px solid var(--color-tinta-suave); }
+
+.rv-salones { display: grid; gap: 10px; align-content: start; }
+.rv-salon { text-align: left; display: grid; gap: 3px; justify-items: start; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--color-borde);
+  background: var(--color-superficie); color: var(--color-tinta); cursor: pointer; }
+.rv-sn { font-size: 17px; font-weight: 700; }
+.rv-sd { font-size: 13px; color: var(--color-tinta-suave); }
+.rv-sc { font-size: 12px; font-weight: 600; color: var(--rv-teal-tx); }
+.rv-sc.pend { color: var(--color-aviso); }
+.rv-salon[aria-pressed="true"] { border-color: var(--rv-acento); box-shadow: 0 0 0 2px var(--rv-acento) inset; }
+.rv-salon:disabled { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+
+.rv-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.rv-chip { font-size: 13.5px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; }
+.rv-chip[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); border-color: transparent; font-weight: 600; }
+.rv-horas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+
+.rv-hora { min-height: 58px; font-weight: 600; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); cursor: pointer; display: grid; justify-items: center; align-content: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.rv-hora small { font-size: 10.5px; font-weight: 500; color: var(--rv-teal-tx); line-height: 1.2; }
+.rv-hora small.pocas { color: var(--color-aviso); }
+.rv-hora:disabled { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-hora:disabled small { color: var(--color-tinta-suave); }
+.rv-hora[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); border-color: transparent; }
+.rv-hora[aria-pressed="true"] small { color: inherit; }
+.rv-nota { margin: 0; font-size: 13px; color: var(--color-tinta-suave); }
+
+.rv-campo { display: grid; gap: 5px; }
+.rv-campo label { font-size: 12.5px; color: var(--color-tinta-suave); font-weight: 500; }
+.rv-campo input, .rv-campo textarea { width: 100%; min-width: 0; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta); }
+.rv-campo textarea { min-height: 76px; resize: vertical; }
+.rv-campo input:focus-visible, .rv-campo textarea:focus-visible { outline: none; border-color: #32b49d; box-shadow: 0 0 0 3px rgba(50, 180, 157, 0.2); }
+.rv-ayuda { font-size: 12px; color: var(--color-tinta-suave); }
+.rv-opc { font-weight: 400; }
+.rv-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  background: var(--color-superficie); border: 1px solid var(--color-borde); font-size: 14px; cursor: pointer; }
+.rv-switch input, .rv-check input { accent-color: #32b49d; width: 18px; height: 18px; flex: none; }
+.rv-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--color-tinta-suave); cursor: pointer; }
+.rv-check input { margin-top: 1px; }
+.rv-check a { color: var(--color-tinta); text-decoration: underline; }
+.rv-trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.rv-nota-ubic { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--color-aviso-suave);
+  color: var(--color-aviso); font-size: 13px; line-height: 1.45; text-align: left; }
+.rv-nota-ubic svg { flex: none; margin-top: 2px; }
+.rv-nota-ubic.conf { width: 100%; max-width: 380px; }
+.rv-resumen { width: 100%; background: var(--color-superficie); border: 1px solid var(--color-borde); border-radius: 16px; padding: 4px 16px; text-align: left; }
+.rv-resumen div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--color-borde); font-size: 14px; }
+.rv-resumen div:first-child { border-top: 0; }
+.rv-resumen span { color: var(--color-tinta-suave); }
+
+.rv-barra { position: sticky; bottom: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--color-borde);
+  background: color-mix(in srgb, var(--color-superficie) 92%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.rv-res { flex: 1; min-width: 0; font-size: 13px; color: var(--color-tinta-suave); }
+.rv-res b { display: block; color: var(--color-tinta); font-size: 14.5px; }
+.rv-cta { font-weight: 700; font-size: 15px; height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--rv-acento);
+  color: var(--rv-acento-tx); cursor: pointer; white-space: nowrap; }
+.rv-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+.rv-pie { padding: 0 18px 18px; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-tinta-suave); }
+
+.rv-final { padding: 34px 22px 18px; display: grid; gap: 16px; justify-items: center; text-align: center; }
+.rv-final h1 { margin: 0; font-size: 22px; font-weight: 700; outline: none; }
+.rv-final p { margin: 0; color: var(--color-tinta-suave); max-width: 40ch; font-size: 14px; }
+.rv-final .rv-resumen { max-width: 380px; }
+.rv-circ { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--color-asistio-suave); color: var(--rv-teal-tx); }
+.rv-final.pend .rv-circ { background: var(--color-aviso-suave); color: var(--color-aviso); }
+.rv-acciones { display: grid; gap: 8px; width: 100%; max-width: 380px; }
+.rv-sec { display: grid; place-items: center; height: 44px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); font-size: 14px; cursor: pointer; text-decoration: none; }
+.rv-volver { background: none; border: 0; color: var(--color-tinta-suave); text-decoration: underline; font-size: 13px; cursor: pointer; }
+.rv button:focus-visible, .rv a:focus-visible { outline: 2px solid #32b49d; outline-offset: 2px; }
+
+.rv-adelante { animation: rv-entrar-d 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rv-atras-anim { animation: rv-entrar-i 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes rv-entrar-d { from { opacity: 0; transform: translateX(24px); } }
+@keyframes rv-entrar-i { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .rv-adelante, .rv-atras-anim { animation: none; }
+}
+</style>
+
+<header class="cab">
+  <div class="eyebrow">capax · link de reservas</div>
+  <h1>La A y la C en un uso normal</h1>
+  <p>Es el último paso real del link (mismo diseño que la app), ya completado. Tocá <b>Reservar</b> en cada teléfono, o en los dos a la vez.
+  Probá con conexión lenta para ver cómo espera cada una, y con <b>solicitud</b> (grupo de 8) para ver el caso que el equipo confirma después.</p>
+  <div class="ctrl">
+    <div class="grupo">Resultado <div class="seg" role="group" aria-label="Resultado">
+      <button type="button" id="r-ok" aria-pressed="true">Confirmada (2 pers.)</button><button type="button" id="r-pend" aria-pressed="false">Solicitud (8 pers.)</button></div></div>
+    <div class="grupo">Conexión <div class="seg" role="group" aria-label="Conexión">
+      <button type="button" data-red="400" aria-pressed="false">Rápida</button><button type="button" data-red="1200" aria-pressed="true">Normal</button><button type="button" data-red="3200" aria-pressed="false">Lenta</button></div></div>
+    <div class="grupo">Tema <div class="seg" role="group" aria-label="Tema">
+      <button type="button" id="t-claro" aria-pressed="true">Claro</button><button type="button" id="t-onix" aria-pressed="false">Ónix</button></div></div>
+    <button type="button" class="btn pri" id="ambos">Tocar Reservar en los dos</button>
+    <button type="button" class="btn" id="reset">Empezar de nuevo</button>
+  </div>
+</header>
+
+<div class="duo">
+  <figure class="caso" data-caso="A">
+    <figcaption><span class="letra">A</span><h2>El check se dibuja</h2></figcaption>
+    <div class="marco"><div class="tel"></div></div>
+    <p class="nota">Mientras espera, la pantalla muestra «Confirmando tu reserva…» con las sillas girando. Cuando llega la respuesta, aparece la confirmación y se dibuja el check.</p>
+  </figure>
+  <figure class="caso" data-caso="C">
+    <figcaption><span class="letra">C</span><h2>El botón se transforma</h2></figcaption>
+    <div class="marco"><div class="tel"></div></div>
+    <p class="nota">El botón de abajo se hace un círculo y gira mientras espera; cuando llega la respuesta, ese círculo sube hasta arriba y se convierte en el check.</p>
+  </figure>
+</div>
+
+<script>
+const LOADER = "<svg class=\"loader\" viewBox=\"0 0 48 48\" width=\"56\" height=\"56\" aria-hidden=\"true\"><g fill=\"none\" stroke-width=\"5.2\" stroke-linecap=\"round\"><path d=\"M20.15 5.90A18.5 18.5 0 0 1 27.85 5.90\" style=\"--i:0\"/><path d=\"M34.08 8.48A18.5 18.5 0 0 1 39.52 13.92\" style=\"--i:1\"/><path d=\"M42.10 20.15A18.5 18.5 0 0 1 42.10 27.85\" style=\"--i:2\"/><path d=\"M39.52 34.08A18.5 18.5 0 0 1 34.08 39.52\" style=\"--i:3\"/><path d=\"M27.85 42.10A18.5 18.5 0 0 1 20.15 42.10\" style=\"--i:4\"/><path d=\"M13.92 39.52A18.5 18.5 0 0 1 8.48 34.08\" style=\"--i:5\"/><path d=\"M5.90 27.85A18.5 18.5 0 0 1 5.90 20.15\" style=\"--i:6\"/><path d=\"M8.48 13.92A18.5 18.5 0 0 1 13.92 8.48\" style=\"--i:7\"/></g><circle cx=\"24\" cy=\"24\" r=\"9.5\" class=\"l-mesa\"/></svg>", PIE = "<div class=\"rv-pie\">Reservas con <svg class=\"sim\" viewBox=\"0 0 48 48\" width=\"14\" height=\"14\" aria-hidden=\"true\"><g fill=\"none\" stroke-width=\"5.2\" stroke-linecap=\"round\"><path d=\"M20.15 5.90A18.5 18.5 0 0 1 27.85 5.90\" pathLength=\"100\" class=\"capax-silla capax-s1 capax-ocupada\" stroke=\"#32b49d\"/><path d=\"M34.08 8.48A18.5 18.5 0 0 1 39.52 13.92\" pathLength=\"100\" class=\"capax-silla capax-s2 capax-ocupada\" stroke=\"#32b49d\"/><path d=\"M42.10 20.15A18.5 18.5 0 0 1 42.10 27.85\" pathLength=\"100\" class=\"capax-silla capax-s3 capax-ocupada\" stroke=\"#32b49d\"/><path d=\"M39.52 34.08A18.5 18.5 0 0 1 34.08 39.52\" pathLength=\"100\" class=\"capax-silla capax-s4 capax-ocupada\" stroke=\"#32b49d\"/><path d=\"M27.85 42.10A18.5 18.5 0 0 1 20.15 42.10\" pathLength=\"100\" class=\"capax-silla capax-s5 capax-ocupada\" stroke=\"#32b49d\"/><path d=\"M13.92 39.52A18.5 18.5 0 0 1 8.48 34.08\" pathLength=\"100\" class=\"capax-silla capax-s6\" stroke=\"currentColor\" stroke-opacity=\"0.26\"/><path d=\"M5.90 27.85A18.5 18.5 0 0 1 5.90 20.15\" pathLength=\"100\" class=\"capax-silla capax-s7\" stroke=\"currentColor\" stroke-opacity=\"0.26\"/><path d=\"M8.48 13.92A18.5 18.5 0 0 1 13.92 8.48\" pathLength=\"100\" class=\"capax-silla capax-s8\" stroke=\"currentColor\" stroke-opacity=\"0.26\"/></g><circle cx=\"24\" cy=\"24\" r=\"9.5\" fill=\"currentColor\" class=\"capax-mesa\"/></svg> <svg class=\"wmk\" viewBox=\"0 0 287.93 74.13\" width=\"31.7\" height=\"8.2\" role=\"img\" aria-label=\"capax\" style=\"overflow:visible\"><path d=\"M26.9 55.75Q19.17 55.75 13.06 52.32Q6.94 48.9 3.47 42.94Q0 36.97 0 29.44Q0 23.28 2.35 17.9Q4.69 12.52 8.8 8.51Q12.91 4.5 18.34 2.25Q23.77 0 30.03 0Q36.09 0 41.08 2.1Q46.06 4.21 49.49 7.92Q52.91 11.64 54.18 16.63L41.17 21.71Q40.1 17.7 37.07 15.45Q34.04 13.2 29.83 13.2Q25.43 13.2 22.15 15.45Q18.88 17.7 17.07 21.42Q15.26 25.14 15.26 29.44Q15.26 33.35 16.72 36.28Q18.19 39.22 20.88 40.88Q23.57 42.54 27.09 42.54Q31.69 42.54 35.11 40.1Q38.53 37.65 40.2 33.64L52.62 39.61Q50.76 44.3 46.99 47.97Q43.23 51.64 38.05 53.69Q32.86 55.75 26.9 55.75Z\" pathLength=\"100\" class=\"capax-letra capax-l1\" fill=\"currentColor\"/><path d=\"M73.94 55.75Q68.56 55.75 64.55 54.08Q60.54 52.42 58.34 49.15Q56.14 45.87 56.14 41.17Q56.14 35.89 58.83 32.23Q61.52 28.56 66.16 26.31Q70.81 24.06 76.68 23.18L92.42 20.73L92.62 19.36Q92.91 17.12 91.84 15.55Q90.76 13.99 88.8 13.11Q86.85 12.23 84.5 12.23Q80.3 12.23 76.97 14.52Q73.65 16.82 71.98 20.34L60.64 14.18Q62.69 9.68 66.41 6.55Q70.12 3.42 75.01 1.71Q79.9 0 85.38 0Q92.13 0 97.36 2.54Q102.59 5.09 105.38 9.58Q108.17 14.08 107.29 20.05L102.5 54.57H88.71L89.29 50.47Q88.61 50.95 88.02 51.44Q84.99 53.69 81.52 54.72Q78.05 55.75 73.94 55.75ZM90.96 31.59 78.73 33.84Q75.7 34.43 73.5 35.94Q71.3 37.46 71.3 40.29Q71.3 42.74 73.06 43.86Q74.82 44.99 77.56 44.99Q81.18 44.99 83.96 43.33Q86.75 41.66 88.56 38.93Q90.37 36.19 90.76 32.96Z\" pathLength=\"100\" class=\"capax-letra capax-l2\" fill=\"currentColor\"/><path d=\"M108.56 74.13 118.73 1.17H132.52L132.13 4.4Q133.89 3.03 136.04 2.05Q140.64 0 146.31 0Q153.75 0 159.52 3.47Q165.29 6.94 168.66 12.86Q172.03 18.78 172.03 26.21Q172.03 32.27 169.78 37.65Q167.54 43.03 163.57 47.09Q159.61 51.15 154.38 53.45Q149.15 55.75 143.08 55.75Q137.12 55.75 132.33 53.6Q129.29 52.32 127.14 50.37L123.92 74.13ZM141.52 42.54Q146.02 42.54 149.44 40.39Q152.86 38.24 154.82 34.52Q156.78 30.81 156.78 26.21Q156.78 22.4 155.21 19.46Q153.65 16.53 150.86 14.87Q148.07 13.2 144.26 13.2Q139.86 13.2 136.48 15.4Q133.11 17.6 131.25 21.32Q129.39 25.04 129.39 29.63Q129.39 33.45 130.91 36.38Q132.42 39.32 135.16 40.93Q137.9 42.54 141.52 42.54Z\" pathLength=\"100\" class=\"capax-letra capax-l3\" fill=\"currentColor\"/><path d=\"M192.77 55.75Q187.39 55.75 183.38 54.08Q179.37 52.42 177.17 49.15Q174.97 45.87 174.97 41.17Q174.97 35.89 177.66 32.23Q180.35 28.56 184.99 26.31Q189.64 24.06 195.51 23.18L211.25 20.73L211.45 19.36Q211.74 17.12 210.67 15.55Q209.59 13.99 207.63 13.11Q205.68 12.23 203.33 12.23Q199.13 12.23 195.8 14.52Q192.47 16.82 190.81 20.34L179.47 14.18Q181.52 9.68 185.24 6.55Q188.95 3.42 193.84 1.71Q198.73 0 204.21 0Q210.96 0 216.19 2.54Q221.42 5.09 224.21 9.58Q227 14.08 226.12 20.05L221.33 54.57H207.54L208.12 50.47Q207.44 50.95 206.85 51.44Q203.82 53.69 200.35 54.72Q196.88 55.75 192.77 55.75ZM209.79 31.59 197.56 33.84Q194.53 34.43 192.33 35.94Q190.13 37.46 190.13 40.29Q190.13 42.74 191.89 43.86Q193.65 44.99 196.39 44.99Q200.01 44.99 202.79 43.33Q205.58 41.66 207.39 38.93Q209.2 36.19 209.59 32.96Z\" pathLength=\"100\" class=\"capax-letra capax-l4\" fill=\"currentColor\"/><path d=\"M225.83 54.57 248.52 27.38 233.75 1.17H249.69L258 16.43L270.42 1.17H287.93L265.44 27.78L280.3 54.57H264.65L255.95 38.73L243.23 54.57Z\" pathLength=\"100\" class=\"capax-letra capax-l5\" fill=\"#32b49d\"/></svg></div>";
+const est = { ok: true, red: 1200 };
+const reducido = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+const INFO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/></svg>';
+const ATRAS = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+const COMENT = "Mesa cerca de la ventana";
+
+function detalles() {
+  const pax = est.ok ? 2 : 8;
+  const ocas = ["Cumpleaños", "Aniversario", "Negocios", "Silla para bebé"]
+    .map((o) => `<button type="button" class="rv-chip" aria-pressed="${o === "Aniversario"}">${o}</button>`).join("");
+  return `<div class="rv"><div class="rv-pantalla">
+    <header class="rv-top"><button type="button" class="rv-atras" aria-label="Volver al paso anterior">${ATRAS}</button><span class="rv-lugar-c">Hotel Barrancas</span></header>
+    <div class="rv-progreso" aria-hidden="true"><i class="hecho"></i><i class="hecho"></i><i class="hecho"></i><i class="hecho"></i></div>
+    <main class="rv-vista">
+      <h2 class="rv-titulo">¿Algo que debamos saber?</h2>
+      <div class="rv-contexto"><span>${pax} personas</span><span>Sáb 17 de oct</span><span>21:00 · Cena</span></div>
+      <div class="rv-chips">${ocas}</div>
+      <div class="rv-campo"><label>Alergias, preferencias o pedidos <span class="rv-opc">(opcional)</span></label><textarea readonly>${COMENT}</textarea></div>
+      <div class="rv-nota-ubic">${INFO}<span>Los pedidos de ubicación, como <b>mesa cerca de la ventana</b>, están <b>sujetos a disponibilidad</b>: los tenemos en cuenta, pero no podemos garantizarlos.</span></div>
+      <div class="rv-resumen"><div><span>Día</span><b>Sáb 17 de oct</b></div><div><span>Horario</span><b>21:00 · Cena</b></div><div><span>Personas</span><b>${pax}</b></div><div><span>A nombre de</span><b>Laura Gómez</b></div></div>
+      <label class="rv-check"><input type="checkbox" checked><span>Acepto que Hotel Barrancas use mis datos para gestionar la reserva y contactarme por WhatsApp. <a href="#" onclick="return false">Política de privacidad</a></span></label>
+    </main>
+    ${PIE}
+    <div class="rv-barra"><div class="rv-res"><b>Paso 4 de 4</b>Sujeto a disponibilidad</div>
+      <button type="button" class="rv-cta">${est.ok ? "Reservar" : "Enviar solicitud"}</button></div>
+  </div></div>`;
+}
+
+function icono(caso) {
+  if (caso === "A")
+    return `<div class="icoA sube0" aria-hidden="true"><svg viewBox="0 0 48 48" width="76" height="76"><circle class="c-circ" cx="24" cy="24" r="21" pathLength="100"/>`
+      + (est.ok ? `<path class="c-check" d="M14.5 24.5 21 31 34 17.5" pathLength="100"/>` : `<path class="c-reloj" d="M24 13.5V24l6.5 4" pathLength="100"/>`)
+      + `</svg><span class="pulso"></span></div>`;
+  return `<div class="rv-circ grande" aria-hidden="true">${checkC()}</div>`;
+}
+const checkC = () => `<svg class="ico-c" viewBox="0 0 48 48" width="76" height="76">${est.ok ? '<path d="M14.5 24.5 21 31 34 17.5" pathLength="100"/>' : '<path d="M24 13.5V24l6.5 4" pathLength="100"/>'}</svg>`;
+
+function confirmacion(caso) {
+  const ok = est.ok, pax = ok ? 2 : 8;
+  let k = 0; const s = () => `class="sube" style="--k:${k++}"`;
+  return `<div class="rv v${caso} ${ok ? "" : "pend"}"><div class="rv-pantalla">
+    <div class="rv-final ${ok ? "" : "pend"}">
+      ${icono(caso)}
+      <h1 ${s()}>${ok ? "¡Reserva confirmada!" : "Recibimos tu solicitud"}</h1>
+      <p ${s()}>${ok ? "Te esperamos, Laura. Guardá tu código; si necesitás cambiarla o cancelarla, escribinos." : "Te vamos a escribir por WhatsApp para confirmarla. Todavía no está confirmada."}</p>
+      <div class="sube rv-resumen" style="--k:${k++}"><div><span>Día</span><b>Sáb 17 de oct</b></div><div><span>Horario</span><b>21:00 · Cena</b></div><div><span>Personas</span><b>${pax}</b></div><div><span>Lugar</span><b>Restaurant</b></div><div><span>Código</span><b>R-4821</b></div></div>
+      <div class="rv-nota-ubic conf sube" style="--k:${k++}">${INFO}<span>Anotamos tu pedido: «${COMENT}». La ubicación de la mesa está sujeta a disponibilidad.</span></div>
+      <div class="rv-acciones sube" style="--k:${k++}">
+        ${ok ? '<button type="button" class="rv-sec">Agregar al calendario</button>' : ""}
+        <button type="button" class="rv-sec">Cómo llegar</button><button type="button" class="rv-sec">Escribinos por WhatsApp</button></div>
+      <button type="button" class="rv-volver sube" style="--k:${k++}" data-otra>Hacer otra reserva</button>
+    </div>
+    ${PIE}
+  </div></div>`;
+}
+
+function capa(html, clase = "") {
+  const c = document.createElement("div");
+  c.className = "capa " + clase; c.innerHTML = html; return c;
+}
+function rel(el, tel) {
+  const a = el.getBoundingClientRect(), b = tel.getBoundingClientRect();
+  return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
+}
+
+const casos = [...document.querySelectorAll(".caso")].map((fig) => ({ caso: fig.dataset.caso, tel: fig.querySelector(".tel"), ocupado: false }));
+
+function iniciar(c) {
+  c.ocupado = false; c.tel.innerHTML = "";
+  const d = capa(detalles()); c.tel.append(d);
+  const p = document.createElement("div"); p.className = "pista"; p.textContent = est.ok ? "Tocá Reservar" : "Tocá Enviar solicitud"; c.tel.append(p);
+  d.querySelector(".rv-cta").addEventListener("click", () => tocar(c));
+}
+
+async function tocar(c) {
+  if (c.ocupado) return; c.ocupado = true;
+  c.tel.querySelector(".pista")?.remove();
+  const vieja = c.tel.querySelector(".capa"), cta = vieja.querySelector(".rv-cta");
+  if (c.caso === "A") {
+    cta.disabled = true; cta.textContent = "Enviando…";
+    const env = capa(`<div class="env-in">${LOADER}<span>Confirmando tu reserva…</span></div>`, "enviando");
+    env.setAttribute("role", "status"); c.tel.append(env);
+    await espera(Math.max(est.red, 700));
+    const conf = capa(confirmacion("A"), "llega"); c.tel.insertBefore(conf, env);
+    env.classList.add("sale"); setTimeout(() => { env.remove(); vieja.remove(); }, 320);
+  } else {
+    cta.style.width = cta.offsetWidth + "px"; cta.offsetWidth; cta.classList.add("mo");
+    await espera(Math.max(est.red, 500));
+    const b = rel(cta, c.tel);
+    const acento = getComputedStyle(cta).backgroundColor;
+    const conf = capa(confirmacion("C"), "llega c-espera c-entra"); c.tel.append(conf);
+    const circ = conf.querySelector(".rv-circ"), t = rel(circ, c.tel);
+    const suave = getComputedStyle(circ).backgroundColor;
+    const v = document.createElement("div"); v.className = "vuelo " + (est.ok ? "" : "pend");
+    Object.assign(v.style, { left: t.x + "px", top: t.y + "px", width: t.w + "px", height: t.h + "px", background: suave });
+    v.innerHTML = `<span class="giro"></span>${checkC()}`; c.tel.append(v); cta.style.visibility = "hidden";
+    const dx = b.x + b.w / 2 - (t.x + t.w / 2), dy = b.y + b.h / 2 - (t.y + t.h / 2), s = b.h / t.h;
+    const dur = reducido ? 1 : 650;
+    v.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(${s})`, background: acento },
+      { offset: .55, background: acento },
+      { transform: "none", background: suave },
+    ], { duration: dur, easing: "cubic-bezier(.55,0,.2,1)", fill: "both" });
+    v.querySelector(".giro").animate([{ opacity: 1 }, { opacity: 1, offset: .5 }, { opacity: 0 }], { duration: dur, fill: "both" });
+    setTimeout(() => vieja.remove(), 320);
+    await espera(dur);
+    v.classList.add("dibuja");
+    await espera(reducido ? 0 : 500);
+    conf.classList.remove("c-espera"); v.remove();
+  }
+  c.tel.querySelector("[data-otra]")?.addEventListener("click", () => iniciar(c));
+}
+
+function todos() { casos.forEach(iniciar); }
+function pulsado(grupo, btn) { grupo.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn))); }
+document.getElementById("r-ok").onclick = (e) => { est.ok = true; pulsado(e.target.parentNode, e.target); todos(); };
+document.getElementById("r-pend").onclick = (e) => { est.ok = false; pulsado(e.target.parentNode, e.target); todos(); };
+document.querySelectorAll("[data-red]").forEach((b) => (b.onclick = () => { est.red = +b.dataset.red; pulsado(b.parentNode, b); }));
+document.getElementById("t-claro").onclick = (e) => { document.documentElement.dataset.theme = "light"; pulsado(e.target.parentNode, e.target); };
+document.getElementById("t-onix").onclick = (e) => { document.documentElement.dataset.theme = "dark"; pulsado(e.target.parentNode, e.target); };
+document.getElementById("ambos").onclick = () => { casos.forEach((c) => { if (c.ocupado) iniciar(c); }); requestAnimationFrame(() => casos.forEach(tocar)); };
+document.getElementById("reset").onclick = todos;
+todos();
+</script>
