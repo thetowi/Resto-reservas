@@ -1,6 +1,7 @@
 import type { jsPDF } from "jspdf";
 import { NOMBRES_DIA, NOMBRE_TURNO, tablasPorTurno } from "./reporteSemanal";
 import type { ReporteMensual, Turno } from "./types";
+import { NOMBRE_CLIENTE } from "./marca";
 
 // PDF del reporte mensual de asistencia (ver app/reportes/page.tsx, botón
 // "Exportar PDF"). Mismo criterio que el PDF del plano (exportarPdf en
@@ -104,7 +105,22 @@ function dibujarEncabezadoTabla(doc: jsPDF, y: number): number {
   return y + 7.5;
 }
 
-export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre: string | null, turnos: Turno[]) {
+// Logo de capax (PNG) para el encabezado; lo carga app/reportes/page.tsx
+// desde public/marca/capax-logo.png. Si no llegó (sin red, etc.), el PDF sale
+// igual con el nombre escrito.
+export interface LogoPdf {
+  dataUrl: string;
+  ancho: number;
+  alto: number;
+}
+
+export function armarPdfReporte(
+  doc: jsPDF,
+  reporte: ReporteMensual,
+  salonNombre: string | null,
+  turnos: Turno[],
+  logo: LogoPdf | null = null,
+) {
   const anchoPagina = doc.internal.pageSize.getWidth();
   const altoPagina = doc.internal.pageSize.getHeight();
   const anchoUtil = anchoPagina - MARGEN * 2;
@@ -121,10 +137,17 @@ export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre
   doc.setTextColor(COLOR_TINTA_SUAVE);
   doc.text(`${periodo} · ${salonNombre ?? "Todos los salones"}`, MARGEN, MARGEN + 11);
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(COLOR_TINTA);
-  doc.text("BARRANCAS", anchoPagina - MARGEN, MARGEN + 5, { align: "right" });
+  if (logo) {
+    // 8 mm de alto, alineado a la derecha arriba.
+    const alto = 8;
+    const ancho = (logo.ancho / logo.alto) * alto;
+    doc.addImage(logo.dataUrl, "PNG", anchoPagina - MARGEN - ancho, MARGEN - 1.5, ancho, alto);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(COLOR_TINTA);
+    doc.text("capax", anchoPagina - MARGEN, MARGEN + 5, { align: "right" });
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(COLOR_TINTA_SUAVE);
@@ -264,7 +287,7 @@ export function armarPdfReporte(doc: jsPDF, reporte: ReporteMensual, salonNombre
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(COLOR_TINTA_SUAVE);
-    doc.text(`Barrancas · Reporte mensual de asistencia · ${periodo}`, MARGEN, yPie);
+    doc.text(`${NOMBRE_CLIENTE} · Reporte mensual de asistencia · ${periodo} · capax`, MARGEN, yPie);
     doc.text(`Página ${p} de ${totalPaginas}`, anchoPagina - MARGEN, yPie, { align: "right" });
   }
 }

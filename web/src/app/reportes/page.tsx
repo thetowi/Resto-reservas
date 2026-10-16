@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, getMeta, getReporteMensual } from "@/lib/api";
 import { esAdmin, haySesion } from "@/lib/auth";
-import { NOMBRES_MES, armarPdfReporte } from "@/lib/reportePdf";
+import { NOMBRES_MES, armarPdfReporte, type LogoPdf } from "@/lib/reportePdf";
 import { NOMBRES_DIA, NOMBRE_TURNO, tablasPorTurno, turnosDelReporte } from "@/lib/reporteSemanal";
 import type { ReporteMensual, Salon } from "@/lib/types";
 
@@ -103,7 +103,7 @@ export default function ReportesPage() {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const salonNombre = salonId !== undefined ? (salones.find((s) => s.id === salonId)?.nombre ?? null) : null;
-      armarPdfReporte(doc, reporte, salonNombre, turnosDelReporte(salones, salonId));
+      armarPdfReporte(doc, reporte, salonNombre, turnosDelReporte(salones, salonId), await cargarLogoPdf());
 
       const sufijoSalon = salonNombre
         ? `-${salonNombre
@@ -375,4 +375,30 @@ function PildoraOcupacion({ porcentaje, esMaximo }: { porcentaje: number; esMaxi
       <span className={`w-12 text-right tabular-nums ${esMaximo ? "font-bold" : ""}`}>{porcentaje}%</span>
     </div>
   );
+}
+
+// Logo de capax para el encabezado del PDF (public/marca/capax-logo.png,
+// fondo transparente). Si falla la descarga, el PDF sale igual con el
+// nombre escrito en vez del logo.
+async function cargarLogoPdf(): Promise<LogoPdf | null> {
+  try {
+    const res = await fetch("/marca/capax-logo.png");
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => resolve(lector.result as string);
+      lector.onerror = () => reject(lector.error);
+      lector.readAsDataURL(blob);
+    });
+    const { ancho, alto } = await new Promise<{ ancho: number; alto: number }>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ ancho: img.naturalWidth, alto: img.naturalHeight });
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+    return { dataUrl, ancho, alto };
+  } catch {
+    return null;
+  }
 }

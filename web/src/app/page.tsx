@@ -16,6 +16,8 @@ import SalonSelector from "@/components/SalonSelector";
 import ShiftSection from "@/components/ShiftSection";
 import ThemeToggle from "@/components/ThemeToggle";
 import TurnoToggle from "@/components/TurnoToggle";
+import { MarcaCapax } from "@/components/MarcaCapax";
+import { SUBTITULO_CLIENTE, introMarcaVista, marcarIntroMarcaVista } from "@/lib/marca";
 
 // Una fila de reserva "vacía" (autogenerada al abrir el turno, con solo la
 // hora default de esa franja) no cuenta como una reserva real cargada —
@@ -37,6 +39,10 @@ function tieneDatosCargados(r: Reserva): boolean {
 export default function HomePage() {
   const router = useRouter();
   const [listo, setListo] = useState(false);
+  // Animación de entrada del logo: solo la primera vez que se abre la app en
+  // esta pestaña (ver lib/marca.ts). Se decide junto con el gate de sesión,
+  // antes del primer render visible, así no hay parpadeo.
+  const [animarMarca, setAnimarMarca] = useState(false);
   const [fecha, setFecha] = useState(todayISO());
   const [turno, setTurno] = useState<Turno>(turnoPorDefecto);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -109,8 +115,15 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNombre(getNombre());
     setAdmin(esAdmin());
+    setAnimarMarca(!introMarcaVista());
     setListo(true);
   }, [router]);
+
+  // Una vez mostrado el header, el logo ya no se vuelve a animar en esta
+  // pestaña (ni al volver desde Reportes, Mesas, etc.).
+  useEffect(() => {
+    if (listo) marcarIntroMarcaVista();
+  }, [listo]);
 
   // Cargar mesas/salones una sola vez
   useEffect(() => {
@@ -441,19 +454,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-10 flex flex-wrap items-stretch justify-between gap-10 overflow-x-auto border-b border-borde bg-superficie px-7 py-4">
         <div className="flex flex-col justify-between gap-2">
           <div className="flex flex-wrap items-center gap-12">
-            <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="Barrancas"
-                width={42}
-                height={42}
-                className="h-10.5 w-10.5 rounded-[10px] border border-borde"
-              />
-              <div>
-                <div className="text-sm font-bold tracking-wide">BARRANCAS</div>
-                <div className="text-xs text-tinta-suave">Restaurant · Reservas</div>
-              </div>
-            </div>
+            <MarcaCapax subtitulo={SUBTITULO_CLIENTE} animado={animarMarca} />
             <DateNav
               fecha={fecha}
               titulo={formatFechaLarga(fecha)}

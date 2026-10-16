@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { NOMBRE_CLIENTE } from "@/lib/marca";
 
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 
 export const metadata: Metadata = {
-  title: "Barrancas · Reservas",
-  description: "Sistema de reservas de Barrancas Restaurant",
+  // "capax" es el producto; el cliente de esta instancia va al lado (ver
+  // lib/marca.ts). Los íconos de la pestaña y de la app son
+  // app/favicon.ico, app/icon.png y app/apple-icon.png.
+  title: `Capax · ${NOMBRE_CLIENTE}`,
+  description: `Reservas y carta de ${NOMBRE_CLIENTE}`,
+  applicationName: "Capax",
 };
 
 // Fija el tema (claro/oscuro) ANTES del primer render, leyendo la

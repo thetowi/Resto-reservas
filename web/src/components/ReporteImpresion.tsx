@@ -1,5 +1,7 @@
 import type { Espera, Mesa, TurnoData } from "@/lib/types";
 import { formatFechaLarga } from "@/lib/date";
+import { NOMBRE_CLIENTE } from "@/lib/marca";
+import { SimboloCapax, WordmarkCapax } from "./MarcaCapax";
 
 interface Props {
   fecha: string;
@@ -41,13 +43,15 @@ export default function ReporteImpresion({
   return (
     <div className="hidden print:block">
       <header className="mb-5 flex items-center gap-2.5 border-b-2 border-tinta pb-2.5">
-        <img src="/logo.png" alt="" width={28} height={28} className="h-7 w-7 rounded-[6px]" />
+        <SimboloCapax size={30} tono="claro" />
         <div>
           <div className="text-lg font-bold tracking-wide">
-            BARRANCAS{salonNombre ? ` · ${salonNombre}` : ""} · Reporte del día
+            {NOMBRE_CLIENTE}
+            {salonNombre ? ` · ${salonNombre}` : ""} · Reporte del día
           </div>
           <div className="text-sm">{formatFechaLarga(fecha)}</div>
         </div>
+        <WordmarkCapax size={16} className="ml-auto" />
       </header>
 
       <BloqueTurnoImpresion titulo="Almuerzo" data={almuerzo} espera={esperaAlmuerzo} codigoMesa={codigoMesa} />
