@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
+import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
 import { LOGOS_CLIENTE, MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
 import {
   ErrorReserva,
@@ -1081,35 +1082,24 @@ function IconoInfo() {
   );
 }
 
-// Archivo .ics para "Agregar al calendario" (hora local del restaurante, sin
-// zona: el calendario del cliente la toma como hora del lugar).
-function descargarCalendario(r: ReservaCreada) {
-  const [y, m, d] = r.fecha.split("-");
-  const [hh, mm] = r.hora.split(":");
-  const inicio = `${y}${m}${d}T${hh}${mm}00`;
-  const ahora = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
-  const texto = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//capax//reservas//ES",
-    "BEGIN:VEVENT",
-    `UID:${r.codigo}@capax`,
-    `DTSTAMP:${ahora}`,
-    `DTSTART:${inicio}`,
-    "DURATION:PT2H",
-    `SUMMARY:Reserva en ${NOMBRE_PUBLICO}`,
-    `DESCRIPTION:${r.pax} personas · ${r.salon} · Código ${r.codigo}`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].join("\r\n");
-  const url = URL.createObjectURL(new Blob([texto], { type: "text/calendar" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `reserva-${r.codigo}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+// "Agregar al calendario": en iPhone/Mac abre el evento (.ics servido por
+// /reservar/calendario) y en el resto, Google Calendar con el evento cargado.
+// Ver lib/calendario.ts. Solo se muestra despues de reservar (en el cliente),
+// asi que se puede mirar el navegador al renderizar.
+function AgregarCalendario({ r }: { r: ReservaCreada }) {
+  const evento = { codigo: r.codigo, fecha: r.fecha, hora: r.hora, pax: r.pax, salon: r.salon };
+  if (usaCalendarioApple()) {
+    return (
+      <a className="rv-sec" href={linkIcs(evento)}>
+        Agregar al calendario
+      </a>
+    );
+  }
+  return (
+    <a className="rv-sec" href={linkGoogleCalendar(evento)} target="_blank" rel="noreferrer">
+      Agregar al calendario
+    </a>
+  );
 }
 
 // Orden de aparicion del texto de la confirmacion (ver .rv-sube en globals.css).
@@ -1182,9 +1172,7 @@ function Confirmacion({
         )}
         <div className="rv-acciones rv-sube" style={sube(4)}>
           {ok && (
-            <button type="button" className="rv-sec" onClick={() => descargarCalendario(r)}>
-              Agregar al calendario
-            </button>
+            <AgregarCalendario r={r} />
           )}
           {MAPS_CLIENTE && (
             <a className="rv-sec" href={MAPS_CLIENTE} target="_blank" rel="noreferrer">
