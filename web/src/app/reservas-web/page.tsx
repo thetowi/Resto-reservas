@@ -8,6 +8,7 @@ import { haySesion } from "@/lib/auth";
 import type { EstadoReservaWeb, ReservaWeb, Turno } from "@/lib/types";
 import { fechaCorta, linkWhatsApp, numeroWhatsApp } from "@/lib/whatsapp";
 import { IconoWhatsApp } from "@/components/BorrarReserva";
+import { esNuevaWeb, guardarVistoWeb, leerVistoWeb } from "@/lib/avisosWeb";
 
 // Reservas por el link: todas las que hicieron los clientes desde /reservar,
 // de cualquier dia y salon, incluidas las canceladas (el registro queda
@@ -70,6 +71,9 @@ export default function ReservasWebPage() {
   const [filtro, setFiltro] = useState<Filtro>("pendiente");
   const [busqueda, setBusqueda] = useState("");
   const [confirmando, setConfirmando] = useState<number | null>(null);
+  // Hasta donde se habian visto al entrar (lib/avisosWeb.ts): las que
+  // entraron despues llevan la etiqueta "Nueva" durante esta visita.
+  const [vistoAlEntrar] = useState(() => leerVistoWeb());
 
   useEffect(() => {
     if (!haySesion()) {
@@ -85,6 +89,9 @@ export default function ReservasWebPage() {
       .then((lista) => {
         setReservas(lista);
         setError(null);
+        // Ya se vieron: el contador del panel deja de contarlas como nuevas.
+        const ultima = lista.reduce<string | null>((max, r) => (!max || Date.parse(r.creadaEn) > Date.parse(max) ? r.creadaEn : max), null);
+        guardarVistoWeb(ultima);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "No se pudieron cargar las reservas"));
   }, []);
@@ -225,6 +232,11 @@ export default function ReservasWebPage() {
                   <tr key={r.id} className={`border-t border-borde align-middle ${cancelada ? "text-tinta-suave" : ""}`}>
                     <td className="px-4 py-2.5 whitespace-nowrap">
                       {cuandoEntro(r.creadaEn)}
+                      {!cancelada && esNuevaWeb(r.creadaEn, vistoAlEntrar) && (
+                        <span className="ml-1.5 rounded-full bg-ocupada px-1.5 py-px align-[1px] text-[10px] font-bold tracking-wide text-white uppercase [[data-theme=dark]_&]:bg-[#e5484d]">
+                          Nueva
+                        </span>
+                      )}
                       <small className="block text-[11px] text-tinta-suave">{r.codigo}</small>
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap">

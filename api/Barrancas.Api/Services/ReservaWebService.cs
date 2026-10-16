@@ -64,16 +64,37 @@ public class ReservaWebService
         return registros.Select(w => ADto(w, hoy)).ToList();
     }
 
-    public async Task<ReservaWebResumenDto> ResumenAsync()
+    /// <summary>
+    /// Contador del boton "Reservas web" del panel. AConfirmar: solicitudes
+    /// que el staff tiene que confirmar. Nuevas: las activas que entraron
+    /// despues de <paramref name="vistoHasta"/> (la ultima que se vio en
+    /// /reservas-web desde ese navegador; null = no cuenta nuevas). Avisos:
+    /// cuantas reservas distintas piden atencion (una nueva que ademas esta
+    /// a confirmar cuenta una vez). UltimaCreadaEn: la mas reciente de todas,
+    /// para que el navegador arranque desde ahi la primera vez.
+    /// </summary>
+    public async Task<ReservaWebResumenDto> ResumenAsync(DateTime? vistoHasta = null)
     {
         var hoy = ReservaOnlineService.HoyLocal();
         var registros = await _db.ReservasWeb
             .AsNoTracking()
             .Include(w => w.Reserva)
-            .Where(w => w.Fecha >= hoy && w.Estado == EstadoReservaWeb.Pendiente)
+            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada)
             .ToListAsync();
-        var aConfirmar = registros.Count(w => EstadoDe(w, hoy) == "pendiente");
-        return new ReservaWebResumenDto(aConfirmar);
+        var aConfirmar = 0;
+        var nuevas = 0;
+        var avisos = 0;
+        foreach (var w in registros)
+        {
+            var estado = EstadoDe(w, hoy);
+            var pendiente = estado == "pendiente";
+            var nueva = vistoHasta is not null && w.CreadaEn > vistoHasta && (pendiente || estado == "confirmada");
+            if (pendiente) aConfirmar++;
+            if (nueva) nuevas++;
+            if (pendiente || nueva) avisos++;
+        }
+        var ultima = await _db.ReservasWeb.MaxAsync(w => (DateTime?)w.CreadaEn);
+        return new ReservaWebResumenDto(aConfirmar, nuevas, avisos, ultima);
     }
 
     public async Task<ReservaWebDto?> ObtenerAsync(int id)

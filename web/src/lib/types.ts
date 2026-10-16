@@ -223,6 +223,14 @@ export interface ReporteMensual {
 // la fila de la grilla: queda aunque la fila se vacie o se quite, asi se ven
 // tambien las canceladas. reservaId es la fila mientras siga siendo esta
 // reserva (null si se cancelo).
+// GET /api/reservas-web/resumen (ver ReservaWebService.ResumenAsync).
+export interface ResumenReservasWeb {
+  aConfirmar: number;
+  nuevas: number;
+  avisos: number; // reservas distintas que piden atencion
+  ultimaCreadaEn: string | null;
+}
+
 export type EstadoReservaWeb = "pendiente" | "confirmada" | "asistio" | "novino" | "cancelada";
 
 export interface ReservaWeb {

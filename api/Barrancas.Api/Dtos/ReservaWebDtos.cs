@@ -28,8 +28,9 @@ public record ReservaWebDto(
     string? CanceladaPor
 );
 
-// Para el contador del boton del panel.
-public record ReservaWebResumenDto(int AConfirmar);
+// Para el contador (tipo notificacion) del boton "Reservas web" del panel.
+// Ver ReservaWebService.ResumenAsync.
+public record ReservaWebResumenDto(int AConfirmar, int Nuevas, int Avisos, DateTime? UltimaCreadaEn);
 
 // Respuesta del tachito: si la fila venia del link, el registro que quedo
 // cancelado (para poder deshacer).

@@ -10,6 +10,7 @@ import type {
   ReporteMensual,
   Reserva,
   ReservaWeb,
+  ResumenReservasWeb,
   Salon,
   Turno,
   TurnoData,
@@ -155,8 +156,10 @@ export function getReservasWeb(dias = 90) {
   return request<ReservaWeb[]>(`/api/reservas-web?dias=${dias}`);
 }
 
-export function getResumenReservasWeb() {
-  return request<{ aConfirmar: number }>("/api/reservas-web/resumen");
+// Contador del boton "Reservas web". vistoHasta: lib/avisosWeb.ts.
+export function getResumenReservasWeb(vistoHasta?: string | null) {
+  const q = vistoHasta ? `?vistoHasta=${encodeURIComponent(vistoHasta)}` : "";
+  return request<ResumenReservasWeb>(`/api/reservas-web/resumen${q}`);
 }
 
 export function confirmarReservaWeb(id: number) {

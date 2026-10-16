@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
 import { getDia, getEspera, getFechasCerradasWeb, getMeta, getResumenReservasWeb, ApiError } from "@/lib/api";
+import { guardarVistoWeb, leerVistoWeb } from "@/lib/avisosWeb";
+import BotonReservasWeb from "@/components/BotonReservasWeb";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
 import { turnoPorDefecto, turnoPorDefectoSinMerienda } from "@/lib/turno";
-import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
+import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, ResumenReservasWeb, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
 import SalonSelector from "@/components/SalonSelector";
@@ -64,9 +66,21 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
-  // Cuantas reservas del link quedaron "a confirmar" (contador del boton
-  // "Reservas web", ver app/reservas-web).
-  const [webAConfirmar, setWebAConfirmar] = useState(0);
+  // Contador tipo notificacion del boton "Reservas web": reservas del link
+  // nuevas (desde la ultima vez que se abrio /reservas-web en este
+  // navegador) o a confirmar. Ver lib/avisosWeb.ts.
+  const [avisosWeb, setAvisosWeb] = useState<ResumenReservasWeb | null>(null);
+  const cargarAvisosWeb = useCallback(() => {
+    getResumenReservasWeb(leerVistoWeb())
+      .then((r) => {
+        // Primera vez en este navegador: arranca desde la ultima que hay,
+        // asi no aparecen como nuevas todas las viejas.
+        if (!leerVistoWeb()) guardarVistoWeb(r.ultimaCreadaEn);
+        setAvisosWeb(r);
+      })
+      .catch(() => {});
+  }, []);
+  const avisosTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Fechas sin reservas web (de hoy en adelante), para el boton/franja de
   // cada turno (ver components/CierreWeb.tsx).
   const [cierresWeb, setCierresWeb] = useState<FechaCerradaWeb[]>([]);
@@ -140,21 +154,33 @@ export default function HomePage() {
     setListo(true);
   }, [router]);
 
-  // Contador de "Reservas web": al entrar y cada minuto.
+  // Contador de "Reservas web": al entrar, cada 30 s, al volver a la
+  // pestaña y cuando llega un cambio por SignalR (ver mas abajo). Las
+  // fechas sin reservas web, cada minuto.
   useEffect(() => {
     if (!listo) return;
-    const cargar = () =>
-      getResumenReservasWeb()
-        .then((r) => setWebAConfirmar(r.aConfirmar))
-        .catch(() => {});
-    cargar();
+    cargarAvisosWeb();
     cargarCierresWeb();
-    const intervalo = setInterval(() => {
-      cargar();
-      cargarCierresWeb();
-    }, 60_000);
-    return () => clearInterval(intervalo);
-  }, [listo, cargarCierresWeb]);
+    const avisos = setInterval(cargarAvisosWeb, 30_000);
+    const cierres = setInterval(cargarCierresWeb, 60_000);
+    const alVolver = () => document.visibilityState === "visible" && cargarAvisosWeb();
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(avisos);
+      clearInterval(cierres);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [listo, cargarAvisosWeb, cargarCierresWeb]);
+
+  // El numero tambien en el titulo de la pestaña: "(2) Capax · Barrancas".
+  const avisosWebN = avisosWeb?.avisos ?? 0;
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\) /, "");
+    document.title = avisosWebN > 0 ? `(${avisosWebN}) ${base}` : base;
+    return () => {
+      document.title = document.title.replace(/^\(\d+\) /, "");
+    };
+  }, [avisosWebN]);
 
   // Una vez mostrado el header, el logo ya no se vuelve a animar en esta
   // pestaña (ni al volver desde Reportes, Mesas, etc.).
@@ -272,6 +298,11 @@ export default function HomePage() {
     conexionRef.current = conexion;
 
     conexion.on("TurnoActualizado", (data: TurnoData) => {
+      // Si entra una reserva por el link en el turno que se esta mirando,
+      // llega como TurnoActualizado: se refresca el contador enseguida
+      // (agrupando cambios seguidos). Para el resto alcanza con los 30 s.
+      if (avisosTimerRef.current) clearTimeout(avisosTimerRef.current);
+      avisosTimerRef.current = setTimeout(cargarAvisosWeb, 1500);
       if (data.fecha !== fechaRef.current || data.salonId !== salonIdRef.current) return;
       setDia((prev) => (prev ? { ...prev, [data.turno]: data } : prev));
     });
@@ -340,9 +371,10 @@ export default function HomePage() {
     });
 
     return () => {
+      if (avisosTimerRef.current) clearTimeout(avisosTimerRef.current);
       conexion.stop();
     };
-  }, [listo, suscribirA]);
+  }, [listo, suscribirA, cargarAvisosWeb]);
 
   // Cargar el dia + (re)suscribirse cuando cambia la fecha o el salon. El
   // fetch depende de "fecha"/"salonId" (estado de React), asi que tiene que
@@ -553,21 +585,7 @@ export default function HomePage() {
                 Plano
               </Link>
             )}
-            <Link
-              href="/reservas-web"
-              title="Reservas que hicieron los clientes desde el link de reservas"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-            >
-              Reservas web
-              {webAConfirmar > 0 && (
-                <span
-                  className="rounded-full bg-aviso px-1.5 text-[11px] leading-[18px] font-bold text-white [[data-theme=dark]_&]:text-[#1a1305]"
-                  title={`${webAConfirmar} para confirmar`}
-                >
-                  {webAConfirmar}
-                </span>
-              )}
-            </Link>
+            <BotonReservasWeb resumen={avisosWeb} />
             <button
               onClick={imprimir}
               disabled={imprimiendo}

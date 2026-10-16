@@ -1,3 +1,4 @@
+using System.Globalization;
 using Barrancas.Api.Data;
 using Barrancas.Api.Dtos;
 using Barrancas.Api.Hubs;
@@ -39,8 +40,17 @@ public class ReservasWebController : ControllerBase
     public async Task<ActionResult<List<ReservaWebDto>>> Listar([FromQuery] int dias = 90) =>
         Ok(await _servicio.ListarAsync(dias));
 
+    // Contador del boton del panel. vistoHasta: el CreadaEn de la ultima
+    // reserva que se vio en /reservas-web desde ese navegador (tal cual lo
+    // devolvio la API, con zona). Sin el parametro no cuenta nuevas.
     [HttpGet("resumen")]
-    public async Task<ActionResult<ReservaWebResumenDto>> Resumen() => Ok(await _servicio.ResumenAsync());
+    public async Task<ActionResult<ReservaWebResumenDto>> Resumen([FromQuery] string? vistoHasta = null)
+    {
+        DateTime? visto = DateTimeOffset.TryParse(vistoHasta, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var d)
+            ? d.UtcDateTime
+            : null;
+        return Ok(await _servicio.ResumenAsync(visto));
+    }
 
     // Pasa una solicitud a confirmada (en el registro y en la fila de la
     // grilla, que deja de mostrar "a confirmar"). La mesa la sigue
