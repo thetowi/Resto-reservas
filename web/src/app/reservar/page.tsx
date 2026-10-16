@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
-import { MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
+import { LOGOS_CLIENTE, MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
 import {
   ErrorReserva,
   crearReservaPublica,
@@ -85,6 +86,11 @@ export default function ReservarPage() {
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<ReservaCreada | null>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
+
+  // El logo chico de la barra recien aparece en el paso 2: se baja de
+  // antemano para que no "salte" al cambiar de pantalla.
+  preload(LOGOS_CLIENTE.barra, { as: "image" });
+  preload(LOGOS_CLIENTE.barraOscuro, { as: "image" });
 
   useEffect(() => {
     getConfigPublica()
@@ -288,7 +294,7 @@ export default function ReservarPage() {
     <Marco>
       {paso === 0 ? (
         <header className="rv-hero">
-          <div className="rv-lugar">{NOMBRE_PUBLICO}</div>
+          <LogoPortada />
           <h1 className="rv-hero-t">Reservá tu mesa</h1>
           <p>Elegí el día y el horario entre los que tienen lugar.</p>
           <div className="rv-datos">
@@ -312,7 +318,7 @@ export default function ReservarPage() {
               <path d="M15 5l-7 7 7 7" />
             </svg>
           </button>
-          <span className="rv-lugar-c">{NOMBRE_PUBLICO}</span>
+          <LogoBarra />
         </header>
       )}
 
@@ -644,6 +650,30 @@ function Marco({ children }: { children: React.ReactNode }) {
     <div className="rv">
       <div className="rv-pantalla">{children}</div>
     </div>
+  );
+}
+
+// Logo del restaurante (no de capax: el cliente final reserva en el
+// restaurante). Si el archivo no carga, queda el nombre en texto.
+function LogoPortada() {
+  const [falla, setFalla] = useState(false);
+  if (falla) return <div className="rv-lugar">{NOMBRE_PUBLICO}</div>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- SVG estatico de public/, no necesita next/image
+    <img className="rv-logo-portada" src={LOGOS_CLIENTE.portada} alt={NOMBRE_PUBLICO} onError={() => setFalla(true)} />
+  );
+}
+
+function LogoBarra() {
+  const [falla, setFalla] = useState(false);
+  if (falla) return <span className="rv-lugar-c">{NOMBRE_PUBLICO}</span>;
+  return (
+    <span className="rv-logo-barra">
+      {/* eslint-disable-next-line @next/next/no-img-element -- SVG estatico de public/ */}
+      <img className="claro" src={LOGOS_CLIENTE.barra} alt={NOMBRE_PUBLICO} onError={() => setFalla(true)} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- SVG estatico de public/ */}
+      <img className="oscuro" src={LOGOS_CLIENTE.barraOscuro} alt="" aria-hidden="true" onError={() => setFalla(true)} />
+    </span>
   );
 }
 

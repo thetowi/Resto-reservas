@@ -17,6 +17,21 @@ export const MAPS_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_MAPS_URL ?? "";
 // Link a la politica de privacidad del cliente.
 export const PRIVACIDAD_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_PRIVACIDAD_URL ?? "";
 
+// Logo del cliente para el link publico (/reservar). Son archivos de
+// public/cliente/ (para otro restaurante se reemplazan esos archivos, o se
+// apunta a otra carpeta con NEXT_PUBLIC_CLIENTE_LOGOS):
+//   logo-oscuro.svg        logo completo para fondo oscuro (portada negra)
+//   logo-barra.svg         version horizontal chica, para fondo claro
+//   logo-barra-oscuro.svg  version horizontal chica, para fondo oscuro (Onix)
+//   logo.svg               logo completo para fondo claro (reserva)
+// Si un archivo no carga, la pagina muestra el nombre en texto.
+const CARPETA_LOGOS = (process.env.NEXT_PUBLIC_CLIENTE_LOGOS ?? "/cliente").replace(/\/$/, "");
+export const LOGOS_CLIENTE = {
+  portada: `${CARPETA_LOGOS}/logo-oscuro.svg`,
+  barra: `${CARPETA_LOGOS}/logo-barra.svg`,
+  barraOscuro: `${CARPETA_LOGOS}/logo-barra-oscuro.svg`,
+};
+
 // Animación de entrada del logo: se ve en el login y, si se abre la app con
 // la sesión ya iniciada, una sola vez por pestaña (no cada vez que se vuelve
 // a la pantalla principal). Se recuerda en sessionStorage.

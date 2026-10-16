@@ -744,14 +744,20 @@ select option {
 .rv-cargando { padding: 60px 20px; text-align: center; color: var(--color-tinta-suave); }
 .rv-cargando.chico { padding: 14px 0; text-align: left; font-size: 13px; }
 
-.rv-hero { position: relative; overflow: hidden; padding: 28px 22px 22px; color: #f2f2f2;
-  background: linear-gradient(160deg, #0c2637, #143d58 60%, #1d5a6e); }
-:root[data-theme="dark"] .rv-hero { background: linear-gradient(160deg, #0e0e0f, #102a35); }
-.rv-hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%;
-  border: 14px dashed rgba(50, 180, 157, 0.3); }
-.rv-hero > * { position: relative; z-index: 1; }
+/* Portada en negro con el logo del restaurante en blanco (opcion B del
+   mockup capax-reservar-logo.html), igual en los dos temas: es la identidad
+   del restaurante, no la de capax. */
+.rv-hero { position: relative; overflow: hidden; padding: 28px 22px 22px; color: #f2f2f2; background: #0b0b0c;
+  display: grid; justify-items: center; text-align: center; }
+.rv-logo-portada { display: block; height: 118px; width: auto; max-width: 100%; margin-bottom: 18px; }
+.rv-hero .rv-datos { justify-content: center; }
+.rv-logo-barra { display: inline-flex; align-items: center; }
+.rv-logo-barra img { display: block; height: 30px; width: auto; }
+.rv-logo-barra .oscuro { display: none; }
+:root[data-theme="dark"] .rv-logo-barra .claro { display: none; }
+:root[data-theme="dark"] .rv-logo-barra .oscuro { display: block; }
 .rv-lugar { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; font-weight: 600; }
-.rv-hero-t { margin: 6px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.rv-hero-t { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
 .rv-hero p { margin: 0; font-size: 13.5px; opacity: 0.8; }
 .rv-datos { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; font-size: 12.5px; opacity: 0.85; }
 
