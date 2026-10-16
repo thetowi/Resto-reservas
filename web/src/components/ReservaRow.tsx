@@ -5,7 +5,8 @@ import { patchReserva, borrarReserva } from "@/lib/api";
 import type { Mesa, Reserva } from "@/lib/types";
 import { TOLERANCIA_MINUTOS, excedioTolerancia } from "@/lib/tolerancia";
 import { useConfirm } from "./ConfirmProvider";
-import BorrarReserva from "./BorrarReserva";
+import BorrarReserva, { filaConDatos } from "./BorrarReserva";
+import { AsaArrastre, type Arrastre } from "./ArrastreReservas";
 
 interface Props {
   reserva: Reserva;
@@ -13,6 +14,9 @@ interface Props {
   reservas: Reserva[];
   mesasWalkIn: number[];
   impar: boolean;
+  // Arrastrar la fila a otra fila vacia (cambio de horario), ver
+  // components/ArrastreReservas.tsx. Lo maneja ShiftSection para todo el turno.
+  arrastre?: Arrastre;
   // Reloj compartido de ShiftSection (se actualiza solo cada tanto): así
   // las 26 filas de un turno recalculan el aviso de tolerancia todas juntas
   // en vez de tener cada una su propio setInterval.
@@ -117,7 +121,7 @@ function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
   alPresionarFlecha(e);
 }
 
-export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar, ahora }: Props) {
+export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar, ahora, arrastre }: Props) {
   const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
@@ -188,8 +192,25 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           ? "bg-fila-zebra hover:bg-fila-zebra-hover"
           : "hover:bg-fila-zebra-hover";
 
+  // Mientras se arrastra una reserva: la propia fila se atenua, las filas
+  // vacias se marcan en verde (donde se puede soltar) y la que esta debajo
+  // del dedo/mouse, mas fuerte.
+  const arrastrando = arrastre?.origenId != null;
+  const claseArrastre = !arrastrando
+    ? ""
+    : arrastre.origenId === reserva.id
+      ? " opacity-40"
+      : arrastre.destinoId === reserva.id
+        ? " fila-destino-fuerte"
+        : !filaConDatos(reserva)
+          ? " fila-destino"
+          : "";
+
   return (
-    <tr className={filaClase}>
+    <tr className={filaClase + claseArrastre} data-reserva-id={reserva.id}>
+      <td className="w-5 pr-0">
+        <AsaArrastre reserva={reserva} arrastre={arrastre} />
+      </td>
       <td className="w-16">
         <div className="relative">
           <input

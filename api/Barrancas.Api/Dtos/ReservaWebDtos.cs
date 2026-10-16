@@ -51,3 +51,6 @@ public record RestaurarReservaRequest(
     EstadoReserva Estado,
     int? ReservaWebId
 );
+
+// Arrastrar una reserva a otra fila (vacia) del mismo turno.
+public record MoverReservaRequest(int DestinoId);

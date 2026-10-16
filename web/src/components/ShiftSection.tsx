@@ -7,6 +7,7 @@ import { excedioTolerancia } from "@/lib/tolerancia";
 import EsperaPanel from "./EsperaPanel";
 import MesasPanel from "./MesasPanel";
 import ReservaRow from "./ReservaRow";
+import { useArrastreReservas } from "./ArrastreReservas";
 import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
@@ -68,6 +69,9 @@ export default function ShiftSection({
     return () => clearInterval(id);
   }, []);
   const reservasFueraDeTolerancia = reservas.filter((r) => excedioTolerancia(r, ahora)).length;
+
+  // Arrastrar una reserva a otra fila vacia (cambio de horario).
+  const { arrastre, capas: capasArrastre } = useArrastreReservas(reservas);
 
   // Aviso de sobreventa: cuando el pax reservado de este turno llega al 80%
   // de la capacidad total del salon (todas las mesas, bases y divisiones),
@@ -224,6 +228,7 @@ export default function ShiftSection({
             <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr className="border-b-2 border-borde text-[11px] tracking-wide text-tinta-suave uppercase">
+                  <th className="w-5" aria-label="Mover" />
                   <th className="px-1.5 py-1.5 text-left">Hora</th>
                   <th className="px-1.5 py-1.5 text-left">Mesa</th>
                   <th className="px-1.5 py-1.5 text-left" title="Mesa pedida puntualmente (bloquea el selector de Mesa)">
@@ -253,10 +258,12 @@ export default function ShiftSection({
                     mesasWalkIn={data.mesasWalkIn}
                     impar={i % 2 === 1}
                     ahora={ahora}
+                    arrastre={arrastre}
                   />
                 ))}
               </tbody>
             </table>
+            {capasArrastre}
           </div>
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-borde pt-2.5">
             <button

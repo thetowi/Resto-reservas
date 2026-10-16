@@ -101,7 +101,7 @@ export default function BorrarReserva({ reserva }: { reserva: Reserva }) {
           type="button"
           title="Borrar reserva (la fila queda vacía con su horario)"
           aria-label={`Borrar la reserva de ${reserva.nombre?.trim() || "esta fila"}`}
-          className="rounded p-0.5 text-tinta-suave opacity-40 hover:bg-ocupada-suave hover:text-ocupada hover:opacity-100 focus-visible:opacity-100"
+          className="rounded p-0.5 text-tinta-suave opacity-75 hover:bg-ocupada-suave hover:text-ocupada hover:opacity-100 focus-visible:opacity-100"
           onClick={() => setAbierto(true)}
         >
           <IconoTacho />

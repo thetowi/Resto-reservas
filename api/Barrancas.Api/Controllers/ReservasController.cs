@@ -236,6 +236,70 @@ public class ReservasController : ControllerBase
         return Ok(data);
     }
 
+    // Arrastrar una reserva a otra fila vacia del mismo turno (cambio de
+    // horario sin volver a cargar los datos): todos los datos, tildes, mesas,
+    // origen y estado pasan a la fila destino, que conserva SU horario; la
+    // fila de origen queda vacia con el suyo (como despues del tachito). Si
+    // venia del link, su registro pasa a apuntar a la fila nueva. "Deshacer"
+    // es mover de vuelta (la de origen quedo vacia).
+    [HttpPost("{id:int}/mover")]
+    public async Task<ActionResult<TurnoDataDto>> Mover(int id, MoverReservaRequest req)
+    {
+        if (req.DestinoId == id) return BadRequest(new { error = "elegí otra fila" });
+        var origen = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == id);
+        var destino = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == req.DestinoId);
+        if (origen is null || destino is null) return NotFound(new { error = "no encontrada" });
+        if (origen.Fecha != destino.Fecha || origen.Turno != destino.Turno || origen.SalonId != destino.SalonId)
+        {
+            return BadRequest(new { error = "solo se puede mover dentro del mismo turno y salón" });
+        }
+        if (await TurnoCerradoAsync(origen))
+        {
+            return BadRequest(new { error = "este turno está cerrado: no se pueden editar sus reservas" });
+        }
+        var mesasOrigen = await _db.ReservaMesas.Where(rm => rm.ReservaId == origen.Id).ToListAsync();
+        var destinoOcupado = !string.IsNullOrWhiteSpace(destino.Nombre) || destino.Pax is not null
+            || !string.IsNullOrWhiteSpace(destino.HabTel) || !string.IsNullOrWhiteSpace(destino.Comentarios)
+            || await _db.ReservaMesas.AnyAsync(rm => rm.ReservaId == destino.Id);
+        if (destinoOcupado)
+        {
+            return Conflict(new { error = "esa fila ya tiene una reserva: soltala en una fila vacía" });
+        }
+
+        destino.Pax = origen.Pax;
+        destino.Nombre = origen.Nombre;
+        destino.HabTel = origen.HabTel;
+        destino.Comentarios = origen.Comentarios;
+        destino.Asistio = origen.Asistio;
+        destino.PidioMesa = origen.PidioMesa;
+        destino.Retirada = origen.Retirada;
+        destino.Origen = origen.Origen;
+        destino.Estado = origen.Estado;
+        destino.UpdatedAt = DateTime.UtcNow;
+        _db.ReservaMesas.RemoveRange(mesasOrigen);
+        _db.ReservaMesas.AddRange(mesasOrigen.Select(rm => new ReservaMesa { ReservaId = destino.Id, MesaId = rm.MesaId }));
+
+        origen.Pax = null;
+        origen.Nombre = null;
+        origen.HabTel = null;
+        origen.Comentarios = null;
+        origen.Asistio = false;
+        origen.PidioMesa = false;
+        origen.Retirada = false;
+        origen.Origen = OrigenReserva.Staff;
+        origen.Estado = EstadoReserva.Confirmada;
+        origen.UpdatedAt = DateTime.UtcNow;
+
+        var registros = await _db.ReservasWeb
+            .Where(w => w.ReservaId == origen.Id && w.Estado != EstadoReservaWeb.Cancelada)
+            .ToListAsync();
+        foreach (var w in registros) w.ReservaId = destino.Id;
+
+        await _db.SaveChangesAsync();
+        var data = await BroadcastTurnoAsync(origen.Fecha, origen.Turno, origen.SalonId);
+        return Ok(data);
+    }
+
     private Task<bool> TurnoCerradoAsync(Reserva reserva) =>
         _db.CierresTurno.AnyAsync(c => c.Fecha == reserva.Fecha && c.Turno == reserva.Turno && c.SalonId == reserva.SalonId);
 

@@ -38,3 +38,10 @@ export function linkWhatsApp(numero: string, nombre: string | null | undefined, 
   const texto = `Hola${primerNombre ? ` ${primerNombre}` : ""}, te escribimos de ${NOMBRE_PUBLICO} por tu reserva del ${cuando}. `;
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
 }
+
+// Mismo link, para avisar un cambio de horario.
+export function linkWhatsAppCambio(numero: string, nombre: string | null | undefined, fechaISO: string, hora: string | null | undefined) {
+  const primerNombre = (nombre ?? "").trim().split(/\s+/)[0];
+  const texto = `Hola${primerNombre ? ` ${primerNombre}` : ""}, te escribimos de ${NOMBRE_PUBLICO}: tu reserva del ${fechaCorta(fechaISO)} quedó para las ${hora ?? ""}. `;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+}

@@ -918,3 +918,12 @@ select option {
 @media (prefers-reduced-motion: reduce) {
   .rv-adelante, .rv-atras-anim, .rv-enviando, .rv-loader path, .rv-ok svg, .rv-ok-circ, .rv-ok-trazo, .rv-ok-pulso, .rv-sube { animation: none; }
 }
+
+/* ===== Arrastrar una reserva a otra fila (ver components/ArrastreReservas.tsx) =====
+   Mientras se arrastra, las filas vacias donde se puede soltar se marcan en
+   verde y la que esta debajo del dedo/mouse, mas fuerte. Pisa el zebra y el
+   hover de la fila (por eso el !important). */
+tr.fila-destino > td { background: color-mix(in srgb, var(--color-asistio) 9%, transparent) !important; }
+tr.fila-destino > td:first-child { box-shadow: inset 3px 0 0 var(--color-asistio); }
+tr.fila-destino-fuerte > td { background: color-mix(in srgb, var(--color-asistio) 26%, transparent) !important; }
+tr.fila-destino-fuerte > td:first-child { box-shadow: inset 3px 0 0 var(--color-asistio); }

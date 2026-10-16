@@ -181,4 +181,54 @@ public class ReservasWebEndpointsTests : IClassFixture<BarrancasWebApplicationFa
         var fila = await db.Reservas.SingleAsync(r => r.Id == web.ReservaId);
         Assert.Equal(EstadoReserva.Confirmada, fila.Estado);
     }
+
+    private async Task<TurnoDataDto> CenaAsync(HttpClient client, DateOnly fecha)
+    {
+        var salonId = await SalonRestaurantIdAsync(client);
+        var dia = await client.GetFromJsonAsync<DiaDto>($"/api/dias/{fecha:yyyy-MM-dd}?salonId={salonId}", Json);
+        return dia!.Cena;
+    }
+
+    [Fact]
+    public async Task Arrastrar_a_una_fila_vacia_mueve_todos_los_datos_y_la_reserva_web_la_sigue()
+    {
+        var client = await ClienteAutenticadoAsync();
+        var fecha = EnDias(17);
+        var web = await ReservarPorLinkAsync(client, fecha, 2, "Gabriel Sosa");
+        var destino = (await CenaAsync(client, fecha)).Reservas
+            .First(r => r.Hora == "21:30" && r.Pax is null && string.IsNullOrEmpty(r.Nombre));
+
+        var res = await client.PostAsJsonAsync($"/api/reservas/{web.ReservaId}/mover", new MoverReservaRequest(destino.Id));
+
+        res.EnsureSuccessStatusCode();
+        var cena = await CenaAsync(client, fecha);
+        var origen = cena.Reservas.Single(r => r.Id == web.ReservaId);
+        var movida = cena.Reservas.Single(r => r.Id == destino.Id);
+        Assert.Equal("21:00", origen.Hora);
+        Assert.Null(origen.Nombre);
+        Assert.Empty(origen.MesaIds);
+        Assert.Equal("21:30", movida.Hora);
+        Assert.Equal("Gabriel Sosa", movida.Nombre);
+        Assert.Equal(OrigenReserva.Web, movida.Origen);
+        Assert.NotEmpty(movida.MesaIds);
+        var registro = Assert.Single(await ListarAsync(client), w => w.Id == web.Id);
+        Assert.Equal(destino.Id, registro.ReservaId);
+        Assert.Equal("21:30", registro.Hora);
+        Assert.Equal("confirmada", registro.Estado);
+    }
+
+    [Fact]
+    public async Task Arrastrar_sobre_una_fila_con_reserva_devuelve_409()
+    {
+        var client = await ClienteAutenticadoAsync();
+        var fecha = EnDias(18);
+        var a = await ReservarPorLinkAsync(client, fecha, 2, "Hernán Paz");
+        var ocupada = (await CenaAsync(client, fecha)).Reservas
+            .First(r => r.Hora == "21:30" && r.Pax is null && string.IsNullOrEmpty(r.Nombre));
+        (await client.PatchAsJsonAsync($"/api/reservas/{ocupada.Id}", new { nombre = "Inés Paz" })).EnsureSuccessStatusCode();
+
+        var res = await client.PostAsJsonAsync($"/api/reservas/{a.ReservaId}/mover", new MoverReservaRequest(ocupada.Id));
+
+        Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
+    }
 }

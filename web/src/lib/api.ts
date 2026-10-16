@@ -118,6 +118,15 @@ export function vaciarReserva(id: number) {
   return request<{ reservaWebId: number | null }>(`/api/reservas/${id}/vaciar`, { method: "POST" });
 }
 
+// Arrastrar una reserva a otra fila vacia del mismo turno (la destino
+// conserva su horario). Deshacer = mover de vuelta.
+export function moverReserva(id: number, destinoId: number) {
+  return request<TurnoData>(`/api/reservas/${id}/mover`, {
+    method: "POST",
+    body: JSON.stringify({ destinoId }),
+  });
+}
+
 // "Deshacer" del tachito: vuelve a cargar los datos que tenia la fila.
 export function restaurarReserva(r: Reserva, reservaWebId: number | null) {
   return request<TurnoData>(`/api/reservas/${r.id}/restaurar`, {
