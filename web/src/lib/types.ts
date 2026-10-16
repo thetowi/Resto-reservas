@@ -217,3 +217,32 @@ export interface ReporteMensual {
   porcentajeAsistencia: number;
   porDiaYTurno: ReporteDia[];
 }
+
+// Una reserva hecha por el cliente desde el link publico (/reservar), para
+// la pagina "Reservas por el link" (/reservas-web). Es un registro aparte de
+// la fila de la grilla: queda aunque la fila se vacie o se quite, asi se ven
+// tambien las canceladas. reservaId es la fila mientras siga siendo esta
+// reserva (null si se cancelo).
+export type EstadoReservaWeb = "pendiente" | "confirmada" | "asistio" | "novino" | "cancelada";
+
+export interface ReservaWeb {
+  id: number;
+  codigo: string;
+  creadaEn: string;
+  fecha: string;
+  turno: Turno;
+  hora: string;
+  salonId: number;
+  salon: string;
+  pax: number;
+  nombre: string;
+  telefono: string;
+  habitacion: string | null;
+  pedido: string | null;
+  estado: EstadoReservaWeb;
+  reservaId: number | null;
+  confirmadaEn: string | null;
+  confirmadaPor: string | null;
+  canceladaEn: string | null;
+  canceladaPor: string | null;
+}

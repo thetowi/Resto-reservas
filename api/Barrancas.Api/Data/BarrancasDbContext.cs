@@ -22,6 +22,7 @@ public class BarrancasDbContext : DbContext
     public DbSet<DivisionMesaDefault> DivisionesMesaDefault => Set<DivisionMesaDefault>();
     public DbSet<FechaBloqueadaBot> FechasBloqueadasBot => Set<FechaBloqueadaBot>();
     public DbSet<ConversacionBot> ConversacionesBot => Set<ConversacionBot>();
+    public DbSet<ReservaWeb> ReservasWeb => Set<ReservaWeb>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +218,23 @@ public class BarrancasDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.MesaBaseId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReservaWeb>(e =>
+        {
+            e.HasIndex(x => x.Fecha);
+            e.HasIndex(x => x.ReservaId);
+            // SetNull (no Cascade): si se quita la fila de la grilla, el
+            // registro de la reserva web queda (como cancelada) — es el
+            // historial de lo que entro por el link.
+            e.HasOne(x => x.Reserva)
+                .WithMany()
+                .HasForeignKey(x => x.ReservaId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<FechaBloqueadaBot>(e =>

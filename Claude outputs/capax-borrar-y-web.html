@@ -1,0 +1,608 @@
+<title>Borrar y control web</title>
+<style>
+:root {
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pg: #dde3e8; --pg-tinta: #13242e; --pg-suave: #5f6c74; --pg-borde: #c3ccd3;
+  --fondo: #f0f3f6; --superficie: #ffffff; --tinta: #13242e; --tinta-suave: #768188; --borde: #c8d2da;
+  --arena: #143d58; --arena-suave: #e3e8eb; --marca: #0c2637; --teal: #32b49d; --teal-suave: #e0f4f0;
+  --ocupada: #c00000; --ocupada-suave: #fdeaea; --aviso: #b07a1c; --aviso-suave: #fbf1dc; --pedida: #b8722c;
+  --zebra: #f6f8fa; --sim-m: #143d58;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --pg: #050505; --pg-tinta: #f2f2f2; --pg-suave: #8c8c8c; --pg-borde: #242426;
+  --fondo: #000000; --superficie: #0e0e0f; --tinta: #f2f2f2; --tinta-suave: #8c8c8c; --borde: #242426;
+  --arena: #4d8ab8; --arena-suave: #1c1c1f; --marca: #174a6e; --teal-suave: #102f29;
+  --ocupada-suave: #260f12; --aviso: #e0a942; --aviso-suave: #2a2210; --zebra: #141416; --sim-m: #f2f2f2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pg); color: var(--pg-tinta); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 24px; padding-block: 32px 64px; }
+.cab { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.eyebrow { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--pg-suave); font-weight: 600; }
+h1 { margin: 6px 0 8px; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.015em; line-height: 1.15; }
+.cab p { margin: 0; max-width: 70ch; color: var(--pg-suave); }
+.controles { display: flex; gap: 10px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--pg-borde); border-radius: 10px; padding: 3px; background: color-mix(in srgb, var(--superficie) 70%, transparent); }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--pg-suave); padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: #143d58; color: #fff; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.explica { color: var(--pg-suave); margin: 0 0 14px; max-width: 90ch; }
+
+/* ---- App ---- */
+.app { background: var(--fondo); color: var(--tinta); border-radius: 16px; border: 1px solid var(--pg-borde); overflow: hidden;
+  box-shadow: 0 24px 60px -36px rgba(0,0,0,.5); }
+.top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 14px 24px; background: var(--superficie); border-bottom: 1px solid var(--borde); }
+.marca { display: flex; align-items: center; gap: 12px; }
+.marca .sim { color: var(--sim-m); }
+.marca .wmk { color: var(--tinta); }
+.marca small { display: block; font-size: 12px; color: var(--tinta-suave); margin-top: 3px; }
+.fecha { display: flex; align-items: center; gap: 6px; }
+.fecha button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta); cursor: pointer; }
+.fecha .pill { padding: 6px 14px; border-radius: 999px; background: var(--arena-suave); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--tinta-suave); }
+.fecha .hoy { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--teal-suave); color: #1d7a69; }
+:root[data-theme="dark"] .fecha .hoy { color: #6fd3bf; }
+.top .der { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--tinta-suave); }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--borde);
+  background: var(--superficie); color: var(--tinta); font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.btn.primario { background: var(--marca); color: #fff; border-color: transparent; font-weight: 600; }
+.btn.chico { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.cuerpo { padding: 24px; display: grid; gap: 20px; }
+.saludo { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.saludo h2 { margin: 0; font-size: 24px; letter-spacing: -.01em; }
+.saludo p { margin: 4px 0 0; color: var(--tinta-suave); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px; }
+.kpi .et { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); }
+.kpi .v { font-size: 26px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .det { font-size: 12.5px; color: var(--tinta-suave); }
+
+.card { background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; }
+.card-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; }
+.card-h h3 { margin: 0; font-size: 15px; }
+.chip { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--arena-suave); color: var(--tinta-suave); }
+.chip.teal { background: var(--teal-suave); color: #1d7a69; }
+:root[data-theme="dark"] .chip.teal { color: #6fd3bf; }
+.chip.ambar { background: var(--aviso-suave); color: var(--aviso); }
+.barra { height: 8px; border-radius: 99px; background: var(--arena-suave); overflow: hidden; }
+.barra i { display: block; height: 100%; border-radius: 99px; background: var(--teal); }
+.barra.alta i { background: var(--aviso); }
+
+/* A · Resumen */
+.grilla-a { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.turnos { display: grid; gap: 16px; }
+.salones { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 16px; }
+.salon { border: 1px solid var(--borde); border-radius: 12px; padding: 14px; display: grid; gap: 10px; background: var(--fondo); }
+.salon.vacio { opacity: .6; }
+.salon-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.salon-h b { font-size: 14px; }
+.salon-h span { font-size: 12px; color: var(--tinta-suave); }
+.cifras { display: flex; gap: 14px; font-size: 13px; color: var(--tinta-suave); }
+.cifras b { color: var(--tinta); font-size: 18px; font-variant-numeric: tabular-nums; margin-right: 3px; }
+.salon .btn { justify-content: center; }
+.lista-mini { list-style: none; margin: 0; padding: 0; display: grid; }
+.lista-mini li { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--borde); }
+.lista-mini li:first-child { border-top: 0; }
+.hora { font-weight: 700; font-variant-numeric: tabular-nums; }
+.quien b { display: block; font-size: 13.5px; }
+.quien span { font-size: 12px; color: var(--tinta-suave); }
+.pax { font-size: 12.5px; color: var(--tinta-suave); white-space: nowrap; text-align: right; }
+.pax b { color: var(--tinta); font-size: 14px; }
+.notas li { grid-template-columns: 22px minmax(0, 1fr) auto; }
+.ico { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: var(--aviso-suave); color: var(--aviso); font-size: 12px; font-weight: 700; }
+.ico.fiesta { background: var(--teal-suave); color: #1d7a69; }
+:root[data-theme="dark"] .ico.fiesta { color: #6fd3bf; }
+.lado { display: grid; gap: 16px; }
+.vacio-txt { padding: 16px; color: var(--tinta-suave); font-size: 13px; }
+
+/* Inicio por salón */
+.grilla-s { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.salones-col { display: grid; gap: 16px; }
+.sal-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--borde); }
+.sal-h h3 { margin: 0; font-size: 16px; letter-spacing: -.005em; }
+.sal-h .tot { margin-left: auto; font-size: 13px; color: var(--tinta-suave); }
+.sal-h .tot b { color: var(--tinta); font-size: 15px; font-variant-numeric: tabular-nums; }
+.turno-f { display: grid; grid-template-columns: 150px 215px minmax(80px, 1fr) 46px auto; gap: 14px; align-items: center;
+  padding: 12px 16px; border-top: 1px solid var(--borde); }
+.turno-f:first-of-type { border-top: 0; }
+.turno-f .tn b { display: block; font-size: 14px; }
+.turno-f .tn span { font-size: 12px; color: var(--tinta-suave); }
+.turno-f .cf { display: flex; gap: 14px; font-size: 12.5px; color: var(--tinta-suave); white-space: nowrap; }
+.turno-f .cf b { color: var(--tinta); font-size: 16px; font-variant-numeric: tabular-nums; margin-right: 3px; }
+.turno-f .pct { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.turno-f.sin .cf, .turno-f.sin .pct { color: var(--tinta-suave); }
+.turno-f.sin .barra i { width: 0 !important; }
+.estado-t { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; vertical-align: 1px;
+  background: var(--teal-suave); color: #1d7a69; }
+:root[data-theme="dark"] .estado-t { color: #6fd3bf; }
+.sal-vacio { padding: 2px 9px; }
+@media (max-width: 1000px) {
+  .grilla-s { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .turno-f { grid-template-columns: 1fr auto; row-gap: 8px; }
+  .turno-f .cf { grid-column: 1 / -1; order: 3; }
+  .turno-f .barra { grid-column: 1 / 2; order: 4; }
+  .turno-f .pct { order: 5; }
+  .turno-f .btn { order: 2; }
+}
+
+/* B · Agenda */
+.agenda { display: grid; gap: 16px; }
+.franja { overflow-x: auto; }
+.tabla-ag { min-width: 820px; display: grid; }
+.ag-fila { display: grid; grid-template-columns: 64px repeat(var(--cols), minmax(0, 1fr)); border-top: 1px solid var(--borde); }
+.ag-fila.cab-ag { border-top: 0; background: var(--zebra); font-size: 12px; font-weight: 600; color: var(--tinta-suave); }
+.ag-fila > div { padding: 8px 10px; border-left: 1px solid var(--borde); min-height: 46px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.ag-fila > div:first-child { border-left: 0; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tinta-suave); font-size: 12.5px; }
+.cab-ag > div { min-height: 0; display: block; }
+.cab-ag small { display: block; font-weight: 400; }
+.res { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 8px; background: var(--arena-suave); font-size: 12.5px; border-left: 3px solid var(--arena); }
+.res b { font-weight: 600; }
+.res em { font-style: normal; color: var(--tinta-suave); }
+.res.asistio { border-left-color: var(--teal); background: var(--teal-suave); }
+.res.nota { border-left-color: var(--aviso); }
+.res.pidio { box-shadow: inset 0 0 0 1px var(--pedida); }
+.ley { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--tinta-suave); }
+.ley span { display: inline-flex; align-items: center; gap: 6px; }
+.ley i { width: 12px; height: 12px; border-radius: 3px; background: var(--arena-suave); border-left: 3px solid var(--arena); }
+.ley i.t { border-left-color: var(--teal); background: var(--teal-suave); }
+.ley i.a { border-left-color: var(--aviso); }
+.ley i.p { box-shadow: inset 0 0 0 1px var(--pedida); }
+
+/* C · Lista */
+.filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.buscar { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 10px; background: var(--superficie); color: var(--tinta-suave); }
+.grupo { display: grid; }
+.grupo-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--borde); background: var(--zebra); flex-wrap: wrap; }
+.grupo-h:first-child { border-top: 0; border-radius: 16px 16px 0 0; }
+.grupo-h h3 { margin: 0; font-size: 14px; }
+.grupo-h .der { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--tinta-suave); }
+.tabla { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; table-layout: fixed; }
+th:nth-child(1) { width: 72px; } th:nth-child(2) { width: 22%; } th:nth-child(3) { width: 56px; } th:nth-child(4) { width: 90px; } th:nth-child(5) { width: 130px; } th:nth-child(7) { width: 104px; }
+th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; padding: 8px 16px; border-top: 1px solid var(--borde); }
+td { padding: 9px 16px; border-top: 1px solid var(--borde); vertical-align: top; }
+tr.asistio td { background: color-mix(in srgb, var(--teal) 10%, transparent); }
+td.num { font-variant-numeric: tabular-nums; }
+.estado { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--arena-suave); color: var(--tinta-suave); white-space: nowrap; }
+.estado.ok { background: var(--teal-suave); color: #1d7a69; }
+:root[data-theme="dark"] .estado.ok { color: #6fd3bf; }
+.coment { color: var(--aviso); }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grilla-a { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .wrap { padding-inline: 12px; }
+  .cuerpo { padding: 16px; }
+  .top { padding: 12px 16px; }
+  .top .der { margin-left: 0; }
+}
+
+.tabs { display: inline-flex; border: 1px solid var(--pg-borde); border-radius: 10px; padding: 3px; background: color-mix(in srgb, var(--superficie) 70%, transparent); flex-wrap: wrap; }
+.tabs button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--pg-suave); padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: #143d58; color: #fff; }
+.nota-tab { margin: 0 0 14px; color: var(--pg-suave); max-width: 92ch; }
+.nota-tab b { color: var(--pg-tinta); }
+
+/* ---- Grilla del panel ---- */
+.turno-card { background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; overflow: hidden; }
+.turno-cab { display: flex; align-items: center; gap: 10px; padding: 14px 18px; }
+.turno-cab h3 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .04em; border-left: 4px solid var(--marca); padding-left: 10px; }
+:root[data-theme="dark"] .turno-cab h3 { border-left-color: var(--arena); }
+.turno-cab .btn { margin-left: auto; }
+.grilla-res { overflow-x: auto; }
+.grilla-res table { min-width: 980px; table-layout: fixed; font-size: 13px; }
+.grilla-res th { padding: 8px 8px; font-size: 10.5px; }
+.grilla-res td { padding: 4px 8px; vertical-align: middle; height: 40px; }
+.grilla-res th:nth-child(1) { width: 62px; } .grilla-res th:nth-child(2) { width: 84px; } .grilla-res th:nth-child(3) { width: 54px; }
+.grilla-res th:nth-child(4) { width: 52px; } .grilla-res th:nth-child(5) { width: 220px; } .grilla-res th:nth-child(6) { width: 118px; }
+.grilla-res th:nth-child(8) { width: 58px; } .grilla-res th:nth-child(9) { width: 52px; } .grilla-res th:nth-child(10) { width: 64px; }
+.grilla-res tbody tr:nth-child(even) td { background: var(--zebra); }
+.celda { display: block; width: 100%; min-height: 28px; padding: 4px 6px; border-radius: 6px; color: var(--tinta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.celda.vacia { color: var(--tinta-suave); opacity: .55; }
+.mesas-chip { display: inline-flex; gap: 4px; }
+.mesas-chip span { font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: var(--arena-suave); }
+.chk { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--borde); display: inline-block; vertical-align: middle; }
+.chk.si { background: var(--pedida); border-color: var(--pedida); position: relative; }
+.chk.si::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.etq { margin-left: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 5px; background: var(--teal-suave); color: #1d7a69; white-space: nowrap; vertical-align: 1px; }
+.etq.pend { background: var(--aviso-suave); color: var(--aviso); }
+:root[data-theme="dark"] .etq { color: #6fd3bf; } :root[data-theme="dark"] .etq.pend { color: var(--aviso); }
+.acc-fila { display: flex; gap: 2px; justify-content: flex-end; }
+.ico-btn { width: 28px; height: 28px; border-radius: 8px; border: 0; background: none; color: var(--tinta-suave); display: grid; place-items: center; cursor: pointer; opacity: .55; }
+.ico-btn:hover, .ico-btn:focus-visible { opacity: 1; background: var(--arena-suave); }
+.ico-btn.tacho:hover { color: var(--ocupada); background: var(--ocupada-suave); }
+.ico-btn.quitar { font-size: 17px; line-height: 1; }
+.ico-btn.quitar:hover { color: var(--ocupada); }
+.ico-btn[hidden] { display: none; }
+tr.vaciando td { animation: vaciar .9s ease; }
+@keyframes vaciar { 0% { background: var(--ocupada-suave); } 100% { } }
+.ley-acc { display: flex; gap: 18px; flex-wrap: wrap; padding: 10px 18px 14px; font-size: 12.5px; color: var(--tinta-suave); border-top: 1px solid var(--borde); }
+.ley-acc span { display: inline-flex; align-items: center; gap: 6px; }
+.ley-acc svg { color: var(--tinta); }
+
+/* Modal de confirmación */
+.velo { position: fixed; inset: 0; background: rgba(5, 12, 18, .45); display: grid; place-items: center; padding: 16px; z-index: 20; animation: aparecer .15s ease; }
+.velo[hidden] { display: none; }
+.modal { width: min(440px, 100%); background: var(--superficie); color: var(--tinta); border: 1px solid var(--borde); border-radius: 16px; padding: 20px; display: grid; gap: 14px;
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,.6); animation: subir-m .2s cubic-bezier(.2,.8,.2,1); }
+.modal h4 { margin: 0; font-size: 17px; }
+.modal p { margin: 0; color: var(--tinta-suave); font-size: 13.5px; }
+.modal .resumen-m { display: flex; flex-wrap: wrap; gap: 6px; }
+.modal .resumen-m span { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--arena-suave); }
+.aviso-web { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--teal-suave); font-size: 13px; }
+.aviso-web b { color: var(--tinta); }
+.btn.wa { background: #1fa855; color: #fff; border-color: transparent; font-weight: 600; justify-self: start; }
+.modal .botones { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.btn.peligro { background: var(--ocupada); color: #fff; border-color: transparent; font-weight: 600; }
+@keyframes aparecer { from { opacity: 0; } }
+@keyframes subir-m { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 16px;
+  background: #13242e; color: #fff; border-radius: 12px; font-size: 13.5px; z-index: 30; box-shadow: 0 16px 40px -18px rgba(0,0,0,.6); animation: subir-m .2s ease; }
+.toast[hidden] { display: none; }
+.toast button { font: inherit; font-weight: 700; color: #6fd3bf; background: none; border: 0; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+:root[data-theme="dark"] .toast { background: #f2f2f2; color: #0e0e0f; } :root[data-theme="dark"] .toast button { color: #1d7a69; }
+
+/* ---- Card en el Inicio ---- */
+.card-link .card-h .ver { margin-left: auto; font-size: 12.5px; color: var(--tinta); text-decoration: underline; cursor: pointer; background: none; border: 0; font-family: inherit; }
+.mini-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--borde); }
+.mini-kpis div { padding: 10px 16px; border-left: 1px solid var(--borde); }
+.mini-kpis div:first-child { border-left: 0; }
+.mini-kpis small { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); }
+.mini-kpis b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.mini-kpis .amb b { color: var(--aviso); }
+.sub-t { padding: 10px 16px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; }
+.lw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--borde); }
+.sub-t + .lw { border-top: 0; }
+.lw .quien b { display: inline; }
+.lw .quien span { display: block; }
+.lw .acc { display: flex; gap: 6px; }
+.btn.conf { background: var(--teal); color: #04221c; border-color: transparent; font-weight: 700; }
+.btn.ico-wa { width: 30px; padding: 0; justify-content: center; color: #1fa855; }
+.recibida { font-size: 11.5px; color: var(--tinta-suave); white-space: nowrap; }
+.lw.hecha { opacity: .5; }
+
+/* ---- Página de reservas por el link ---- */
+.volver { font-size: 13px; color: var(--tinta-suave); text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; justify-self: start; }
+.pag-h { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pag-h h2 { margin: 0; font-size: 22px; }
+.pag-h p { margin: 4px 0 0; color: var(--tinta-suave); }
+.filtros-w { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.seg-w { display: inline-flex; border: 1px solid var(--borde); border-radius: 10px; padding: 3px; background: var(--superficie); flex-wrap: wrap; }
+.seg-w button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--tinta-suave); padding: 6px 11px; border-radius: 7px; cursor: pointer; }
+.seg-w button[aria-pressed="true"] { background: var(--marca); color: #fff; }
+.seg-w .n { font-size: 11px; font-weight: 700; margin-left: 5px; padding: 0 6px; border-radius: 999px; background: var(--arena-suave); color: var(--tinta-suave); }
+.seg-w button[aria-pressed="true"] .n { background: rgba(255,255,255,.2); color: #fff; }
+.tabla-w table { min-width: 980px; table-layout: fixed; }
+.tabla-w th:nth-child(1) { width: 92px; } .tabla-w th:nth-child(2) { width: 132px; } .tabla-w th:nth-child(3) { width: 96px; } .tabla-w th:nth-child(4) { width: 48px; }
+.tabla-w th:nth-child(5) { width: 140px; } .tabla-w th:nth-child(6) { width: 118px; } .tabla-w th:nth-child(8) { width: 106px; } .tabla-w th:nth-child(9) { width: 214px; }
+.tabla-w td:nth-child(6) { white-space: nowrap; }
+.tabla-w td { vertical-align: middle; }
+.tabla-w td small { display: block; color: var(--tinta-suave); font-size: 11.5px; }
+.est { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.est.confirmada { background: var(--teal-suave); color: #1d7a69; }
+.est.pendiente { background: var(--aviso-suave); color: var(--aviso); }
+.est.asistio { background: #c1f7c1; color: #155d27; }
+.est.novino { background: var(--ocupada-suave); color: var(--ocupada); }
+.est.cancelada { background: var(--arena-suave); color: var(--tinta-suave); text-decoration: line-through; }
+:root[data-theme="dark"] .est.confirmada { color: #6fd3bf; } :root[data-theme="dark"] .est.asistio { background: #12361f; color: #8fe3a6; }
+:root[data-theme="dark"] .est.novino { color: #ff8a8a; }
+tr.cancel td:not(:last-child) { color: var(--tinta-suave); }
+.acc-w { display: flex; gap: 6px; flex-wrap: nowrap; }
+.ico-wa svg, .btn.wa svg { flex: none; }
+.pie-w { padding: 12px 16px; font-size: 12.5px; color: var(--tinta-suave); border-top: 1px solid var(--borde); }
+@media (max-width: 620px) { .mini-kpis { grid-template-columns: 1fr 1fr 1fr; } .mini-kpis div { padding: 8px 10px; } }
+</style>
+<div class="wrap">
+  <div class="cab">
+    <div>
+      <div class="eyebrow">capax · panel · Barrancas</div>
+      <h1>Borrar una reserva y controlar las del link</h1>
+      <p>Tres pantallas: el <b>tachito</b> en la grilla del panel, la tarjeta de <b>reservas por el link</b> en el Inicio, y la página con todas. Es interactivo y con datos de ejemplo.</p>
+    </div>
+    <div class="controles">
+      <div class="tabs" role="tablist" aria-label="Pantalla">
+        <button type="button" role="tab" data-tab="grilla">1 · Tachito en la grilla</button>
+        <button type="button" role="tab" data-tab="inicio">2 · En el Inicio</button>
+        <button type="button" role="tab" data-tab="lista">3 · Todas las del link</button>
+      </div>
+      <div class="seg" role="group" aria-label="Tema">
+        <button type="button" id="b-claro" aria-pressed="true">Claro</button>
+        <button type="button" id="b-oscuro" aria-pressed="false">Ónix</button>
+      </div>
+    </div>
+  </div>
+  <p class="nota-tab" id="nota-tab"></p>
+  <div class="app">
+    <div class="top">
+      <div class="marca"><svg class="sim" viewBox="0 0 48 48" width="34" height="34" aria-hidden="true"><g fill="none" stroke-width="5.2" stroke-linecap="round"><path d="M20.15 5.90A18.5 18.5 0 0 1 27.85 5.90" pathLength="100" class="capax-silla capax-s1 capax-ocupada" stroke="#32b49d"/><path d="M34.08 8.48A18.5 18.5 0 0 1 39.52 13.92" pathLength="100" class="capax-silla capax-s2 capax-ocupada" stroke="#32b49d"/><path d="M42.10 20.15A18.5 18.5 0 0 1 42.10 27.85" pathLength="100" class="capax-silla capax-s3 capax-ocupada" stroke="#32b49d"/><path d="M39.52 34.08A18.5 18.5 0 0 1 34.08 39.52" pathLength="100" class="capax-silla capax-s4 capax-ocupada" stroke="#32b49d"/><path d="M27.85 42.10A18.5 18.5 0 0 1 20.15 42.10" pathLength="100" class="capax-silla capax-s5 capax-ocupada" stroke="#32b49d"/><path d="M13.92 39.52A18.5 18.5 0 0 1 8.48 34.08" pathLength="100" class="capax-silla capax-s6" stroke="currentColor" stroke-opacity="0.26"/><path d="M5.90 27.85A18.5 18.5 0 0 1 5.90 20.15" pathLength="100" class="capax-silla capax-s7" stroke="currentColor" stroke-opacity="0.26"/><path d="M8.48 13.92A18.5 18.5 0 0 1 13.92 8.48" pathLength="100" class="capax-silla capax-s8" stroke="currentColor" stroke-opacity="0.26"/></g><circle cx="24" cy="24" r="9.5" fill="currentColor" class="capax-mesa"/></svg><div><svg class="wmk" viewBox="0 0 287.93 74.13" width="54.7" height="14.1" role="img" aria-label="capax" style="overflow:visible"><path d="M26.9 55.75Q19.17 55.75 13.06 52.32Q6.94 48.9 3.47 42.94Q0 36.97 0 29.44Q0 23.28 2.35 17.9Q4.69 12.52 8.8 8.51Q12.91 4.5 18.34 2.25Q23.77 0 30.03 0Q36.09 0 41.08 2.1Q46.06 4.21 49.49 7.92Q52.91 11.64 54.18 16.63L41.17 21.71Q40.1 17.7 37.07 15.45Q34.04 13.2 29.83 13.2Q25.43 13.2 22.15 15.45Q18.88 17.7 17.07 21.42Q15.26 25.14 15.26 29.44Q15.26 33.35 16.72 36.28Q18.19 39.22 20.88 40.88Q23.57 42.54 27.09 42.54Q31.69 42.54 35.11 40.1Q38.53 37.65 40.2 33.64L52.62 39.61Q50.76 44.3 46.99 47.97Q43.23 51.64 38.05 53.69Q32.86 55.75 26.9 55.75Z" pathLength="100" class="capax-letra capax-l1" fill="currentColor"/><path d="M73.94 55.75Q68.56 55.75 64.55 54.08Q60.54 52.42 58.34 49.15Q56.14 45.87 56.14 41.17Q56.14 35.89 58.83 32.23Q61.52 28.56 66.16 26.31Q70.81 24.06 76.68 23.18L92.42 20.73L92.62 19.36Q92.91 17.12 91.84 15.55Q90.76 13.99 88.8 13.11Q86.85 12.23 84.5 12.23Q80.3 12.23 76.97 14.52Q73.65 16.82 71.98 20.34L60.64 14.18Q62.69 9.68 66.41 6.55Q70.12 3.42 75.01 1.71Q79.9 0 85.38 0Q92.13 0 97.36 2.54Q102.59 5.09 105.38 9.58Q108.17 14.08 107.29 20.05L102.5 54.57H88.71L89.29 50.47Q88.61 50.95 88.02 51.44Q84.99 53.69 81.52 54.72Q78.05 55.75 73.94 55.75ZM90.96 31.59 78.73 33.84Q75.7 34.43 73.5 35.94Q71.3 37.46 71.3 40.29Q71.3 42.74 73.06 43.86Q74.82 44.99 77.56 44.99Q81.18 44.99 83.96 43.33Q86.75 41.66 88.56 38.93Q90.37 36.19 90.76 32.96Z" pathLength="100" class="capax-letra capax-l2" fill="currentColor"/><path d="M108.56 74.13 118.73 1.17H132.52L132.13 4.4Q133.89 3.03 136.04 2.05Q140.64 0 146.31 0Q153.75 0 159.52 3.47Q165.29 6.94 168.66 12.86Q172.03 18.78 172.03 26.21Q172.03 32.27 169.78 37.65Q167.54 43.03 163.57 47.09Q159.61 51.15 154.38 53.45Q149.15 55.75 143.08 55.75Q137.12 55.75 132.33 53.6Q129.29 52.32 127.14 50.37L123.92 74.13ZM141.52 42.54Q146.02 42.54 149.44 40.39Q152.86 38.24 154.82 34.52Q156.78 30.81 156.78 26.21Q156.78 22.4 155.21 19.46Q153.65 16.53 150.86 14.87Q148.07 13.2 144.26 13.2Q139.86 13.2 136.48 15.4Q133.11 17.6 131.25 21.32Q129.39 25.04 129.39 29.63Q129.39 33.45 130.91 36.38Q132.42 39.32 135.16 40.93Q137.9 42.54 141.52 42.54Z" pathLength="100" class="capax-letra capax-l3" fill="currentColor"/><path d="M192.77 55.75Q187.39 55.75 183.38 54.08Q179.37 52.42 177.17 49.15Q174.97 45.87 174.97 41.17Q174.97 35.89 177.66 32.23Q180.35 28.56 184.99 26.31Q189.64 24.06 195.51 23.18L211.25 20.73L211.45 19.36Q211.74 17.12 210.67 15.55Q209.59 13.99 207.63 13.11Q205.68 12.23 203.33 12.23Q199.13 12.23 195.8 14.52Q192.47 16.82 190.81 20.34L179.47 14.18Q181.52 9.68 185.24 6.55Q188.95 3.42 193.84 1.71Q198.73 0 204.21 0Q210.96 0 216.19 2.54Q221.42 5.09 224.21 9.58Q227 14.08 226.12 20.05L221.33 54.57H207.54L208.12 50.47Q207.44 50.95 206.85 51.44Q203.82 53.69 200.35 54.72Q196.88 55.75 192.77 55.75ZM209.79 31.59 197.56 33.84Q194.53 34.43 192.33 35.94Q190.13 37.46 190.13 40.29Q190.13 42.74 191.89 43.86Q193.65 44.99 196.39 44.99Q200.01 44.99 202.79 43.33Q205.58 41.66 207.39 38.93Q209.2 36.19 209.59 32.96Z" pathLength="100" class="capax-letra capax-l4" fill="currentColor"/><path d="M225.83 54.57 248.52 27.38 233.75 1.17H249.69L258 16.43L270.42 1.17H287.93L265.44 27.78L280.3 54.57H264.65L255.95 38.73L243.23 54.57Z" pathLength="100" class="capax-letra capax-l5" fill="#32b49d"/></svg><small>Barrancas · Restaurant</small></div></div>
+      <div class="fecha"><button type="button" aria-label="Día anterior">‹</button><span class="pill" id="fecha"></span><button type="button" aria-label="Día siguiente">›</button><span class="hoy">Hoy</span></div>
+      <div class="der">Hola, <b id="usuario"></b><a class="btn primario" href="#" onclick="return false">Ir al panel de reservas →</a></div>
+    </div>
+    <div class="cuerpo" id="vista"></div>
+  </div>
+</div>
+<div class="velo" id="velo" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-titulo">
+  <h4 id="m-titulo"></h4>
+  <div class="resumen-m" id="m-chips"></div>
+  <p id="m-texto"></p>
+  <div class="aviso-web" id="m-web" hidden><span><b>Esta reserva se hizo por el link.</b> Si la cancelás vos, avisale al cliente:</span>
+    <a class="btn chico wa" id="m-wa" href="#" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12 2.2a9.7 9.7 0 0 0-8.3 14.7L2.3 21.8l5-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.5-.3Z"/></svg> Avisar por WhatsApp</a></div>
+  <div class="botones"><button type="button" class="btn" id="m-cancelar">Cancelar</button><button type="button" class="btn peligro" id="m-borrar">Borrar reserva</button></div>
+</div></div>
+<div class="toast" id="toast" role="status" hidden><span id="t-txt"></span><button type="button" id="t-deshacer">Deshacer</button></div>
+<script>
+const D = {"fecha": "Viernes 16 de octubre", "usuario": "Tobias", "salones": [{"id": 1, "nombre": "Restaurant", "capacidad": 96, "merienda": false, "activo": true}, {"id": 2, "nombre": "Bar", "capacidad": 40, "merienda": false, "activo": true}, {"id": 3, "nombre": "Aqua Bar", "capacidad": 36, "merienda": true, "activo": true}, {"id": 4, "nombre": "Terraza", "capacidad": 48, "merienda": false, "activo": true}, {"id": 5, "nombre": "Salón de eventos", "capacidad": 120, "merienda": false, "activo": false}], "reservas": [[1, "almuerzo", "12:30", "Gómez", 4, ["21"], "Hab 214", "", true, false], [1, "almuerzo", "12:45", "Fernández", 2, ["11"], "11 5523-8841", "", true, false], [1, "almuerzo", "13:00", "Rossi", 6, ["40", "41"], "Hab 305", "Cumpleaños, traen torta", false, true], [1, "almuerzo", "13:00", "Paz", 2, ["12"], "Hab 118", "", false, false], [1, "almuerzo", "13:15", "Martínez", 3, ["22"], "11 4410-2290", "Celíaco", false, false], [1, "almuerzo", "13:30", "Silva", 5, ["31"], "Hab 402", "", false, false], [1, "almuerzo", "13:30", "López", 2, ["13"], "Hab 120", "", false, false], [1, "almuerzo", "14:00", "Benítez", 4, ["23"], "11 6021-7733", "Silla para bebé", false, false], [1, "almuerzo", "14:15", "Acosta", 2, ["14"], "Hab 201", "", false, false], [1, "cena", "20:00", "Romero", 2, ["11"], "Hab 310", "Aniversario", false, true], [1, "cena", "20:15", "Herrera", 4, ["21"], "11 5098-1123", "", false, false], [1, "cena", "20:30", "Medina", 8, ["44", "45"], "Hab 501", "Grupo empresa", false, false], [1, "cena", "20:30", "Castro", 2, ["12"], "Hab 108", "", false, false], [1, "cena", "20:45", "Suárez", 4, ["22"], "11 4877-3301", "Vegetariano x2", false, false], [1, "cena", "21:00", "Ortiz", 3, ["31"], "Hab 222", "", false, false], [1, "cena", "21:00", "Molina", 6, ["40", "41"], "11 3345-9012", "", false, true], [1, "cena", "21:15", "Giménez", 2, ["13"], "Hab 115", "", false, false], [1, "cena", "21:30", "Ríos", 4, ["23"], "Hab 330", "Alergia a frutos secos", false, false], [1, "cena", "21:30", "Vega", 2, ["14"], "11 6650-4471", "", false, false], [1, "cena", "21:45", "Navarro", 5, ["32"], "Hab 412", "", false, false], [1, "cena", "22:00", "Domínguez", 2, ["15"], "Hab 106", "", false, false], [2, "cena", "20:30", "Ramos", 4, ["B3"], "Hab 219", "", false, false], [2, "cena", "21:00", "Torres", 2, ["B1"], "11 4433-2210", "", false, false], [2, "cena", "21:30", "Flores", 6, ["B5", "B6"], "Hab 340", "Despedida", false, true], [2, "cena", "22:00", "Ruiz", 2, ["B2"], "Hab 127", "", false, false], [3, "almuerzo", "13:00", "Morales", 4, ["A2"], "Hab 230", "", true, false], [3, "almuerzo", "13:30", "Sosa", 2, ["A1"], "Hab 118", "", false, false], [3, "merienda", "16:30", "Cabrera", 3, ["A4"], "Hab 305", "", false, false], [3, "merienda", "17:00", "Ponce", 2, ["A3"], "Hab 402", "Sin TACC", false, false]], "espera": {"1-almuerzo": 1, "1-cena": 3, "2-cena": 1}};
+const TURNOS = [["almuerzo","Almuerzo","12:00 a 15:30"],["merienda","Merienda","16:00 a 18:00"],["cena","Cena","20:00 a 23:30"]];
+const R = D.reservas.map(([s,t,h,n,p,m,ht,c,a,pm]) => ({salon:s,turno:t,hora:h,nombre:n,pax:p,mesas:m,habTel:ht,coment:c,asistio:a,pidio:pm}));
+const salon = id => D.salones.find(s => s.id === id);
+const de = (s,t) => R.filter(r => r.salon === s && r.turno === t);
+const suma = (a,f) => a.reduce((x,y) => x + f(y), 0);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const turnosConDatos = TURNOS.filter(([t]) => R.some(r => r.turno === t));
+document.getElementById("fecha").textContent = D.fecha;
+document.getElementById("usuario").textContent = D.usuario;
+const AHORA = "13:10"; // hora de ejemplo para «próximas»
+
+function kpis() {
+  const pax = suma(R, r => r.pax), cap = suma(D.salones, s => s.capacidad);
+  const espera = Object.values(D.espera).reduce((a,b)=>a+b,0);
+  const notas = R.filter(r => r.coment).length;
+  return `<div class="kpis">
+    <div class="kpi"><div class="et">Reservas del día</div><div class="v">${R.length}</div><div class="det">${turnosConDatos.map(([t,n]) => `${n} ${R.filter(r=>r.turno===t).length}`).join(" · ")}</div></div>
+    <div class="kpi"><div class="et">Pax esperados</div><div class="v">${pax}</div><div class="det">en ${D.salones.filter(s => s.activo).length} salones habilitados</div></div>
+    <div class="kpi"><div class="et">Ya llegaron</div><div class="v">${R.filter(r=>r.asistio).length}</div><div class="det">${suma(R.filter(r=>r.asistio), r=>r.pax)} pax sentados</div></div>
+    <div class="kpi"><div class="et">Para tener en cuenta</div><div class="v">${notas}</div><div class="det">comentarios · ${espera} en espera</div></div>
+  </div>`;
+}
+
+function vistaA() {
+  const bloques = turnosConDatos.map(([t, nombre, rango]) => {
+    const tarjetas = D.salones.filter(s => t !== "merienda" || s.id === 3).map(s => {
+      const rs = de(s.id, t), pax = suma(rs, r => r.pax), pct = Math.round(100 * pax / s.capacidad);
+      const esp = D.espera[`${s.id}-${t}`] || 0;
+      if (!rs.length) return `<div class="salon vacio"><div class="salon-h"><b>${s.nombre}</b><span>Sin reservas</span></div><a class="btn chico" href="#" onclick="return false">Abrir panel</a></div>`;
+      return `<div class="salon">
+        <div class="salon-h"><b>${s.nombre}</b><span>${s.capacidad} lugares</span></div>
+        <div class="cifras"><span><b>${rs.length}</b>reservas</span><span><b>${pax}</b>pax</span>${esp ? `<span><b>${esp}</b>en espera</span>` : ""}</div>
+        <div><div class="barra ${pct >= 80 ? "alta" : ""}" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Ocupación prevista"><i style="width:${Math.min(pct,100)}%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tinta-suave);margin-top:5px"><span>Ocupación prevista</span><b style="color:var(--tinta)">${pct}%</b></div></div>
+        <a class="btn chico" href="#" onclick="return false">Abrir ${s.nombre} · ${nombre} →</a>
+      </div>`;
+    }).join("");
+    return `<section class="card"><div class="card-h"><h3>${nombre}</h3><span class="chip">${rango}</span>
+      <span class="chip ${t === "almuerzo" ? "teal" : ""}">${t === "almuerzo" ? "En curso" : "Más tarde"}</span></div><div class="salones">${tarjetas}</div></section>`;
+  }).join("");
+  const proximas = R.filter(r => r.turno === "almuerzo" && !r.asistio && r.hora >= AHORA).sort((a,b)=>a.hora.localeCompare(b.hora)).slice(0,5);
+  const notas = R.filter(r => r.coment);
+  return `${kpis()}<div class="grilla-a"><div class="turnos">${bloques}</div>
+    <div class="lado">
+      <section class="card"><div class="card-h"><h3>Próximas en llegar</h3><span class="chip">desde las ${AHORA}</span></div>
+        <ul class="lista-mini">${proximas.map(r => `<li><span class="hora">${r.hora}</span><span class="quien"><b>${esc(r.nombre)}</b><span>${salon(r.salon).nombre} · mesa ${r.mesas.join("+")} · ${esc(r.habTel)}</span></span><span class="pax"><b>${r.pax}</b> pax</span></li>`).join("")}</ul></section>
+      <section class="card"><div class="card-h"><h3>Para tener en cuenta</h3><span class="chip ambar">${notas.length}</span></div>
+        <ul class="lista-mini notas">${notas.map(r => { const f = /cumple|aniversario|despedida|grupo/i.test(r.coment); return `<li><span class="ico ${f ? "fiesta" : ""}">${f ? "★" : "!"}</span><span class="quien"><b>${esc(r.coment)}</b><span>${r.hora} · ${esc(r.nombre)} · ${salon(r.salon).nombre}, ${r.turno}</span></span><span class="pax"><b>${r.pax}</b> pax</span></li>`; }).join("")}</ul></section>
+    </div></div>`;
+}
+
+function vistaB() {
+  return `${kpis()}<div class="ley"><span><i></i>Reserva</span><span><i class="t"></i>Ya llegó</span><span><i class="a"></i>Con comentario</span><span><i class="p"></i>Pidió mesa</span></div>
+  <div class="agenda">${turnosConDatos.map(([t, nombre, rango]) => {
+    const sals = D.salones.filter(s => R.some(r => r.salon === s.id && r.turno === t));
+    const horas = [...new Set(R.filter(r => r.turno === t).map(r => r.hora))].sort();
+    const cab = `<div class="ag-fila cab-ag" style="--cols:${sals.length}"><div>Hora</div>${sals.map(s => { const rs = de(s.id,t); return `<div>${s.nombre}<small>${rs.length} reservas · ${suma(rs,r=>r.pax)} pax</small></div>`; }).join("")}</div>`;
+    const filas = horas.map(h => `<div class="ag-fila" style="--cols:${sals.length}"><div>${h}</div>${sals.map(s => `<div>${de(s.id,t).filter(r=>r.hora===h).map(r => `<span class="res ${r.asistio ? "asistio" : r.coment ? "nota" : ""} ${r.pidio ? "pidio" : ""}" title="${esc(r.coment || "")}"><b>${esc(r.nombre)}</b> ${r.pax}p <em>m${r.mesas.join("+")}</em></span>`).join("")}</div>`).join("")}</div>`).join("");
+    return `<section class="card"><div class="card-h"><h3>${nombre}</h3><span class="chip">${rango}</span><a class="btn chico" style="margin-left:auto" href="#" onclick="return false">Abrir panel de ${nombre.toLowerCase()} →</a></div><div class="franja"><div class="tabla-ag">${cab}${filas}</div></div></section>`;
+  }).join("")}</div>`;
+}
+
+function vistaC() {
+  const grupos = [];
+  turnosConDatos.forEach(([t, nombre]) => D.salones.forEach(s => { const rs = de(s.id,t); if (rs.length) grupos.push({t, nombre, s, rs}); }));
+  return `${kpis()}<div class="filtros"><div class="buscar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar por nombre, habitación o teléfono…</div>
+    <div class="seg"><button type="button" aria-pressed="true">Todos los salones</button><button type="button" aria-pressed="false">Restaurant</button><button type="button" aria-pressed="false">Bar</button><button type="button" aria-pressed="false">Aqua Bar</button></div></div>
+  <section class="card">${grupos.map(g => `<div class="grupo"><div class="grupo-h"><h3>${g.nombre} · ${g.s.nombre}</h3><span class="chip">${g.rs.length} reservas · ${suma(g.rs,r=>r.pax)} pax</span>
+      <div class="der"><a class="btn chico" href="#" onclick="return false">Abrir en el panel →</a></div></div>
+      <div class="tabla"><table><thead><tr><th>Hora</th><th>Nombre</th><th>Pax</th><th>Mesa</th><th>Hab / Tel</th><th>Comentarios</th><th>Estado</th></tr></thead>
+      <tbody>${g.rs.map(r => `<tr class="${r.asistio ? "asistio" : ""}"><td class="num"><b>${r.hora}</b></td><td>${esc(r.nombre)}${r.pidio ? ' <span class="chip ambar" title="Pidió mesa">pidió mesa</span>' : ""}</td><td class="num">${r.pax}</td><td class="num">${r.mesas.join(" + ")}</td><td class="num">${esc(r.habTel)}</td><td class="coment">${esc(r.coment)}</td><td><span class="estado ${r.asistio ? "ok" : ""}">${r.asistio ? "Llegó" : "Por llegar"}</span></td></tr>`).join("")}</tbody></table></div></div>`).join("")}</section>`;
+}
+
+// Inicio por salón: todos los salones habilitados (aunque no tengan reservas),
+// y adentro de cada uno, una fila por turno (Merienda solo si el salón la tiene).
+const ACTIVOS = D.salones.filter(s => s.activo);
+const ESTADO = { almuerzo: "En curso", merienda: "", cena: "" };
+function vistaSalones() {
+  const cards = ACTIVOS.map(s => {
+    const turnos = TURNOS.filter(([t]) => t !== "merienda" || s.merienda);
+    const todas = R.filter(r => r.salon === s.id);
+    const filas = turnos.map(([t, nombre, rango]) => {
+      const rs = de(s.id, t), pax = suma(rs, r => r.pax), pct = Math.round(100 * pax / s.capacidad);
+      const esp = D.espera[`${s.id}-${t}`] || 0;
+      const sin = rs.length === 0;
+      return `<div class="turno-f ${sin ? "sin" : ""}">
+        <div class="tn"><b>${nombre}${ESTADO[t] ? `<span class="estado-t">${ESTADO[t]}</span>` : ""}</b><span>${rango}</span></div>
+        <div class="cf">${sin ? "<span>Sin reservas</span>" : `<span><b>${rs.length}</b>reservas</span><span><b>${pax}</b>pax</span>${esp ? `<span><b>${esp}</b>espera</span>` : ""}`}</div>
+        <div class="barra ${pct >= 80 ? "alta" : ""}" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Ocupación prevista de ${nombre}"><i style="width:${Math.min(pct, 100)}%"></i></div>
+        <div class="pct">${sin ? "—" : pct + "%"}</div>
+        <a class="btn chico" href="#" onclick="return false">Abrir ${nombre.toLowerCase()} →</a>
+      </div>`;
+    }).join("");
+    const tot = todas.length
+      ? `<span class="tot"><b>${todas.length}</b> reservas · <b>${suma(todas, r => r.pax)}</b> pax hoy</span>`
+      : `<span class="tot"><span class="chip sal-vacio">Sin reservas hoy</span></span>`;
+    return `<section class="card"><div class="sal-h"><h3>${s.nombre}</h3><span class="chip">${s.capacidad} lugares</span>${tot}</div>${filas}</section>`;
+  }).join("");
+  const proximas = R.filter(r => r.turno === "almuerzo" && !r.asistio && r.hora >= AHORA).sort((a,b)=>a.hora.localeCompare(b.hora)).slice(0,5);
+  const notas = R.filter(r => r.coment);
+  return `${kpis()}<div class="grilla-s"><div class="salones-col">${cards}</div>
+    <div class="lado">${cardLink()}
+      <section class="card"><div class="card-h"><h3>Próximas en llegar</h3><span class="chip">desde las ${AHORA}</span></div>
+        <ul class="lista-mini">${proximas.map(r => `<li><span class="hora">${r.hora}</span><span class="quien"><b>${esc(r.nombre)}</b><span>${salon(r.salon).nombre} · mesa ${r.mesas.join("+")} · ${esc(r.habTel)}</span></span><span class="pax"><b>${r.pax}</b> pax</span></li>`).join("")}</ul></section>
+      <section class="card"><div class="card-h"><h3>Para tener en cuenta</h3><span class="chip ambar">${notas.length}</span></div>
+        <ul class="lista-mini notas">${notas.map(r => { const f = /cumple|aniversario|despedida|grupo/i.test(r.coment); return `<li><span class="ico ${f ? "fiesta" : ""}">${f ? "★" : "!"}</span><span class="quien"><b>${esc(r.coment)}</b><span>${r.hora} · ${esc(r.nombre)} · ${salon(r.salon).nombre}, ${r.turno}</span></span><span class="pax"><b>${r.pax}</b> pax</span></li>`; }).join("")}</ul></section>
+    </div></div>`;
+}
+const raiz = document.documentElement, bc = document.getElementById("b-claro"), bo = document.getElementById("b-oscuro");
+function tema(t) { raiz.dataset.theme = t; bc.setAttribute("aria-pressed", t === "light"); bo.setAttribute("aria-pressed", t === "dark"); }
+bc.addEventListener("click", () => tema("light")); bo.addEventListener("click", () => tema("dark")); tema("light");
+
+
+const WEB = [[1, "Hoy 14:32", "Sáb 17 oct", "21:00", "Cena", "Restaurant", 2, "Laura Gómez", "11 5555-0142", "Aniversario · mesa cerca de la ventana", "confirmada"], [2, "Hoy 12:10", "Sáb 17 oct", "21:30", "Cena", "Restaurant", 8, "Martín Ortiz", "11 4420-7781", "Cumpleaños", "pendiente"], [3, "Ayer 22:41", "Dom 18 oct", "13:00", "Almuerzo", "Bar", 4, "Sofía Benítez", "11 6021-3390", "", "pendiente"], [4, "Hoy 09:15", "Hoy", "20:30", "Cena", "Restaurant", 2, "Pablo Ruiz", "11 3398-5521", "", "confirmada"], [5, "Ayer 18:03", "Mar 20 oct", "13:30", "Almuerzo", "Restaurant", 3, "Carla Méndez", "11 5874-2200", "Celíaca", "confirmada"], [6, "Mié 14 oct", "Hoy", "13:00", "Almuerzo", "Restaurant", 2, "Diego Sosa", "11 4012-8876", "", "asistio"], [7, "Mar 13 oct", "Jue 15 oct", "21:00", "Cena", "Restaurant", 4, "Valeria Ruiz", "11 6630-1145", "", "novino"], [8, "Mié 14 oct", "Lun 19 oct", "21:00", "Cena", "Restaurant", 2, "Julián Paz", "11 5520-9001", "", "cancelada"], [9, "Hoy 11:48", "Jue 22 oct", "20:45", "Cena", "Restaurant", 5, "Romina Acosta", "11 4789-3312", "Silla para bebé", "confirmada"]], GRILLA = [[101, "20:30", "11", false, 2, "Castro", "Hab 108", "", "", ""], [102, "20:30", "12", false, 2, "Pablo Ruiz", "11 3398-5521", "", "web", "confirmada"], [103, "20:45", "22", false, 4, "Suárez", "11 4877-3301", "Vegetariano x2", "", ""], [104, "21:00", "21", false, 2, "Laura Gómez", "11 5555-0142", "Aniversario · mesa cerca de la ventana", "web", "confirmada"], [105, "21:00", "", false, null, "", "", "", "", ""], [106, "21:30", "40, 41", true, 8, "Martín Ortiz", "11 4420-7781", "Cumpleaños", "web", "pendiente"], [107, "21:30", "", false, null, "", "", "", "", ""], [108, "22:00", "15", false, 2, "Domínguez", "Hab 106", "", "", ""], [109, "22:00", "", false, null, "", "", "", "", ""]];
+const TACHO = "<svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7\"/></svg>", WA = "<svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M12 2.2a9.7 9.7 0 0 0-8.3 14.7L2.3 21.8l5-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.5-.3Z\"/></svg>";
+const EST_TXT = { confirmada: "Confirmada", pendiente: "A confirmar", asistio: "Asistió", novino: "No vino", cancelada: "Cancelada" };
+const waLink = (tel, txt) => `https://wa.me/549${tel.replace(/\D/g, "").replace(/^0/, "")}?text=${encodeURIComponent(txt)}`;
+
+// ---------- 1 · Grilla con tachito ----------
+let filas = GRILLA.map(f => ({ id: f[0], hora: f[1], mesas: f[2], pidio: f[3], pax: f[4], nombre: f[5], habTel: f[6], coment: f[7], origen: f[8], estado: f[9] }));
+const tieneDatos = r => !!(r.nombre || r.pax || r.habTel || r.coment || r.mesas);
+function filaHTML(r) {
+  const c = (v, ph) => v ? `<span class="celda">${esc(v)}</span>` : `<span class="celda vacia">${ph}</span>`;
+  const etq = r.origen === "web" ? `<span class="etq ${r.estado === "pendiente" ? "pend" : ""}">Web${r.estado === "pendiente" ? " · a confirmar" : ""}</span>` : "";
+  return `<tr data-id="${r.id}">
+    <td>${c(r.hora, "hh:mm")}</td>
+    <td>${r.mesas ? `<span class="mesas-chip">${r.mesas.split(", ").map(m => `<span>${m}</span>`).join("")}</span>` : c("", "Mesa")}</td>
+    <td style="text-align:center"><span class="chk ${r.pidio ? "si" : ""}"></span></td>
+    <td style="text-align:center">${c(r.pax ?? "", "Ej: 4")}</td>
+    <td><span style="display:flex;align-items:center;min-width:0">${c(r.nombre, "Apellido / Nombre")}${etq}</span></td>
+    <td>${c(r.habTel, "Hab / Tel")}</td>
+    <td>${c(r.coment, "Comentarios")}</td>
+    <td style="text-align:center"><span class="chk"></span></td>
+    <td style="text-align:center"><span class="chk"></span></td>
+    <td><div class="acc-fila">
+      <button type="button" class="ico-btn tacho" data-borrar="${r.id}" title="Borrar reserva (la fila queda vacía)" aria-label="Borrar reserva de ${esc(r.nombre || "esta fila")}" ${tieneDatos(r) ? "" : "hidden"}>${TACHO}</button>
+      <button type="button" class="ico-btn quitar" title="Quitar fila" aria-label="Quitar fila">×</button>
+    </div></td></tr>`;
+}
+function vistaGrilla() {
+  return `<section class="turno-card">
+    <div class="turno-cab"><h3>CENA</h3><span class="chip">Restaurant · hoy</span><a class="btn chico" href="#" onclick="return false">+ Agregar fila</a></div>
+    <div class="grilla-res tabla"><table><thead><tr><th>Hora</th><th>Mesa</th><th>Pidió mesa</th><th>Pax</th><th>Nombre</th><th>Hab / Tel</th><th>Comentarios</th><th>Asistió</th><th>Se fue</th><th></th></tr></thead>
+    <tbody id="cuerpo-grilla">${filas.map(filaHTML).join("")}</tbody></table></div>
+    <div class="ley-acc"><span>${TACHO}<b>Borrar reserva</b>: vacía todos los datos y libera la mesa; la fila queda con su horario para cargar otra.</span>
+      <span><b style="font-size:16px">×</b> <b>Quitar fila</b>: saca la fila entera (cuando sobra un horario).</span></div>
+  </section>`;
+}
+let pendiente = null, respaldo = null, timerToast = null;
+function abrirConfirmacion(id) {
+  const r = filas.find(f => f.id === id); if (!r) return;
+  pendiente = r;
+  const chips = [`Hoy ${r.hora}`, r.pax ? `${r.pax} personas` : "", r.mesas ? `Mesa ${r.mesas}` : "", r.habTel].filter(Boolean);
+  document.getElementById("m-titulo").textContent = `¿Borrar la reserva de ${r.nombre || "esta fila"}?`;
+  document.getElementById("m-chips").innerHTML = chips.map(x => `<span>${esc(x)}</span>`).join("");
+  document.getElementById("m-texto").textContent = `La fila de las ${r.hora} queda vacía para cargar otra reserva${r.mesas ? " y la mesa queda libre" : ""}.`;
+  const web = document.getElementById("m-web");
+  if (r.origen === "web") {
+    web.hidden = false;
+    document.getElementById("m-wa").href = waLink(r.habTel, `Hola ${r.nombre.split(" ")[0]}, te escribimos de Hotel Barrancas por tu reserva de hoy a las ${r.hora}. `);
+  } else web.hidden = true;
+  document.getElementById("velo").hidden = false;
+  document.getElementById("m-borrar").focus();
+}
+function cerrarModal() { document.getElementById("velo").hidden = true; pendiente = null; }
+function borrar() {
+  const r = pendiente; if (!r) return;
+  respaldo = { ...r };
+  const w = r.origen === "web" ? WEB.find(x => x[7] === r.nombre) : null;
+  if (w) { respaldo.webEstado = w[10]; w[10] = "cancelada"; w[11] = "Borrada por Tobias · recién"; }
+  Object.assign(r, { mesas: "", pidio: false, pax: null, nombre: "", habTel: "", coment: "", origen: "", estado: "" });
+  cerrarModal(); pintarGrilla(r.id);
+  const t = document.getElementById("toast");
+  document.getElementById("t-txt").textContent = `Reserva de ${respaldo.nombre} borrada`;
+  t.hidden = false; clearTimeout(timerToast); timerToast = setTimeout(() => (t.hidden = true), 8000);
+}
+function deshacer() {
+  if (!respaldo) return;
+  const r = filas.find(f => f.id === respaldo.id);
+  const { webEstado, ...datos } = respaldo; Object.assign(r, datos); respaldo = null;
+  const w = webEstado ? WEB.find(x => x[7] === r.nombre) : null; if (w) w[10] = webEstado;
+  document.getElementById("toast").hidden = true; pintarGrilla(r.id);
+}
+function pintarGrilla(marcar) {
+  const tb = document.getElementById("cuerpo-grilla"); if (!tb) return;
+  tb.innerHTML = filas.map(filaHTML).join("");
+  if (marcar) tb.querySelector(`tr[data-id="${marcar}"]`)?.classList.add("vaciando");
+}
+
+// ---------- 2 · Card en el Inicio ----------
+const pendientes = () => WEB.filter(w => w[10] === "pendiente");
+function lineaWeb(w, conAcc) {
+  const [id, recibida, dia, hora, turno, sal, pax, nombre, tel, pedido, estado] = w;
+  return `<div class="lw ${conAcc && estado !== "pendiente" ? "hecha" : ""}" data-w="${id}">
+    <span class="quien"><b>${esc(nombre)}</b> · ${pax} pax<span>${dia} · ${hora} · ${sal}${pedido ? " · " + esc(pedido) : ""}</span></span>
+    ${conAcc ? `<span class="acc">${estado === "pendiente" ? `<button type="button" class="btn chico conf" data-confirmar="${id}">Confirmar</button>` : `<span class="est confirmada">Confirmada</span>`}
+      <a class="btn chico ico-wa" href="${waLink(tel, `Hola ${nombre.split(" ")[0]}, te escribimos de Hotel Barrancas por tu reserva del ${dia} a las ${hora}.`)}" target="_blank" rel="noreferrer" title="Escribirle por WhatsApp" aria-label="Escribirle a ${esc(nombre)} por WhatsApp">${WA}</a></span>`
+      : `<span class="recibida">${recibida}</span>`}
+  </div>`;
+}
+function cardLink() {
+  const p = WEB.filter(w => w[10] === "pendiente" || w[0] === confirmadaRecien);
+  const prox = WEB.filter(w => ["confirmada", "pendiente"].includes(w[10]));
+  const nuevas = WEB.filter(w => w[1].startsWith("Hoy"));
+  return `<section class="card card-link"><div class="card-h"><h3>Reservas por el link</h3><span class="chip teal">${nuevas.length} nuevas hoy</span>
+      <button type="button" class="ver" data-ir="lista">Ver todas →</button></div>
+    <div class="mini-kpis"><div class="amb"><small>A confirmar</small><b>${pendientes().length}</b></div><div><small>Próximas</small><b>${prox.length}</b></div><div><small>Pax</small><b>${prox.reduce((a, w) => a + w[6], 0)}</b></div></div>
+    ${p.length ? `<div class="sub-t">A confirmar</div>${p.map(w => lineaWeb(w, true)).join("")}` : `<div class="vacio-txt">No hay reservas para confirmar.</div>`}
+    <div class="sub-t">Últimas recibidas</div>${nuevas.filter(w => w[10] !== "pendiente").slice(0, 3).map(w => lineaWeb(w, false)).join("")}
+  </section>`;
+}
+let confirmadaRecien = null;
+
+// ---------- 3 · Página con todas ----------
+let filtro = "pendiente";
+const FILTROS = [["pendiente", "A confirmar"], ["proximas", "Próximas"], ["pasadas", "Pasadas"], ["cancelada", "Canceladas"], ["todas", "Todas"]];
+const pasa = (w, f) => f === "todas" ? true : f === "proximas" ? ["confirmada", "pendiente"].includes(w[10]) : f === "pasadas" ? ["asistio", "novino"].includes(w[10]) : w[10] === f;
+const w11 = (id) => (WEB.find(x => x[0] === id)[11] || "Borrada por Tobias · mié 14, 19:20");
+function vistaLista() {
+  const rs = WEB.filter(w => pasa(w, filtro));
+  const filasT = rs.map(([id, recibida, dia, hora, turno, sal, pax, nombre, tel, pedido, estado]) => `<tr class="${estado === "cancelada" ? "cancel" : ""}">
+      <td>${recibida}</td><td><b>${dia}</b><small>${hora} · ${turno}</small></td><td>${sal}</td><td class="num">${pax}</td>
+      <td><b>${esc(nombre)}</b></td><td class="num">${tel}</td><td>${pedido ? esc(pedido) : "<span style='color:var(--tinta-suave)'>—</span>"}${estado === "cancelada" ? `<small>${w11(id)}</small>` : ""}</td>
+      <td><span class="est ${estado}">${EST_TXT[estado]}</span></td>
+      <td><div class="acc-w">${estado === "pendiente" ? `<button type="button" class="btn chico conf" data-confirmar="${id}">Confirmar</button>` : ""}
+        <a class="btn chico ico-wa" href="${waLink(tel, `Hola ${nombre.split(" ")[0]}, te escribimos de Hotel Barrancas.`)}" target="_blank" rel="noreferrer" aria-label="WhatsApp a ${esc(nombre)}">${WA}</a>
+        ${["confirmada", "pendiente"].includes(estado) ? `<a class="btn chico" href="#" onclick="return false" title="Ver en el panel">Panel →</a>` : ""}</div></td></tr>`).join("");
+  return `<button type="button" class="volver" data-ir="inicio">← Volver al inicio</button>
+    <div class="pag-h"><div><h2>Reservas por el link</h2><p>Todas las que hicieron los clientes desde barrancas.capax.ar/reservar, de cualquier día y salón.</p></div>
+      <a class="btn" href="#" onclick="return false">Copiar el link de reservas</a></div>
+    <div class="filtros-w"><div class="seg-w" role="group" aria-label="Filtrar">${FILTROS.map(([k, t]) => `<button type="button" data-filtro="${k}" aria-pressed="${k === filtro}">${t}<span class="n">${WEB.filter(w => pasa(w, k)).length}</span></button>`).join("")}</div>
+      <div class="buscar" style="max-width:320px">⌕ <span>Buscar por nombre o teléfono</span></div></div>
+    <section class="card"><div class="tabla tabla-w"><table><thead><tr><th>Recibida</th><th>Para</th><th>Salón</th><th>Pax</th><th>Nombre</th><th>WhatsApp</th><th>Pedido</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${filasT || `<tr><td colspan="9" style="color:var(--tinta-suave)">No hay reservas en esta lista.</td></tr>`}</tbody></table></div>
+      <div class="pie-w">Las canceladas quedan registradas aunque se borren de la grilla, para que no se pierda el control de lo que entró por el link.</div></section>`;
+}
+
+// ---------- pestañas ----------
+const NOTAS = {
+  grilla: "En cada fila con datos aparece el <b>tachito</b>. Al tocarlo pide confirmación, vacía todos los datos (nombre, pax, mesa, teléfono, comentarios, tildes) y la fila queda con su horario. Si la reserva vino por el link, ofrece avisarle al cliente por WhatsApp. Durante unos segundos se puede <b>Deshacer</b>. Probalo con Laura Gómez.",
+  inicio: "En el Inicio, arriba de «Próximas en llegar», una tarjeta con las reservas que entraron por el link: cuántas hay para confirmar, las próximas y las últimas recibidas. <b>Confirmar</b> pasa la solicitud a confirmada (y quita el «a confirmar» de la grilla). «Ver todas» abre la página completa.",
+  lista: "Página propia con todas las reservas del link, filtrables: A confirmar, Próximas, Pasadas (asistió / no vino), Canceladas y Todas. Desde acá se confirma, se escribe al cliente o se va a la reserva en el panel.",
+};
+let tab = "grilla";
+function render() {
+  document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  document.getElementById("nota-tab").innerHTML = NOTAS[tab];
+  document.getElementById("vista").innerHTML = tab === "grilla" ? vistaGrilla() : tab === "inicio" ? vistaSalones() : vistaLista();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.tab) { tab = b.dataset.tab; document.getElementById("toast").hidden = true; render(); }
+  else if (b.dataset.borrar) abrirConfirmacion(+b.dataset.borrar);
+  else if (b.dataset.ir) { tab = b.dataset.ir; render(); }
+  else if (b.dataset.filtro) { filtro = b.dataset.filtro; render(); }
+  else if (b.dataset.confirmar) {
+    const w = WEB.find(x => x[0] === +b.dataset.confirmar); w[10] = "confirmada"; confirmadaRecien = w[0];
+    const g = filas.find(f => f.nombre === w[7]); if (g) g.estado = "confirmada";
+    render();
+  }
+});
+document.getElementById("m-cancelar").onclick = cerrarModal;
+document.getElementById("m-borrar").onclick = borrar;
+document.getElementById("t-deshacer").onclick = deshacer;
+document.getElementById("velo").addEventListener("click", (e) => { if (e.target.id === "velo") cerrarModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarModal(); });
+render();
+</script>

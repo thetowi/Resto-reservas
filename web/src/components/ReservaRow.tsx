@@ -5,6 +5,7 @@ import { patchReserva, borrarReserva } from "@/lib/api";
 import type { Mesa, Reserva } from "@/lib/types";
 import { TOLERANCIA_MINUTOS, excedioTolerancia } from "@/lib/tolerancia";
 import { useConfirm } from "./ConfirmProvider";
+import BorrarReserva from "./BorrarReserva";
 
 interface Props {
   reserva: Reserva;
@@ -316,10 +317,13 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           }}
         />
       </td>
-      <td className="w-6 text-center">
+      <td className="w-14 text-right whitespace-nowrap">
+        {/* Tachito: borra la reserva y deja la fila (con su horario) para
+            cargar otra. La × de al lado quita la fila entera. */}
+        <BorrarReserva reserva={reserva} />
         <button
           title="Quitar fila"
-          className="text-tinta-suave opacity-40 hover:text-ocupada hover:opacity-100"
+          className="ml-1 text-tinta-suave opacity-40 hover:text-ocupada hover:opacity-100"
           onClick={async () => {
             if (!(await confirmar("¿Seguro que querés quitar esta fila?"))) return;
             borrarReserva(reserva.id).catch(() => {});

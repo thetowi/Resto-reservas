@@ -18,12 +18,14 @@ public class ReservasController : ControllerBase
     private readonly BarrancasDbContext _db;
     private readonly IHubContext<ReservasHub> _hub;
     private readonly DiaService _diaService;
+    private readonly ReservaWebService _reservasWeb;
 
-    public ReservasController(BarrancasDbContext db, IHubContext<ReservasHub> hub, DiaService diaService)
+    public ReservasController(BarrancasDbContext db, IHubContext<ReservasHub> hub, DiaService diaService, ReservaWebService reservasWeb)
     {
         _db = db;
         _hub = hub;
         _diaService = diaService;
+        _reservasWeb = reservasWeb;
     }
 
     [HttpPost]
@@ -136,12 +138,106 @@ public class ReservasController : ControllerBase
         var reserva = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == id);
         if (reserva is null) return NotFound(new { error = "no encontrada" });
 
+        // Si era una reserva del link, su registro queda como cancelada
+        // (no se borra con la fila).
+        await _reservasWeb.CancelarDeFilaAsync(reserva.Id, ReservaWebService.Usuario(User));
         _db.Reservas.Remove(reserva);
         await _db.SaveChangesAsync();
 
         var data = await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         return Ok(data);
     }
+
+    // Tachito: borra la reserva pero deja la fila (con su horario de la
+    // planilla) para cargar otra. Vacia todos los datos, libera sus mesas y
+    // la fila vuelve a ser una fila comun del staff. Si venia del link, su
+    // registro queda como cancelada (ver ReservaWebService).
+    [HttpPost("{id:int}/vaciar")]
+    public async Task<ActionResult<VaciarReservaResultado>> Vaciar(int id)
+    {
+        var reserva = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == id);
+        if (reserva is null) return NotFound(new { error = "no encontrada" });
+        if (await TurnoCerradoAsync(reserva))
+        {
+            return BadRequest(new { error = "este turno está cerrado: no se pueden editar sus reservas" });
+        }
+
+        var registro = await _reservasWeb.CancelarDeFilaAsync(reserva.Id, ReservaWebService.Usuario(User));
+
+        reserva.Pax = null;
+        reserva.Nombre = null;
+        reserva.HabTel = null;
+        reserva.Comentarios = null;
+        reserva.Asistio = false;
+        reserva.PidioMesa = false;
+        reserva.Retirada = false;
+        reserva.Origen = OrigenReserva.Staff;
+        reserva.Estado = EstadoReserva.Confirmada;
+        reserva.UpdatedAt = DateTime.UtcNow;
+        var mesas = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
+        _db.ReservaMesas.RemoveRange(mesas);
+        await _db.SaveChangesAsync();
+
+        await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
+        return Ok(new VaciarReservaResultado(registro?.Id));
+    }
+
+    // "Deshacer" del tachito. Solo si la fila sigue vacia (si alguien ya
+    // cargo otra reserva en ese lugar, no la pisa).
+    [HttpPost("{id:int}/restaurar")]
+    public async Task<ActionResult<TurnoDataDto>> Restaurar(int id, RestaurarReservaRequest req)
+    {
+        var reserva = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == id);
+        if (reserva is null) return NotFound(new { error = "no encontrada" });
+        if (await TurnoCerradoAsync(reserva))
+        {
+            return BadRequest(new { error = "este turno está cerrado: no se pueden editar sus reservas" });
+        }
+        var ocupada = !string.IsNullOrWhiteSpace(reserva.Nombre) || reserva.Pax is not null
+            || await _db.ReservaMesas.AnyAsync(rm => rm.ReservaId == reserva.Id);
+        if (ocupada)
+        {
+            return Conflict(new { error = "esa fila ya se volvió a usar: no se puede deshacer" });
+        }
+
+        var idsMesas = (req.MesaIds ?? new List<int>()).Distinct().ToList();
+        if (idsMesas.Count > 0 && await _db.Mesas.CountAsync(m => idsMesas.Contains(m.Id)) != idsMesas.Count)
+        {
+            return BadRequest(new { error = "alguna de las mesas indicadas no existe" });
+        }
+
+        if (req.Hora is not null) reserva.Hora = req.Hora;
+        reserva.Pax = req.Pax;
+        reserva.Nombre = req.Nombre;
+        reserva.HabTel = req.HabTel;
+        reserva.Comentarios = req.Comentarios;
+        reserva.Asistio = req.Asistio;
+        reserva.PidioMesa = req.PidioMesa;
+        reserva.Retirada = req.Retirada;
+        reserva.Origen = req.Origen;
+        reserva.Estado = req.Estado;
+        reserva.UpdatedAt = DateTime.UtcNow;
+        _db.ReservaMesas.AddRange(idsMesas.Select(mesaId => new ReservaMesa { ReservaId = reserva.Id, MesaId = mesaId }));
+
+        if (req.ReservaWebId is int webId)
+        {
+            var registro = await _db.ReservasWeb.FirstOrDefaultAsync(w => w.Id == webId);
+            if (registro is not null && registro.Estado == EstadoReservaWeb.Cancelada && registro.ReservaId is null)
+            {
+                registro.ReservaId = reserva.Id;
+                registro.Estado = req.Estado == EstadoReserva.PendienteBot ? EstadoReservaWeb.Pendiente : EstadoReservaWeb.Confirmada;
+                registro.CanceladaEn = null;
+                registro.CanceladaPor = null;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        var data = await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
+        return Ok(data);
+    }
+
+    private Task<bool> TurnoCerradoAsync(Reserva reserva) =>
+        _db.CierresTurno.AnyAsync(c => c.Fecha == reserva.Fecha && c.Turno == reserva.Turno && c.SalonId == reserva.SalonId);
 
     private async Task<TurnoDataDto> BroadcastTurnoAsync(DateOnly fecha, Turno turno, int salonId)
     {

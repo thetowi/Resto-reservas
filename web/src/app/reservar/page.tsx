@@ -132,6 +132,39 @@ export default function ReservarPage() {
   const dispSalon = disp?.salones.find((s) => s.salonId === salonId) ?? null;
   const confirmaSola = !!salon && salon.confirmaSola && pax < (config?.limitePaxConfirmaSola ?? 6);
 
+  // Celular con el teclado abierto: el navegador no achica la pagina, asi que
+  // la barra fija de abajo (Continuar/Reservar) quedaba detras del teclado.
+  // visualViewport dice cuanto de la pantalla tapa el teclado; con eso se
+  // sube la barra (--rv-teclado en globals.css). Ademas, al entrar a un campo
+  // se lo lleva al centro de lo visible, para que no quede debajo de la barra.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const raiz = document.documentElement;
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const actualizar = () => {
+      if (!vv) return;
+      const tapado = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      raiz.style.setProperty("--rv-teclado", `${Math.round(tapado)}px`);
+    };
+    const alEnfocar = (e: FocusEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!el || !el.matches("input:not([type=checkbox]), textarea")) return;
+      clearTimeout(espera);
+      espera = setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+    };
+    actualizar();
+    vv?.addEventListener("resize", actualizar);
+    vv?.addEventListener("scroll", actualizar);
+    document.addEventListener("focusin", alEnfocar);
+    return () => {
+      clearTimeout(espera);
+      vv?.removeEventListener("resize", actualizar);
+      vv?.removeEventListener("scroll", actualizar);
+      document.removeEventListener("focusin", alEnfocar);
+      raiz.style.removeProperty("--rv-teclado");
+    };
+  }, []);
+
   // Al cambiar de pantalla: arriba de todo y foco en el titulo (lectores de
   // pantalla y teclado arrancan desde el principio de la pantalla nueva).
   useEffect(() => {
@@ -229,6 +262,17 @@ export default function ReservarPage() {
     setAcepta(false);
     setDir(-1);
     setPaso(0);
+  }
+
+  // "Ir"/"Siguiente" del teclado del celular.
+  function alEnter(e: React.KeyboardEvent, accion: () => void) {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    accion();
+  }
+  function continuarConTeclado() {
+    (document.activeElement as HTMLElement | null)?.blur();
+    if (valido && !cargandoDisp && !enviando) void seguir();
   }
 
   const valido = (() => {
@@ -505,7 +549,17 @@ export default function ReservarPage() {
           <>
             <div className="rv-campo">
               <label htmlFor="rv-nombre">Nombre y apellido</label>
-              <input id="rv-nombre" name="name" autoComplete="name" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Laura Gómez" maxLength={80} />
+              <input
+                id="rv-nombre"
+                name="name"
+                autoComplete="name"
+                enterKeyHint="next"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                onKeyDown={(e) => alEnter(e, () => document.getElementById("rv-tel")?.focus())}
+                placeholder="Ej. Laura Gómez"
+                maxLength={80}
+              />
             </div>
             <div className="rv-campo">
               <label htmlFor="rv-tel">WhatsApp</label>
@@ -515,7 +569,9 @@ export default function ReservarPage() {
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
+                enterKeyHint={huesped ? "next" : "go"}
                 value={telefono}
+                onKeyDown={(e) => alEnter(e, () => (huesped ? document.getElementById("rv-hab")?.focus() : continuarConTeclado()))}
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder="11 5555-5555"
                 maxLength={30}
@@ -532,7 +588,15 @@ export default function ReservarPage() {
             {huesped && (
               <div className="rv-campo">
                 <label htmlFor="rv-hab">Número de habitación</label>
-                <input id="rv-hab" inputMode="numeric" value={habitacion} onChange={(e) => setHabitacion(e.target.value)} maxLength={10} />
+                <input
+                  id="rv-hab"
+                  inputMode="numeric"
+                  enterKeyHint="go"
+                  value={habitacion}
+                  onChange={(e) => setHabitacion(e.target.value)}
+                  onKeyDown={(e) => alEnter(e, continuarConTeclado)}
+                  maxLength={10}
+                />
               </div>
             )}
             {/* Campo trampa contra bots: oculto para personas y lectores de pantalla. */}

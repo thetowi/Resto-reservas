@@ -7,6 +7,8 @@ import type {
   Mesa,
   Meta,
   ReporteMensual,
+  Reserva,
+  ReservaWeb,
   Salon,
   Turno,
   TurnoData,
@@ -108,6 +110,47 @@ export function patchReserva(id: number, payload: ActualizarReservaPayload) {
 
 export function borrarReserva(id: number) {
   return request<TurnoData>(`/api/reservas/${id}`, { method: "DELETE" });
+}
+
+// Tachito: borra la reserva pero deja la fila con su horario. Si venia del
+// link, devuelve el registro que quedo cancelado (para poder deshacer).
+export function vaciarReserva(id: number) {
+  return request<{ reservaWebId: number | null }>(`/api/reservas/${id}/vaciar`, { method: "POST" });
+}
+
+// "Deshacer" del tachito: vuelve a cargar los datos que tenia la fila.
+export function restaurarReserva(r: Reserva, reservaWebId: number | null) {
+  return request<TurnoData>(`/api/reservas/${r.id}/restaurar`, {
+    method: "POST",
+    body: JSON.stringify({
+      hora: r.hora,
+      pax: r.pax,
+      nombre: r.nombre,
+      habTel: r.habTel,
+      comentarios: r.comentarios,
+      asistio: r.asistio,
+      pidioMesa: r.pidioMesa,
+      retirada: r.retirada,
+      mesaIds: r.mesaIds,
+      origen: r.origen ?? "staff",
+      estado: r.estado ?? "confirmada",
+      reservaWebId,
+    }),
+  });
+}
+
+// ---- Reservas por el link (/reservas-web) ----
+
+export function getReservasWeb(dias = 90) {
+  return request<ReservaWeb[]>(`/api/reservas-web?dias=${dias}`);
+}
+
+export function getResumenReservasWeb() {
+  return request<{ aConfirmar: number }>("/api/reservas-web/resumen");
+}
+
+export function confirmarReservaWeb(id: number) {
+  return request<ReservaWeb>(`/api/reservas-web/${id}/confirmar`, { method: "POST" });
 }
 
 // Togglea la marca de walk-in de una mesa desde el panel de mesas

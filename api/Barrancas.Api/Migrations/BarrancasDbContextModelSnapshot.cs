@@ -486,6 +486,79 @@ namespace Barrancas.Api.Migrations
                     b.ToTable("ReservaMesas");
                 });
 
+            modelBuilder.Entity("Barrancas.Api.Models.ReservaWeb", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CanceladaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CanceladaPor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comentarios")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ConfirmadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfirmadaPor")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Habitacion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Hora")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Ocasion")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Pax")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ReservaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SalonId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Telefono")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Turno")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha");
+
+                    b.HasIndex("ReservaId");
+
+                    b.HasIndex("SalonId");
+
+                    b.ToTable("ReservasWeb");
+                });
+
             modelBuilder.Entity("Barrancas.Api.Models.Salon", b =>
                 {
                     b.Property<int>("Id")
@@ -750,6 +823,24 @@ namespace Barrancas.Api.Migrations
                     b.Navigation("Mesa");
 
                     b.Navigation("Reserva");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.ReservaWeb", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Reserva", "Reserva")
+                        .WithMany()
+                        .HasForeignKey("ReservaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Barrancas.Api.Models.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Reserva");
+
+                    b.Navigation("Salon");
                 });
 
             modelBuilder.Entity("Barrancas.Api.Models.WalkIn", b =>

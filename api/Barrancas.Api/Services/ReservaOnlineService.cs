@@ -360,9 +360,10 @@ public class ReservaOnlineService
         }
 
         // Limite de reservas web a futuro por el mismo telefono (contra abuso).
-        var webFuturas = await _db.Reservas
-            .Where(r => r.Origen == OrigenReserva.Web && r.Fecha >= hoy && r.HabTel != null)
-            .Select(r => r.HabTel!)
+        // Se cuenta sobre el registro de reservas web (sin las canceladas).
+        var webFuturas = await _db.ReservasWeb
+            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada)
+            .Select(w => w.Telefono)
             .ToListAsync();
         if (webFuturas.Count(h => SoloDigitos(h).EndsWith(digitos, StringComparison.Ordinal)) >= MaxReservasWebFuturasPorTelefono)
         {
@@ -427,6 +428,27 @@ public class ReservaOnlineService
             await _db.SaveChangesAsync();
         }
 
+        // Registro aparte (panel "Reservas por el link"): queda aunque despues
+        // la fila se vacie o se quite. Su Id es el codigo que ve el cliente.
+        var registro = new ReservaWeb
+        {
+            CreadaEn = DateTime.UtcNow,
+            ReservaId = reserva.Id,
+            Fecha = req.Fecha,
+            Turno = turno,
+            SalonId = salon.Id,
+            Hora = hora,
+            Pax = req.Pax,
+            Nombre = nombre,
+            Telefono = telefono,
+            Habitacion = habitacion,
+            Ocasion = ocasion,
+            Comentarios = comentarios,
+            Estado = confirmada ? EstadoReservaWeb.Confirmada : EstadoReservaWeb.Pendiente,
+        };
+        _db.ReservasWeb.Add(registro);
+        await _db.SaveChangesAsync();
+
         Interlocked.Increment(ref _versionCache);
 
         // Mismo aviso en vivo que una reserva cargada por el staff.
@@ -436,7 +458,7 @@ public class ReservaOnlineService
 
         return new PublicoReservaResultado(
             confirmada ? "confirmada" : "pendiente",
-            $"R-{reserva.Id}",
+            ReservaWebService.Codigo(registro.Id),
             req.Fecha,
             hora,
             Nombre(turno),

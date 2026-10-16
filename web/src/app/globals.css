@@ -711,6 +711,7 @@ select option {
   --rv-mesa: #143d58;
   --rv-libre: rgba(20, 61, 88, 0.2);
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-fondo);
   color: var(--color-tinta);
 }
@@ -726,6 +727,7 @@ select option {
   max-width: 640px;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-fondo);
@@ -832,7 +834,9 @@ select option {
 
 .rv-campo { display: grid; gap: 5px; }
 .rv-campo label { font-size: 12.5px; color: var(--color-tinta-suave); font-weight: 500; }
-.rv-campo input, .rv-campo textarea { width: 100%; min-width: 0; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 12px;
+/* 16px como minimo: con menos, Safari de iPhone hace zoom al tocar el campo
+   y la pantalla queda agrandada al salir. */
+.rv-campo input, .rv-campo textarea { width: 100%; min-width: 0; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 12px;
   border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta); }
 .rv-campo textarea { min-height: 76px; resize: vertical; }
 .rv-campo input:focus-visible, .rv-campo textarea:focus-visible { outline: none; border-color: #32b49d; box-shadow: 0 0 0 3px rgba(50, 180, 157, 0.2); }
@@ -854,7 +858,10 @@ select option {
 .rv-resumen div:first-child { border-top: 0; }
 .rv-resumen span { color: var(--color-tinta-suave); }
 
-.rv-barra { position: sticky; bottom: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--color-borde);
+/* --rv-teclado: alto que tapa el teclado del celular (lo calcula
+   page.tsx con visualViewport). Asi la barra con Continuar/Reservar queda
+   justo arriba del teclado en vez de quedar escondida detras. */
+.rv-barra { position: sticky; bottom: var(--rv-teclado, 0px); z-index: 4; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--color-borde);
   background: color-mix(in srgb, var(--color-superficie) 92%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .rv-res { flex: 1; min-width: 0; font-size: 13px; color: var(--color-tinta-suave); }
 .rv-res b { display: block; color: var(--color-tinta); font-size: 14.5px; }

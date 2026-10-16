@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
-import { getDia, getEspera, getMeta, ApiError } from "@/lib/api";
+import { getDia, getEspera, getMeta, getResumenReservasWeb, ApiError } from "@/lib/api";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
@@ -64,6 +64,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
+  // Cuantas reservas del link quedaron "a confirmar" (contador del boton
+  // "Reservas web", ver app/reservas-web).
+  const [webAConfirmar, setWebAConfirmar] = useState(0);
   // Datos para la vista de impresion (ver ReporteImpresion.tsx): a
   // diferencia de "espera" (que solo trae el turno seleccionado en
   // pantalla), la impresion necesita los dos turnos juntos, asi que se
@@ -116,8 +119,30 @@ export default function HomePage() {
     setNombre(getNombre());
     setAdmin(esAdmin());
     setAnimarMarca(!introMarcaVista());
+    // Viene de "Panel →" en Reservas por el link: abre directo en esa
+    // fecha, turno y salon (?fecha=&turno=&salonId=), y limpia la URL.
+    const params = new URLSearchParams(window.location.search);
+    const f = params.get("fecha");
+    const t = params.get("turno");
+    const s = Number(params.get("salonId"));
+    if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) setFecha(f);
+    if (t === "almuerzo" || t === "cena" || t === "merienda") setTurno(t);
+    if (Number.isInteger(s) && s > 0) setSalonId(s);
+    if (f || t || s) window.history.replaceState(null, "", "/");
     setListo(true);
   }, [router]);
+
+  // Contador de "Reservas web": al entrar y cada minuto.
+  useEffect(() => {
+    if (!listo) return;
+    const cargar = () =>
+      getResumenReservasWeb()
+        .then((r) => setWebAConfirmar(r.aConfirmar))
+        .catch(() => {});
+    cargar();
+    const intervalo = setInterval(cargar, 60_000);
+    return () => clearInterval(intervalo);
+  }, [listo]);
 
   // Una vez mostrado el header, el logo ya no se vuelve a animar en esta
   // pestaña (ni al volver desde Reportes, Mesas, etc.).
@@ -507,6 +532,21 @@ export default function HomePage() {
                 Plano
               </Link>
             )}
+            <Link
+              href="/reservas-web"
+              title="Reservas que hicieron los clientes desde el link de reservas"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+            >
+              Reservas web
+              {webAConfirmar > 0 && (
+                <span
+                  className="rounded-full bg-aviso px-1.5 text-[11px] leading-[18px] font-bold text-white [[data-theme=dark]_&]:text-[#1a1305]"
+                  title={`${webAConfirmar} para confirmar`}
+                >
+                  {webAConfirmar}
+                </span>
+              )}
+            </Link>
             <button
               onClick={imprimir}
               disabled={imprimiendo}
