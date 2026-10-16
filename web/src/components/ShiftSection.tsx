@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, crearReserva, reducirSalonPorTurno, toggleCierre } from "@/lib/api";
-import type { Espera, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
+import type { Espera, FechaCerradaWeb, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
 import { excedioTolerancia } from "@/lib/tolerancia";
 import EsperaPanel from "./EsperaPanel";
 import MesasPanel from "./MesasPanel";
 import ReservaRow from "./ReservaRow";
 import { useArrastreReservas } from "./ArrastreReservas";
 import { useConfirm } from "./ConfirmProvider";
+import { BotonCierreWeb, FranjaCierreWeb } from "./CierreWeb";
 
 interface Props {
   titulo: string;
@@ -21,6 +22,9 @@ interface Props {
   espera: Espera[];
   admin: boolean;
   onEsperaActualizada: (lista: Espera[]) => void;
+  // Fecha sin reservas web de este dia (si hay), y avisar cuando cambia.
+  cierreWeb?: FechaCerradaWeb | null;
+  onCierreWebCambio?: () => void;
 }
 
 export default function ShiftSection({
@@ -34,6 +38,8 @@ export default function ShiftSection({
   espera,
   admin,
   onEsperaActualizada,
+  cierreWeb = null,
+  onCierreWebCambio = () => {},
 }: Props) {
   const { confirmar, preguntar } = useConfirm();
   const { reservas, totalPax, totalAsistio, mesasOcupadas } = data;
@@ -181,7 +187,8 @@ export default function ShiftSection({
           <div className="mb-3 flex items-center justify-between gap-2 border-l-4 border-arena pl-2.5">
             <h2 className="text-base tracking-wide uppercase">{titulo}</h2>
             {admin && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <BotonCierreWeb fecha={fecha} turno={turno} tituloTurno={titulo} cierre={cierreWeb} onCambio={onCierreWebCambio} />
                 <button
                   onClick={onAbrirReducir}
                   className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-arena hover:text-tinta"
@@ -200,6 +207,8 @@ export default function ShiftSection({
               </div>
             )}
           </div>
+
+          <FranjaCierreWeb turno={turno} cierre={cierreWeb} admin={admin} onCambio={onCierreWebCambio} />
 
           {mesasReducidasActuales.length > 0 && (
             <div className="mb-3 rounded-lg bg-arena-suave px-3 py-2 text-xs text-tinta-suave">

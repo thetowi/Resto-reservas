@@ -58,6 +58,10 @@ public class ReservaOnlineService
     // del resumen de dias, asi una reserva recien hecha se refleja enseguida.
     private static int _versionCache;
 
+    // Cuando cambian las fechas sin reservas web (ver
+    // FechasBloqueadasBotController), para que el link lo refleje enseguida.
+    public static void InvalidarCache() => Interlocked.Increment(ref _versionCache);
+
     private readonly BarrancasDbContext _db;
     private readonly DiaService _diaService;
     private readonly IHubContext<ReservasHub> _hub;
@@ -223,18 +227,19 @@ public class ReservaOnlineService
         }
 
         var hasta = hoy.AddDays(cantidad - 1);
-        var bloqueadas = (await _db.FechasBloqueadasBot
+        var bloqueadas = await _db.FechasBloqueadasBot
             .Where(f => f.Fecha >= hoy && f.Fecha <= hasta)
-            .Select(f => f.Fecha)
-            .ToListAsync()).ToHashSet();
+            .ToDictionaryAsync(f => f.Fecha);
         var salones = await SalonesActivosAsync();
 
         var resultado = new List<PublicoDiaDto>();
         for (var fecha = hoy; fecha <= hasta; fecha = fecha.AddDays(1))
         {
-            if (bloqueadas.Contains(fecha))
+            bloqueadas.TryGetValue(fecha, out var cierre);
+            if (cierre is { Turno: null })
             {
-                resultado.Add(new PublicoDiaDto(fecha, "bloqueado"));
+                // Todo el dia: el cliente ve el mensaje y el boton de WhatsApp.
+                resultado.Add(new PublicoDiaDto(fecha, "bloqueado", cierre.Motivo, cierre.MensajeCliente));
                 continue;
             }
 
@@ -245,6 +250,8 @@ public class ReservaOnlineService
             {
                 foreach (var turno in TurnosDe(salon))
                 {
+                    // Turno cerrado para la web (el resto del dia sigue abierto).
+                    if (cierre is not null && cierre.Cierra(turno)) continue;
                     var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
                     total += ev.Horarios.Count;
                     disponibles += ev.Horarios.Count(h => h.Estado == Disponible);
@@ -269,7 +276,8 @@ public class ReservaOnlineService
         var hoy = HoyLocal();
         var salones = await SalonesActivosAsync();
         var fueraDeRango = fecha < hoy || fecha > hoy.AddDays(DiasAdelante);
-        var bloqueada = fueraDeRango || await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == fecha);
+        var cierre = await _db.FechasBloqueadasBot.FirstOrDefaultAsync(f => f.Fecha == fecha);
+        var bloqueada = fueraDeRango || cierre is { Turno: null };
 
         var lista = new List<PublicoSalonDisponibilidadDto>();
         foreach (var salon in salones)
@@ -277,10 +285,13 @@ public class ReservaOnlineService
             var turnos = new List<PublicoTurnoDto>();
             foreach (var turno in TurnosDe(salon))
             {
-                if (bloqueada)
+                if (bloqueada || (cierre is not null && cierre.Cierra(turno)))
                 {
+                    // PorWhatsApp: cerrado para la web por una fecha especial
+                    // (el link muestra el mensaje y el boton de WhatsApp).
                     turnos.Add(new PublicoTurnoDto(Nombre(turno), true,
-                        HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList()));
+                        HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
+                        PorWhatsApp: !fueraDeRango && cierre is not null));
                     continue;
                 }
                 var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
@@ -290,7 +301,7 @@ public class ReservaOnlineService
             lista.Add(new PublicoSalonDisponibilidadDto(salon.Id, hayLugar, turnos));
         }
 
-        return new PublicoDisponibilidadDto(fecha, bloqueada, lista);
+        return new PublicoDisponibilidadDto(fecha, bloqueada, lista, cierre?.Motivo, cierre?.MensajeCliente);
     }
 
     // ---------------------------------------------------------------- crear
@@ -356,9 +367,10 @@ public class ReservaOnlineService
         {
             throw new ReservaOnlineException("Ese horario no está disponible.");
         }
-        if (await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == req.Fecha))
+        var cierre = await _db.FechasBloqueadasBot.FirstOrDefaultAsync(f => f.Fecha == req.Fecha);
+        if (cierre is not null && cierre.Cierra(turno))
         {
-            throw new ReservaOnlineException("Ese día no tomamos reservas online. Escribinos y lo vemos.");
+            throw new ReservaOnlineException(cierre.MensajeCliente ?? "Ese día no tomamos reservas online. Escribinos por WhatsApp y lo vemos.");
         }
 
         // Limite de reservas web a futuro por el mismo telefono (contra abuso).

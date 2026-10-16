@@ -918,13 +918,20 @@ select option {
 /* Intro al entrar (ver IntroCapax en reservar/page.tsx): negro, capax con
    la animacion del login y el plano del salon armandose detras; a los 2.2 s
    el fondo sube como un telon y deja ver la portada (tambien negra). */
-.rv-intro { position: fixed; inset: 0; z-index: 200; background: #0b0b0c; display: grid; place-items: center; overflow: hidden;
-  clip-path: inset(0 0 0 0); animation: rv-recoger 0.75s cubic-bezier(0.65, 0, 0.25, 1) 2.2s both; cursor: pointer; }
-.rv-intro-plano { position: absolute; inset: 0; }
+/* El telón sube con transform (no con clip-path): así lo mueve la placa de
+   video sin redibujar el plano en cada cuadro, y no se traba aunque la página
+   esté cargando por detrás. El borde de abajo se difumina (::after) para que
+   no se vea una línea dura subiendo. */
+.rv-intro { position: fixed; inset: 0; z-index: 200; background: #0b0b0c; display: grid; place-items: center;
+  will-change: transform; transform: translate3d(0, 0, 0); backface-visibility: hidden; contain: layout;
+  animation: rv-subir-telon 0.85s cubic-bezier(0.76, 0, 0.24, 1) 2.15s both; cursor: pointer; }
+.rv-intro::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 90px; pointer-events: none;
+  background: linear-gradient(#0b0b0c, rgba(11, 11, 12, 0)); }
+.rv-intro-plano { position: absolute; inset: 0; overflow: hidden; }
 .rv-intro-marca { position: relative; z-index: 1; display: grid; justify-items: center; gap: 12px; color: #fff;
-  animation: rv-salir-capax 0.45s ease 1.95s both; }
-@keyframes rv-recoger { to { clip-path: inset(0 0 100% 0); } }
-@keyframes rv-salir-capax { to { opacity: 0; transform: scale(0.92); filter: blur(2px); } }
+  will-change: opacity, transform; animation: rv-salir-capax 0.4s ease 1.9s both; }
+@keyframes rv-subir-telon { to { transform: translate3d(0, calc(-100% - 90px), 0); } }
+@keyframes rv-salir-capax { to { opacity: 0; transform: translate3d(0, -10px, 0) scale(0.94); } }
 
 /* El plano del login sobre negro (intro y portada): mismos trazos, pero con
    colores claros y un poco mas de presencia. */
@@ -975,6 +982,28 @@ select option {
 .rv-cal-dia:not([aria-disabled="true"]):hover { background: var(--rv-apagado); }
 .rv-cal-dia[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); }
 .rv-cal-dia[aria-pressed="true"] i { background: currentColor; }
+
+/* Dias (o turnos) que se reservan por WhatsApp (fechas sin reservas web). */
+.rv-dia.rv-wa { background: var(--color-aviso-suave); border-color: transparent; color: var(--color-aviso); }
+.rv-dia.rv-wa .rv-dsem { color: inherit; opacity: 0.85; }
+.rv-mini-wa { color: #1fa855; margin-top: 3px; }
+.rv-dia.rv-wa[aria-pressed="true"] { background: var(--color-aviso); color: #fff; }
+.rv-dia.rv-wa[aria-pressed="true"] .rv-mini-wa { color: #fff; }
+:root[data-theme="dark"] .rv-dia.rv-wa[aria-pressed="true"] { color: #1a1305; }
+:root[data-theme="dark"] .rv-dia.rv-wa[aria-pressed="true"] .rv-mini-wa { color: #1a1305; }
+.rv-cal-dia.rv-wa { background: var(--color-aviso-suave); color: var(--color-aviso); }
+.rv-cal-dia.rv-wa i { display: none; }
+.rv-ley i.w { background: var(--color-aviso-suave); border: 1px solid var(--color-aviso); }
+.rv-chip-wa { display: inline-block; margin-left: 5px; vertical-align: -1px; color: #1fa855; }
+.rv-chip[aria-pressed="true"] .rv-chip-wa { color: inherit; }
+.rv-aviso-wa { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--color-superficie); border: 1px solid var(--color-borde); }
+.rv-aviso-wa-t { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.rv-aviso-wa-t span { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--color-aviso-suave); color: var(--color-aviso); }
+.rv-aviso-wa p { margin: 0; font-size: 13.5px; color: var(--color-tinta-suave); }
+.rv-aviso-wa a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px;
+  background: #1fa855; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; }
+.rv-aviso-wa a:hover { filter: brightness(0.95); }
+.rv-aviso-wa small { font-size: 12px; color: var(--color-tinta-suave); }
 
 @media (prefers-reduced-motion: reduce) {
   .rv-intro { display: none; }

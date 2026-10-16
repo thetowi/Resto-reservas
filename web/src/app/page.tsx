@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
-import { getDia, getEspera, getMeta, getResumenReservasWeb, ApiError } from "@/lib/api";
+import { getDia, getEspera, getFechasCerradasWeb, getMeta, getResumenReservasWeb, ApiError } from "@/lib/api";
 import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
 import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
 import { turnoPorDefecto, turnoPorDefectoSinMerienda } from "@/lib/turno";
-import type { Dia, Espera, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
+import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
 import SalonSelector from "@/components/SalonSelector";
@@ -67,6 +67,14 @@ export default function HomePage() {
   // Cuantas reservas del link quedaron "a confirmar" (contador del boton
   // "Reservas web", ver app/reservas-web).
   const [webAConfirmar, setWebAConfirmar] = useState(0);
+  // Fechas sin reservas web (de hoy en adelante), para el boton/franja de
+  // cada turno (ver components/CierreWeb.tsx).
+  const [cierresWeb, setCierresWeb] = useState<FechaCerradaWeb[]>([]);
+  const cargarCierresWeb = useCallback(() => {
+    getFechasCerradasWeb()
+      .then(setCierresWeb)
+      .catch(() => {});
+  }, []);
   // Datos para la vista de impresion (ver ReporteImpresion.tsx): a
   // diferencia de "espera" (que solo trae el turno seleccionado en
   // pantalla), la impresion necesita los dos turnos juntos, asi que se
@@ -140,9 +148,13 @@ export default function HomePage() {
         .then((r) => setWebAConfirmar(r.aConfirmar))
         .catch(() => {});
     cargar();
-    const intervalo = setInterval(cargar, 60_000);
+    cargarCierresWeb();
+    const intervalo = setInterval(() => {
+      cargar();
+      cargarCierresWeb();
+    }, 60_000);
     return () => clearInterval(intervalo);
-  }, [listo]);
+  }, [listo, cargarCierresWeb]);
 
   // Una vez mostrado el header, el logo ya no se vuelve a animar en esta
   // pestaña (ni al volver desde Reportes, Mesas, etc.).
@@ -460,6 +472,8 @@ export default function HomePage() {
   // están elegidos acá, para que /plano abra mostrando exactamente lo mismo
   // que se estaba viendo en la hoja (ver plano/page.tsx, que los lee de la
   // URL) en vez de caer siempre en hoy/turno actual/primer salón.
+  const cierreWebDelDia = cierresWeb.find((c) => c.fecha === fecha) ?? null;
+
   const hrefPlano = `/plano?fecha=${fecha}&turno=${turno}${salonId !== null ? `&salonId=${salonId}` : ""}`;
 
   return (
@@ -517,6 +531,13 @@ export default function HomePage() {
                   className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
                 >
                   Usuarios
+                </Link>
+                <Link
+                  href="/admin/fechas-web"
+                  title="Días en que el link no toma reservas (Navidad, eventos…)"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Fechas web
                 </Link>
                 <Link
                   href="/reportes"
@@ -620,6 +641,8 @@ export default function HomePage() {
               espera={espera}
               admin={admin}
               onEsperaActualizada={setEspera}
+              cierreWeb={cierreWebDelDia}
+              onCierreWebCambio={cargarCierresWeb}
             />
           ) : turno === "merienda" ? (
             dia.merienda ? (
@@ -634,6 +657,8 @@ export default function HomePage() {
                 espera={espera}
                 admin={admin}
                 onEsperaActualizada={setEspera}
+                cierreWeb={cierreWebDelDia}
+                onCierreWebCambio={cargarCierresWeb}
               />
             ) : (
               <div className="p-16 text-center text-tinta-suave">
@@ -652,6 +677,8 @@ export default function HomePage() {
               espera={espera}
               admin={admin}
               onEsperaActualizada={setEspera}
+              cierreWeb={cierreWebDelDia}
+              onCierreWebCambio={cargarCierresWeb}
             />
           )}
         </main>

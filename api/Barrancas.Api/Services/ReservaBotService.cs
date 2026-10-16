@@ -75,7 +75,7 @@ public class ReservaBotService
             return new(false, "El restaurante todavía no configuró el salón del bot.", new());
         }
 
-        if (await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == fecha))
+        if (await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == fecha && f.IncluyeBot && (f.Turno == null || f.Turno == turno)))
         {
             return new(false, "Esa fecha no está disponible para reservar por este medio — comunicate directamente con el restaurante.", new());
         }
@@ -133,7 +133,7 @@ public class ReservaBotService
             return new("rechazada", null, null, null, "El restaurante todavía no configuró el salón del bot.");
         }
 
-        if (await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == fecha))
+        if (await _db.FechasBloqueadasBot.AnyAsync(f => f.Fecha == fecha && f.IncluyeBot && (f.Turno == null || f.Turno == turno)))
         {
             return new("rechazada", null, null, null, "Esa fecha no está disponible para reservar por este medio.");
         }

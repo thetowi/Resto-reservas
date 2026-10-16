@@ -246,3 +246,17 @@ export interface ReservaWeb {
   canceladaEn: string | null;
   canceladaPor: string | null;
 }
+
+// Fecha sin reservas web (ver FechasBloqueadasBotController): ese dia (o
+// solo ese turno, si turno no es null) el link no toma reservas y le muestra
+// al cliente mensajeCliente con el boton de WhatsApp. incluyeBot: el bot de
+// WhatsApp tampoco reserva solo. El equipo sigue cargando reservas a mano.
+export interface FechaCerradaWeb {
+  id: number;
+  fecha: string;
+  turno: Turno | null;
+  motivo: string | null;
+  mensajeCliente: string | null;
+  incluyeBot: boolean;
+  createdAt: string;
+}

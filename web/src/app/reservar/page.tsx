@@ -313,8 +313,12 @@ export default function ReservarPage() {
     if (valido && !cargandoDisp && !enviando) void seguir();
   }
 
+  // El dia elegido (de la tira o del calendario), para saber si es un dia
+  // que se reserva por WhatsApp.
+  const diaElegido = fecha ? (dias?.find((d) => d.fecha === fecha) ?? diasCal?.find((d) => d.fecha === fecha) ?? null) : null;
+
   const valido = (() => {
-    if (pasoActual === "cuando") return !!fecha;
+    if (pasoActual === "cuando") return !!fecha && diaElegido?.estado !== "bloqueado";
     if (pasoActual === "salon") return !!dispSalon?.hayLugar;
     if (pasoActual === "horario") return !!hora;
     if (pasoActual === "datos")
@@ -472,14 +476,15 @@ export default function ReservarPage() {
                 <div className="rv-dias" role="group" aria-label="Días">
                   {dias.map((d, i) => {
                     const f = aFecha(d.fecha);
-                    const ok = seleccionable(d);
+                    const porWa = d.estado === "bloqueado";
+                    const ok = seleccionable(d) || porWa;
                     const titulo =
-                      d.estado === "bloqueado" ? "Sin reservas online este día" : d.estado === "lleno" ? "Completo" : d.estado === "pocos" ? "Pocos lugares" : "Hay lugar";
+                      porWa ? "Se reserva por WhatsApp" : d.estado === "lleno" ? "Completo" : d.estado === "pocos" ? "Pocos lugares" : "Hay lugar";
                     return (
                       <button
                         key={d.fecha}
                         type="button"
-                        className={`rv-dia ${d.estado}`}
+                        className={`rv-dia ${porWa ? "rv-wa" : d.estado}`}
                         aria-pressed={d.fecha === fecha}
                         aria-disabled={!ok}
                         aria-label={`${fechaTxt(d.fecha)}: ${titulo}`}
@@ -492,7 +497,7 @@ export default function ReservarPage() {
                       >
                         <span className="rv-dsem">{i === 0 && d.fecha === config.hoy ? "Hoy" : SEM[f.getDay()]}</span>
                         <span className="rv-num">{f.getDate()}</span>
-                        <span className="rv-est" />
+                        {porWa ? <IconoWhatsApp size={12} className="rv-mini-wa" /> : <span className="rv-est" />}
                       </button>
                     );
                   })}
@@ -526,6 +531,9 @@ export default function ReservarPage() {
                   })()}
                 </div>
               )}
+              {diaElegido?.estado === "bloqueado" && fecha && (
+                <AvisoWhatsApp fecha={fecha} pax={pax} motivo={diaElegido.motivo} mensaje={diaElegido.mensaje} />
+              )}
               {calAbierto && (
                 <Calendario
                   dias={diasCal}
@@ -551,7 +559,11 @@ export default function ReservarPage() {
                 </span>
                 <span>
                   <i className="n" />
-                  Completo o sin reservas online
+                  Completo
+                </span>
+                <span>
+                  <i className="w" />
+                  Por WhatsApp
                 </span>
               </div>
             </section>
@@ -601,12 +613,16 @@ export default function ReservarPage() {
                   }}
                 >
                   {NOMBRE_TURNO[t.turno]}
+                  {t.porWhatsApp && <IconoWhatsApp size={12} className="rv-chip-wa" />}
                 </button>
               ))}
             </div>
             {(() => {
               const t = dispSalon.turnos.find((x) => x.turno === turno) ?? dispSalon.turnos[0];
               if (!t) return null;
+              if (t.porWhatsApp && fecha) {
+                return <AvisoWhatsApp fecha={fecha} pax={pax} turno={t.turno} motivo={disp?.motivo} mensaje={disp?.mensaje} />;
+              }
               if (t.horarios.every((x) => x.estado === "sin_lugar")) {
                 return <p className="rv-nota">{t.cerrado ? "Este turno está cerrado ese día." : "No queda lugar en este turno. Probá con otro turno u otro día."}</p>;
               }
@@ -814,7 +830,7 @@ function Marco({ children }: { children: React.ReactNode }) {
 // visita (sessionStorage), se saltea tocando la pantalla y no aparece con
 // "reducir movimiento". Mientras tanto la página carga por detrás.
 const CLAVE_INTRO_RESERVAR = "capax-intro-reservar";
-const DURACION_INTRO_MS = 3000;
+const DURACION_INTRO_MS = 3600;
 
 function IntroCapax() {
   const [visible, setVisible] = useState(true);
@@ -847,7 +863,14 @@ function IntroCapax() {
 
   if (!visible) return null;
   return (
-    <div className="rv-intro" aria-hidden="true" onPointerDown={terminar}>
+    <div
+      className="rv-intro"
+      aria-hidden="true"
+      onPointerDown={terminar}
+      // Se desmonta justo cuando el telón termina de subir (el timeout queda
+      // de respaldo, por si el navegador no dispara el evento).
+      onAnimationEnd={(e) => e.target === e.currentTarget && e.animationName === "rv-subir-telon" && terminar()}
+    >
       <div className="rv-intro-plano rv-plano-negro">
         <PlanoLogin animado />
       </div>
@@ -855,6 +878,54 @@ function IntroCapax() {
         <SimboloCapax size={76} className="text-[#f2f2f2]!" />
         <WordmarkCapax size={44} className="text-white" />
       </div>
+    </div>
+  );
+}
+
+function IconoWhatsApp({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12 2.2a9.7 9.7 0 0 0-8.3 14.7L2.3 21.8l5-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.7c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9Zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.2.9 2.4 1 2.6.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.5-.3Z" />
+    </svg>
+  );
+}
+
+// Dia (o turno) cerrado para la web por una fecha especial: el mensaje que
+// cargo el restaurante y el boton para reservar por WhatsApp, con la fecha y
+// las personas ya escritas.
+function AvisoWhatsApp({
+  fecha,
+  pax,
+  turno,
+  motivo,
+  mensaje,
+}: {
+  fecha: string;
+  pax: number;
+  turno?: TurnoPublico;
+  motivo?: string | null;
+  mensaje?: string | null;
+}) {
+  const texto = `¡Hola! Quiero reservar para el ${fechaTxt(fecha)}${turno ? ` (${NOMBRE_TURNO[turno].toLowerCase()})` : ""}, ${personasTxt(pax)}.`;
+  return (
+    <div className="rv-aviso-wa" role="status">
+      <div className="rv-aviso-wa-t">
+        {fechaTxt(fecha)}
+        {turno ? ` · ${NOMBRE_TURNO[turno]}` : ""}
+        {motivo && <span>{motivo}</span>}
+      </div>
+      <p>{mensaje || `${turno ? "Ese turno" : "Ese día"} tomamos las reservas por WhatsApp.`}</p>
+      {WHATSAPP_CLIENTE ? (
+        <>
+          <a href={`https://wa.me/${WHATSAPP_CLIENTE}?text=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer">
+            <IconoWhatsApp size={18} />
+            Reservar por WhatsApp
+          </a>
+          <small>El mensaje ya va con la fecha y la cantidad de personas.</small>
+        </>
+      ) : (
+        <small>Comunicate con el restaurante para reservar.</small>
+      )}
     </div>
   );
 }
@@ -901,7 +972,7 @@ function Calendario({
   const siguiente = mesDe(y, m + 1);
   const hayAnterior = anterior >= hoy.slice(0, 7);
   const haySiguiente = siguiente <= ultimo.slice(0, 7);
-  const ESTADO: Record<string, string> = { bloqueado: "Sin reservas online", lleno: "Completo", pocos: "Pocos lugares", ok: "Hay lugar" };
+  const ESTADO: Record<string, string> = { bloqueado: "Se reserva por WhatsApp", lleno: "Completo", pocos: "Pocos lugares", ok: "Hay lugar" };
 
   return (
     <div className="rv-cal" role="group" aria-label="Calendario">
@@ -933,12 +1004,12 @@ function Calendario({
           {Array.from({ length: enMes }, (_, i) => {
             const iso = `${mes}-${String(i + 1).padStart(2, "0")}`;
             const d = porFecha.get(iso);
-            const ok = !!d && seleccionable(d);
+            const ok = !!d && (seleccionable(d) || d.estado === "bloqueado");
             return (
               <button
                 key={iso}
                 type="button"
-                className={`rv-cal-dia ${d ? d.estado : "fuera"}`}
+                className={`rv-cal-dia ${d ? (d.estado === "bloqueado" ? "rv-wa" : d.estado) : "fuera"}`}
                 aria-pressed={iso === fecha}
                 aria-disabled={!ok}
                 aria-label={`${fechaTxt(iso)}: ${d ? ESTADO[d.estado] : "No disponible"}`}

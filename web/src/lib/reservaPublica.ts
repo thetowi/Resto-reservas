@@ -30,6 +30,10 @@ export interface ConfigPublica {
 export interface DiaPublico {
   fecha: string;
   estado: EstadoDia;
+  // Solo en "bloqueado" (fecha sin reservas web, ej. Nochebuena): titulo y
+  // mensaje que cargo el restaurante, para el aviso con el boton de WhatsApp.
+  motivo?: string | null;
+  mensaje?: string | null;
 }
 
 export interface HorarioPublico {
@@ -41,6 +45,8 @@ export interface TurnoDisponible {
   turno: TurnoPublico;
   cerrado: boolean;
   horarios: HorarioPublico[];
+  // Turno cerrado para la web por una fecha especial: se reserva por WhatsApp.
+  porWhatsApp?: boolean;
 }
 
 export interface SalonDisponible {
@@ -53,6 +59,8 @@ export interface DisponibilidadPublica {
   fecha: string;
   bloqueada: boolean;
   salones: SalonDisponible[];
+  motivo?: string | null;
+  mensaje?: string | null;
 }
 
 export interface PedidoReserva {

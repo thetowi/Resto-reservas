@@ -271,8 +271,17 @@ namespace Barrancas.Api.Migrations
                     b.Property<DateOnly>("Fecha")
                         .HasColumnType("date");
 
+                    b.Property<bool>("IncluyeBot")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MensajeCliente")
+                        .HasColumnType("text");
+
                     b.Property<string>("Motivo")
                         .HasColumnType("text");
+
+                    b.Property<int?>("Turno")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

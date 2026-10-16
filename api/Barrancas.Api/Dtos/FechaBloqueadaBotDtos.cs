@@ -1,5 +1,12 @@
+using Barrancas.Api.Models;
+
 namespace Barrancas.Api.Dtos;
 
-public record FechaBloqueadaBotDto(int Id, DateOnly Fecha, string? Motivo, DateTime CreatedAt);
+// Turno null = todo el dia.
+public record FechaBloqueadaBotDto(int Id, DateOnly Fecha, Turno? Turno, string? Motivo, string? MensajeCliente, bool IncluyeBot, DateTime CreatedAt);
 
-public record CrearFechaBloqueadaBotRequest(DateOnly Fecha, string? Motivo);
+// Hasta null = solo Desde. Si alguna fecha del rango ya estaba cerrada, se
+// actualiza con estos datos (no se duplica).
+public record CrearFechaBloqueadaBotRequest(DateOnly Desde, DateOnly? Hasta, Turno? Turno, string? Motivo, string? MensajeCliente, bool IncluyeBot = true);
+
+public record ActualizarFechaBloqueadaBotRequest(Turno? Turno, string? Motivo, string? MensajeCliente, bool IncluyeBot);

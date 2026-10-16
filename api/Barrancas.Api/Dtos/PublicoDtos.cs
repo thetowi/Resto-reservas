@@ -20,17 +20,20 @@ public record PublicoConfigDto(
     int DiasAdelante,
     DateOnly Hoy);
 
-// Estado: "ok" | "pocos" | "lleno" | "bloqueado" (sin reservas online ese dia).
-public record PublicoDiaDto(DateOnly Fecha, string Estado);
+// Estado: "ok" | "pocos" | "lleno" | "bloqueado" (sin reservas online ese
+// dia: el link muestra Motivo/Mensaje y el boton de WhatsApp).
+public record PublicoDiaDto(DateOnly Fecha, string Estado, string? Motivo = null, string? Mensaje = null);
 
 // Estado: "disponible" | "pocas" (ultimas mesas) | "sin_lugar".
 public record PublicoHorarioDto(string Hora, string Estado);
 
-public record PublicoTurnoDto(string Turno, bool Cerrado, List<PublicoHorarioDto> Horarios);
+// PorWhatsApp: el turno esta cerrado para la web por una fecha especial
+// (ver FechaBloqueadaBot): el link muestra el mensaje y el boton de WhatsApp.
+public record PublicoTurnoDto(string Turno, bool Cerrado, List<PublicoHorarioDto> Horarios, bool PorWhatsApp = false);
 
 public record PublicoSalonDisponibilidadDto(int SalonId, bool HayLugar, List<PublicoTurnoDto> Turnos);
 
-public record PublicoDisponibilidadDto(DateOnly Fecha, bool Bloqueada, List<PublicoSalonDisponibilidadDto> Salones);
+public record PublicoDisponibilidadDto(DateOnly Fecha, bool Bloqueada, List<PublicoSalonDisponibilidadDto> Salones, string? Motivo = null, string? Mensaje = null);
 
 // Sitio: campo trampa (honeypot) que el formulario real deja siempre vacio;
 // si viene con algo, es un bot llenando todos los campos.

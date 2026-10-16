@@ -2,6 +2,7 @@ import { getToken, cerrarSesion } from "./auth";
 import type {
   Dia,
   ElementoPlano,
+  FechaCerradaWeb,
   Espera,
   LoginResponse,
   Mesa,
@@ -422,3 +423,32 @@ export function borrarSalon(id: number) {
 }
 
 export { API_URL };
+
+// ---- Fechas sin reservas web (link y, si se elige, el bot) ----
+
+export interface CerrarFechasWebPayload {
+  desde: string;
+  hasta?: string | null;
+  turno: Turno | null;
+  motivo: string | null;
+  mensajeCliente: string | null;
+  incluyeBot: boolean;
+}
+
+// De hoy en adelante.
+export function getFechasCerradasWeb() {
+  return request<FechaCerradaWeb[]>("/api/fechas-bloqueadas-bot");
+}
+
+// Crea (o actualiza, si ya estaban) todas las fechas del rango.
+export function cerrarFechasWeb(payload: CerrarFechasWebPayload) {
+  return request<FechaCerradaWeb[]>("/api/fechas-bloqueadas-bot", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function actualizarFechaCerradaWeb(id: number, payload: Omit<CerrarFechasWebPayload, "desde" | "hasta">) {
+  return request<FechaCerradaWeb>(`/api/fechas-bloqueadas-bot/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function abrirFechaWeb(id: number) {
+  return request<void>(`/api/fechas-bloqueadas-bot/${id}`, { method: "DELETE" });
+}
