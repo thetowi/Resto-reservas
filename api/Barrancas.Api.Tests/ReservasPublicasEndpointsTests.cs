@@ -53,6 +53,18 @@ public class ReservasPublicasEndpointsTests : IClassFixture<BarrancasWebApplicat
     }
 
     [Fact]
+    public async Task Dias_del_calendario_llegan_hasta_60_dias_adelante()
+    {
+        var client = _factory.CreateClient();
+
+        var dias = await client.GetFromJsonAsync<List<PublicoDiaDto>>($"/api/publico/dias?pax=2&cantidad={ReservaOnlineService.DiasAdelante + 1}");
+
+        Assert.Equal(60, ReservaOnlineService.DiasAdelante);
+        Assert.Equal(61, dias!.Count);
+        Assert.Equal(EnDias(60), dias.Last().Fecha);
+    }
+
+    [Fact]
     public async Task Consultar_disponibilidad_no_crea_filas()
     {
         var client = _factory.CreateClient();

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
+import PlanoLogin from "@/components/PlanoLogin";
 import { LOGOS_CLIENTE, MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
 import {
   ErrorReserva,
@@ -27,6 +28,10 @@ type Paso = "cuando" | "salon" | "horario" | "datos" | "detalles";
 
 const SEM = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+// Cuantos dias se ven en la tira; el resto (hasta config.diasAdelante) se
+// elige con "Otra fecha", que abre el calendario.
+const DIAS_TIRA = 14;
 const NOMBRE_TURNO: Record<TurnoPublico, string> = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
 const OCASIONES = ["Cumpleaños", "Aniversario", "Negocios", "Silla para bebé"];
 
@@ -63,6 +68,11 @@ export default function ReservarPage() {
 
   const [pax, setPax] = useState(2);
   const [dias, setDias] = useState<DiaPublico[] | null>(null);
+  // Calendario de "Otra fecha": todos los dias hasta config.diasAdelante
+  // (se piden recien al abrirlo) y el mes que se esta mirando ("2026-11").
+  const [calAbierto, setCalAbierto] = useState(false);
+  const [diasCal, setDiasCal] = useState<DiaPublico[] | null>(null);
+  const [mesCal, setMesCal] = useState<string | null>(null);
   const [fecha, setFecha] = useState<string | null>(null);
   const [disp, setDisp] = useState<DisponibilidadPublica | null>(null);
   const [cargandoDisp, setCargandoDisp] = useState(false);
@@ -104,13 +114,16 @@ export default function ReservarPage() {
     if (!config) return;
     let activo = true;
     const t = setTimeout(() => {
-      getDiasPublicos(pax)
+      getDiasPublicos(pax, DIAS_TIRA)
         .then((lista) => {
           if (!activo) return;
           setDias(lista);
           setFecha((actual) => {
             const sigue = lista.find((d) => d.fecha === actual);
             if (sigue && seleccionable(sigue)) return actual;
+            // Elegida en el calendario, mas alla de la tira: se mantiene (al
+            // continuar se vuelve a consultar la disponibilidad de ese dia).
+            if (actual && lista.length && actual > lista[lista.length - 1].fecha) return actual;
             return lista.find(seleccionable)?.fecha ?? null;
           });
         })
@@ -264,6 +277,31 @@ export default function ReservarPage() {
     setPaso(0);
   }
 
+  function cargarCalendario(paxCal: number) {
+    if (!config) return;
+    setDiasCal(null);
+    getDiasPublicos(paxCal, config.diasAdelante + 1)
+      .then(setDiasCal)
+      .catch((e) => setAviso(e instanceof ErrorReserva ? e.message : "No pudimos cargar el calendario."));
+  }
+
+  function alternarCalendario() {
+    if (calAbierto) {
+      setCalAbierto(false);
+      return;
+    }
+    setCalAbierto(true);
+    setMesCal((fecha ?? config?.hoy ?? "").slice(0, 7) || null);
+    if (!diasCal) cargarCalendario(pax);
+  }
+
+  function cambiarPax(nuevo: number) {
+    setPax(nuevo);
+    // La disponibilidad del calendario depende de los pax.
+    setDiasCal(null);
+    if (calAbierto) cargarCalendario(nuevo);
+  }
+
   // "Ir"/"Siguiente" del teclado del celular.
   function alEnter(e: React.KeyboardEvent, accion: () => void) {
     if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
@@ -338,6 +376,10 @@ export default function ReservarPage() {
     <Marco>
       {paso === 0 ? (
         <header className="rv-hero">
+          {/* El plano del salón (como en el login), suave de fondo. */}
+          <div className="rv-hero-plano rv-plano-negro">
+            <PlanoLogin animado={false} />
+          </div>
           <LogoPortada />
           <h1 className="rv-hero-t">Reservá tu mesa</h1>
           <p>Elegí el día y el horario entre los que tienen lugar.</p>
@@ -398,14 +440,14 @@ export default function ReservarPage() {
             <section className="rv-bloque">
               <div className="rv-et">Personas</div>
               <div className="rv-contador">
-                <button type="button" onClick={() => setPax((p) => Math.max(1, p - 1))} aria-label="Una persona menos" disabled={pax <= 1}>
+                <button type="button" onClick={() => cambiarPax(Math.max(1, pax - 1))} aria-label="Una persona menos" disabled={pax <= 1}>
                   −
                 </button>
                 <div className="rv-v" aria-live="polite">
                   {pax}
                   <small>{pax === 1 ? "persona" : "personas"}</small>
                 </div>
-                <button type="button" onClick={() => setPax((p) => Math.min(config.paxMaximo, p + 1))} aria-label="Una persona más" disabled={pax >= config.paxMaximo}>
+                <button type="button" onClick={() => cambiarPax(Math.min(config.paxMaximo, pax + 1))} aria-label="Una persona más" disabled={pax >= config.paxMaximo}>
                   +
                 </button>
               </div>
@@ -416,8 +458,13 @@ export default function ReservarPage() {
               )}
             </section>
             <section className="rv-bloque">
-              <div className="rv-et">
-                Día {fecha && <span className="rv-sel">{fechaTxt(fecha)}</span>}
+              <div className="rv-et rv-et-fila">
+                <span>
+                  Día {fecha && <span className="rv-sel">{fechaTxt(fecha)}</span>}
+                </span>
+                <button type="button" className="rv-ver-cal" onClick={alternarCalendario} aria-expanded={calAbierto}>
+                  {calAbierto ? "Cerrar calendario" : "Ver calendario"}
+                </button>
               </div>
               {!dias ? (
                 <div className="rv-cargando chico" role="status">Buscando días con lugar…</div>
@@ -449,7 +496,49 @@ export default function ReservarPage() {
                       </button>
                     );
                   })}
+                  {/* Al final de la tira: cualquier otra fecha, en el calendario. */}
+                  {(() => {
+                    const lejos = !!fecha && !dias.some((d) => d.fecha === fecha);
+                    const f = lejos && fecha ? aFecha(fecha) : null;
+                    return (
+                      <button
+                        type="button"
+                        className="rv-dia rv-otra"
+                        aria-pressed={lejos}
+                        aria-expanded={calAbierto}
+                        aria-label={lejos && fecha ? `Otra fecha: ${fechaTxt(fecha)}` : "Elegir otra fecha en el calendario"}
+                        onClick={alternarCalendario}
+                      >
+                        {f ? (
+                          <>
+                            <span className="rv-dsem">{SEM[f.getDay()]}</span>
+                            <span className="rv-num">{f.getDate()}</span>
+                            <span className="rv-dsem">{MES[f.getMonth()]}</span>
+                          </>
+                        ) : (
+                          <>
+                            <IconoCalendario />
+                            <span className="rv-otra-t">Otra fecha</span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
+              )}
+              {calAbierto && (
+                <Calendario
+                  dias={diasCal}
+                  hoy={config.hoy}
+                  fecha={fecha}
+                  mes={mesCal ?? config.hoy.slice(0, 7)}
+                  onMes={setMesCal}
+                  onElegir={(f) => {
+                    setFecha(f);
+                    setHora(null);
+                    setCalAbierto(false);
+                  }}
+                />
               )}
               <div className="rv-ley">
                 <span>
@@ -712,7 +801,156 @@ export default function ReservarPage() {
 function Marco({ children }: { children: React.ReactNode }) {
   return (
     <div className="rv">
+      <IntroCapax />
       <div className="rv-pantalla">{children}</div>
+    </div>
+  );
+}
+
+// Intro al entrar al link (opción B2 del mockup capax-intro-reservar): en
+// negro, capax se dibuja con la animación del login mientras detrás se arma
+// el plano del salón; después el fondo sube como un telón y queda la
+// portada de Barrancas (también negra, con el plano suave). Una sola vez por
+// visita (sessionStorage), se saltea tocando la pantalla y no aparece con
+// "reducir movimiento". Mientras tanto la página carga por detrás.
+const CLAVE_INTRO_RESERVAR = "capax-intro-reservar";
+const DURACION_INTRO_MS = 3000;
+
+function IntroCapax() {
+  const [visible, setVisible] = useState(true);
+
+  const terminar = useCallback(() => {
+    try {
+      sessionStorage.setItem(CLAVE_INTRO_RESERVAR, "1");
+    } catch {
+      // no pasa nada
+    }
+    setVisible(false);
+  }, []);
+
+  useEffect(() => {
+    let vista = false;
+    try {
+      vista = sessionStorage.getItem(CLAVE_INTRO_RESERVAR) === "1";
+    } catch {
+      // sin sessionStorage: se muestra igual
+    }
+    const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (vista || reducido) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisible(false);
+      return;
+    }
+    const t = setTimeout(terminar, DURACION_INTRO_MS);
+    return () => clearTimeout(t);
+  }, [terminar]);
+
+  if (!visible) return null;
+  return (
+    <div className="rv-intro" aria-hidden="true" onPointerDown={terminar}>
+      <div className="rv-intro-plano rv-plano-negro">
+        <PlanoLogin animado />
+      </div>
+      <div className="rv-intro-marca capax-intro">
+        <SimboloCapax size={76} className="text-[#f2f2f2]!" />
+        <WordmarkCapax size={44} className="text-white" />
+      </div>
+    </div>
+  );
+}
+
+function IconoCalendario() {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+// Calendario de "Otra fecha": un mes por vez (lunes primero), desde hoy hasta
+// config.diasAdelante. Cada día con el mismo punto de estado que la tira; los
+// pasados, los que están fuera de rango, los completos y los bloqueados no se
+// pueden elegir.
+function Calendario({
+  dias,
+  hoy,
+  fecha,
+  mes,
+  onMes,
+  onElegir,
+}: {
+  dias: DiaPublico[] | null;
+  hoy: string;
+  fecha: string | null;
+  mes: string;
+  onMes: (m: string) => void;
+  onElegir: (f: string) => void;
+}) {
+  const [y, m] = mes.split("-").map(Number);
+  const primero = new Date(y, m - 1, 1);
+  const enMes = new Date(y, m, 0).getDate();
+  const hueco = (primero.getDay() + 6) % 7;
+  const porFecha = new Map((dias ?? []).map((d) => [d.fecha, d]));
+  const ultimo = dias?.at(-1)?.fecha ?? hoy;
+  const mesDe = (dy: number, dm: number) => {
+    const d = new Date(dy, dm - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+  const anterior = mesDe(y, m - 1);
+  const siguiente = mesDe(y, m + 1);
+  const hayAnterior = anterior >= hoy.slice(0, 7);
+  const haySiguiente = siguiente <= ultimo.slice(0, 7);
+  const ESTADO: Record<string, string> = { bloqueado: "Sin reservas online", lleno: "Completo", pocos: "Pocos lugares", ok: "Hay lugar" };
+
+  return (
+    <div className="rv-cal" role="group" aria-label="Calendario">
+      <div className="rv-cal-cab">
+        <button type="button" onClick={() => onMes(anterior)} disabled={!hayAnterior} aria-label="Mes anterior">
+          ‹
+        </button>
+        <b>
+          {MES_LARGO[m - 1]} {y}
+        </b>
+        <button type="button" onClick={() => onMes(siguiente)} disabled={!haySiguiente} aria-label="Mes siguiente">
+          ›
+        </button>
+      </div>
+      <div className="rv-cal-sem" aria-hidden="true">
+        {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+          <span key={i}>{d}</span>
+        ))}
+      </div>
+      {!dias ? (
+        <div className="rv-cargando chico" role="status">
+          Buscando días con lugar…
+        </div>
+      ) : (
+        <div className="rv-cal-dias">
+          {Array.from({ length: hueco }, (_, i) => (
+            <span key={`h${i}`} />
+          ))}
+          {Array.from({ length: enMes }, (_, i) => {
+            const iso = `${mes}-${String(i + 1).padStart(2, "0")}`;
+            const d = porFecha.get(iso);
+            const ok = !!d && seleccionable(d);
+            return (
+              <button
+                key={iso}
+                type="button"
+                className={`rv-cal-dia ${d ? d.estado : "fuera"}`}
+                aria-pressed={iso === fecha}
+                aria-disabled={!ok}
+                aria-label={`${fechaTxt(iso)}: ${d ? ESTADO[d.estado] : "No disponible"}`}
+                onClick={() => ok && onElegir(iso)}
+              >
+                {i + 1}
+                {d && <i />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

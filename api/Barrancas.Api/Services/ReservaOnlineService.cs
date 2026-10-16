@@ -42,7 +42,9 @@ public class ReservaOnlineService
     public const string SalonConfirmaSola = "Restaurant";
     public const int LimitePaxConfirmaSola = 6; // se confirma sola con MENOS de 6
     public const int PaxMaximo = 20;
-    public const int DiasAdelante = 30;
+    // Hasta cuantos dias adelante se puede reservar por el link (la tira
+    // muestra 14; el resto se elige con "Otra fecha", en el calendario).
+    public const int DiasAdelante = 60;
     private const int MinutosAnticipacion = 60;
     private const int MaxReservasWebFuturasPorTelefono = 3;
 

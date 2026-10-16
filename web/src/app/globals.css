@@ -915,7 +915,69 @@ select option {
 .rv-atras-anim { animation: rv-entrar-i 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes rv-entrar-d { from { opacity: 0; transform: translateX(24px); } }
 @keyframes rv-entrar-i { from { opacity: 0; transform: translateX(-24px); } }
+/* Intro al entrar (ver IntroCapax en reservar/page.tsx): negro, capax con
+   la animacion del login y el plano del salon armandose detras; a los 2.2 s
+   el fondo sube como un telon y deja ver la portada (tambien negra). */
+.rv-intro { position: fixed; inset: 0; z-index: 200; background: #0b0b0c; display: grid; place-items: center; overflow: hidden;
+  clip-path: inset(0 0 0 0); animation: rv-recoger 0.75s cubic-bezier(0.65, 0, 0.25, 1) 2.2s both; cursor: pointer; }
+.rv-intro-plano { position: absolute; inset: 0; }
+.rv-intro-marca { position: relative; z-index: 1; display: grid; justify-items: center; gap: 12px; color: #fff;
+  animation: rv-salir-capax 0.45s ease 1.95s both; }
+@keyframes rv-recoger { to { clip-path: inset(0 0 100% 0); } }
+@keyframes rv-salir-capax { to { opacity: 0; transform: scale(0.92); filter: blur(2px); } }
+
+/* El plano del login sobre negro (intro y portada): mismos trazos, pero con
+   colores claros y un poco mas de presencia. */
+.rv-plano-negro { --color-tinta: #f2f2f2; --color-fondo: #0b0b0c; }
+.rv-plano-negro .lp-pared, .rv-plano-negro .lp-mesa, .rv-plano-negro .lp-barra, .rv-plano-negro .lp-ventana { stroke-opacity: 0.32; }
+.rv-plano-negro .lp-mesa { fill-opacity: 0.05; }
+.rv-plano-negro .lp-mesa.lp-ocupada { stroke-opacity: 0.85; fill-opacity: 0.3; }
+.rv-plano-negro .lp-silla { fill-opacity: 0.18; }
+.rv-plano-negro .lp-num { fill-opacity: 0.35; }
+.rv-intro-plano .login-vineta { background:
+  radial-gradient(ellipse 42% 17% at 50% 50%, color-mix(in srgb, #0b0b0c 90%, transparent) 30%, transparent 100%),
+  radial-gradient(ellipse 100% 95% at 50% 50%, transparent 62%, #0b0b0c 100%); }
+@media (max-width: 640px) {
+  .rv-intro-plano .login-plano-piso { transform: translate(-50%, -50%) rotateX(50deg) scale(0.62); }
+}
+
+/* Portada con el plano suave de fondo, detras del logo y los textos. */
+.rv-hero > :not(.rv-hero-plano) { position: relative; z-index: 1; }
+.rv-hero-plano { position: absolute; inset: 0; opacity: 0.7; }
+.rv-hero-plano .login-plano-piso { width: 1400px; transform: translate(-50%, -46%) rotateX(50deg) scale(0.62); }
+.rv-hero-plano .login-vineta { background:
+  radial-gradient(ellipse 40% 34% at 50% 30%, color-mix(in srgb, #0b0b0c 92%, transparent) 35%, transparent 100%),
+  radial-gradient(ellipse 60% 22% at 50% 66%, color-mix(in srgb, #0b0b0c 85%, transparent) 30%, transparent 100%),
+  linear-gradient(to bottom, transparent 70%, #0b0b0c 100%); }
+
+/* "Otra fecha" al final de la tira de dias, y el calendario. */
+.rv-et-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.rv-ver-cal { font: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--color-tinta);
+  background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+.rv-dia.rv-otra { width: 74px; align-content: center; gap: 3px; color: var(--color-tinta); border-style: dashed; }
+.rv-otra-t { font-size: 11px; font-weight: 600; line-height: 1.15; }
+.rv-dia.rv-otra[aria-pressed="true"] { border-style: solid; }
+.rv-cal { border: 1px solid var(--color-borde); border-radius: 16px; background: var(--color-superficie); padding: 10px 10px 12px; display: grid; gap: 6px; }
+.rv-cal-cab { display: flex; align-items: center; justify-content: space-between; }
+.rv-cal-cab b { font-size: 15px; }
+.rv-cal-cab button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+  color: var(--color-tinta); font-size: 18px; cursor: pointer; }
+.rv-cal-cab button:disabled { opacity: 0.35; cursor: not-allowed; }
+.rv-cal-sem, .rv-cal-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.rv-cal-sem span { text-align: center; font-size: 11px; font-weight: 600; color: var(--color-tinta-suave); }
+.rv-cal-dia { position: relative; height: 42px; border-radius: 10px; border: 0; background: none; color: var(--color-tinta);
+  font: inherit; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; display: grid; place-items: center; }
+.rv-cal-dia i { position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #32b49d; }
+.rv-cal-dia.pocos i { background: var(--color-aviso); }
+.rv-cal-dia.lleno, .rv-cal-dia.bloqueado, .rv-cal-dia.fuera { color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-cal-dia.fuera { opacity: 0.4; }
+.rv-cal-dia.lleno i, .rv-cal-dia.bloqueado i { background: transparent; border: 1px solid var(--color-tinta-suave); }
+.rv-cal-dia:not([aria-disabled="true"]):hover { background: var(--rv-apagado); }
+.rv-cal-dia[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); }
+.rv-cal-dia[aria-pressed="true"] i { background: currentColor; }
+
 @media (prefers-reduced-motion: reduce) {
+  .rv-intro { display: none; }
   .rv-adelante, .rv-atras-anim, .rv-enviando, .rv-loader path, .rv-ok svg, .rv-ok-circ, .rv-ok-trazo, .rv-ok-pulso, .rv-sube { animation: none; }
 }
 
