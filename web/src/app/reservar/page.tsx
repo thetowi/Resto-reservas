@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
+import ThemeToggle from "@/components/ThemeToggle";
 import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
 import { LOGOS_CLIENTE, MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
 import {
@@ -385,6 +386,8 @@ export default function ReservarPage() {
           <div className="rv-hero-plano rv-plano-negro">
             <PlanoLogin animado={false} />
           </div>
+          {/* Claro / oscuro: arranca como el celular y se puede cambiar. */}
+          <ThemeToggle className="rv-tema rv-tema-hero" />
           <LogoPortada />
           <h1 className="rv-hero-t">Reservá tu mesa</h1>
           <p>Elegí el día y el horario entre los que tienen lugar.</p>
@@ -410,6 +413,7 @@ export default function ReservarPage() {
             </svg>
           </button>
           <LogoBarra />
+          <ThemeToggle className="rv-tema" />
         </header>
       )}
 

@@ -766,6 +766,17 @@ select option {
 .rv-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--color-superficie); border-bottom: 1px solid var(--color-borde); }
 .rv-atras { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta);
   display: grid; place-items: center; cursor: pointer; }
+/* Boton claro/oscuro del link (components/ThemeToggle con estas clases): en
+   la barra de pasos, a la derecha; en la portada negra, arriba a la derecha. */
+.rv-tema { position: static; z-index: auto; margin-left: auto; width: 36px; height: 36px; padding: 0; border-radius: 10px; border: 1px solid var(--color-borde);
+  background: var(--color-superficie); align-items: center; justify-content: center; }
+.rv-tema .dark-mode-toggle__icon { width: 22px; height: 22px; color: #d9a300; }
+.rv-tema .dark-mode-toggle__icon--moon { color: var(--color-tinta); }
+.rv-tema:focus-visible { outline: 2px solid #32b49d; outline-offset: 2px; }
+.rv-tema-hero { position: absolute; top: 14px; right: 14px; z-index: 2; margin: 0; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.18); }
+.rv-tema-hero:hover { background: rgba(255, 255, 255, 0.14); }
+.rv-tema-hero .dark-mode-toggle__icon { color: #f2c94c; }
+.rv-tema-hero .dark-mode-toggle__icon--moon { color: #f2f2f2; }
 .rv-lugar-c { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--color-tinta-suave); }
 .rv-progreso { display: flex; gap: 5px; padding: 12px 18px 0; }
 .rv-progreso i { flex: 1; height: 4px; border-radius: 99px; background: var(--color-borde); }
@@ -949,7 +960,7 @@ select option {
 }
 
 /* Portada con el plano suave de fondo, detras del logo y los textos. */
-.rv-hero > :not(.rv-hero-plano) { position: relative; z-index: 1; }
+.rv-hero > :not(.rv-hero-plano, .rv-tema-hero) { position: relative; z-index: 1; }
 .rv-hero-plano { position: absolute; inset: 0; opacity: 0.7; }
 .rv-hero-plano .login-plano-piso { width: 1400px; transform: translate(-50%, -46%) rotateX(50deg) scale(0.62); }
 .rv-hero-plano .login-vineta { background:

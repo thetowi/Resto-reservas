@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 const STORAGE_KEY = "barrancas-theme";
 
@@ -18,10 +18,16 @@ function leerTemaActual(): Tema {
 // atributo data-theme de <html> (lo fija por primera vez el script inline
 // de layout.tsx) + localStorage, igual que en la version anterior — lo
 // unico que cambia aca es el dibujo del boton.
-export default function ThemeToggle() {
+// className: estilos extra segun donde se use (el link /reservar lo usa
+// chico, ver .rv-tema en globals.css).
+export default function ThemeToggle({ className = "" }: { className?: string }) {
   const [tema, setTema] = useState<Tema>("light");
+  // id de la mascara unico por boton (si hubiera dos en la misma pagina).
+  const mascara = `dark-mode-toggle-mask-${useId().replace(/:/g, "")}`;
 
   useEffect(() => {
+    // El tema real recien se conoce en el navegador (lo fija layout.tsx).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTema(leerTemaActual());
   }, []);
 
@@ -37,7 +43,8 @@ export default function ThemeToggle() {
       type="button"
       onClick={alternar}
       title={tema === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      className="dark-mode-toggle"
+      aria-label={tema === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      className={`dark-mode-toggle ${className}`.trim()}
     >
         <svg
         className={`dark-mode-toggle__icon ${tema === "dark" ? "dark-mode-toggle__icon--moon" : ""}`}
@@ -46,7 +53,7 @@ export default function ThemeToggle() {
         viewBox="0 0 24 24"
       >
         <defs>
-          <mask id="dark-mode-toggle-mask">
+          <mask id={mascara}>
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             <circle className="dark-mode-toggle__cut-out" r="6" cx="24" cy="10" fill="black" />
           </mask>
@@ -57,7 +64,7 @@ export default function ThemeToggle() {
           cx="12"
           cy="12"
           fill="currentColor"
-          mask="url(#dark-mode-toggle-mask)"
+          mask={`url(#${mascara})`}
         />
         <g className="dark-mode-toggle__rays" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="12" x2="12" y1="3" y2="1" />
