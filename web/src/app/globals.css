@@ -731,6 +731,10 @@ select option {
   display: flex;
   flex-direction: column;
   background: var(--color-fondo);
+  /* Con el teclado abierto la barra sube (--rv-teclado, ver .rv-barra) y
+     tapaba lo ultimo de la pantalla (el tilde de "Acepto…"). Este espacio
+     extra deja scrollear hasta verlo por encima de la barra. */
+  padding-bottom: var(--rv-teclado, 0px);
 }
 @media (min-width: 700px) {
   .rv { padding: 24px 16px; }
@@ -917,7 +921,7 @@ select option {
 @keyframes rv-pulso { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
 @keyframes rv-subir { from { opacity: 0; transform: translateY(14px); } }
 .rv-acciones { display: grid; gap: 8px; width: 100%; max-width: 380px; }
-.rv-sec { display: grid; place-items: center; height: 44px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
+.rv-sec { display: flex; align-items: center; justify-content: center; gap: 7px; height: 44px; border-radius: 12px; border: 1px solid var(--color-borde); background: var(--color-superficie);
   color: var(--color-tinta); font-size: 14px; cursor: pointer; text-decoration: none; }
 .rv-volver { background: none; border: 0; color: var(--color-tinta-suave); text-decoration: underline; font-size: 13px; cursor: pointer; }
 .rv button:focus-visible, .rv a:focus-visible { outline: 2px solid #32b49d; outline-offset: 2px; }
@@ -1061,4 +1065,66 @@ tr.fila-destino-fuerte > td:first-child { box-shadow: inset 3px 0 0 var(--color-
 @media (prefers-reduced-motion: reduce) {
   .aviso-web, .aviso-web::after { animation: none; }
   .aviso-web::after { display: none; }
+}
+
+/* ---- "Estamos en servicio" (link de reservas, ver EnServicio en
+   reservar/page.tsx): hoy, con el turno ya empezado, por orden de llegada.
+   La tapa sube primero y despues se abre hacia arriba con la bisagra a la
+   derecha (nunca baja del plato); el vapor sale de abajo cuando se abre. */
+.rv-servicio { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 20px 18px 18px; border-radius: 18px;
+  background: var(--color-aviso-suave); border: 1px solid color-mix(in srgb, var(--color-aviso) 22%, transparent); }
+.rv-servicio h2 { margin: 2px 0 0; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+.rv-servicio p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--color-tinta-suave); max-width: 32ch; }
+.rv-servicio p b { color: var(--color-tinta); }
+.rv-servicio-hora { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--color-aviso); }
+.rv-servicio-acc { display: grid; gap: 8px; width: 100%; margin-top: 4px; }
+.rv-servicio-pri, .rv-servicio-sec { font: inherit; font-size: 14px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  gap: 7px; cursor: pointer; text-decoration: none; }
+.rv-servicio-pri { border: 0; background: var(--rv-acento); color: var(--rv-acento-tx); font-weight: 700; }
+.rv-servicio-sec { border: 1px solid var(--color-borde); background: var(--color-superficie); color: var(--color-tinta); }
+.rv-cloche { width: 150px; height: 112px; margin-top: 10px; overflow: visible; color: var(--color-aviso); }
+.rv-cloche .rv-tapa { fill: currentColor; transform-box: view-box; transform-origin: 130px 92px; animation: rv-tapa 3.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.rv-cloche .rv-plato { fill: var(--color-tinta); opacity: 0.85; }
+.rv-cloche .rv-vapor path { fill: none; stroke: currentColor; stroke-width: 3.5; stroke-linecap: round; opacity: 0; animation: rv-vapor 3.6s ease-out infinite; }
+.rv-cloche .rv-vapor path:nth-child(2) { animation-delay: 0.18s; }
+.rv-cloche .rv-vapor path:nth-child(3) { animation-delay: 0.36s; }
+@keyframes rv-tapa {
+  0%, 14% { transform: translateY(0) rotate(0); }
+  28% { transform: translateY(-8px) rotate(0); }
+  42%, 64% { transform: translateY(-10px) rotate(22deg); }
+  78% { transform: translateY(-6px) rotate(0); }
+  86%, 100% { transform: translateY(0) rotate(0); }
+}
+@keyframes rv-vapor { 0%, 34% { opacity: 0; transform: translateY(6px); } 50% { opacity: 0.9; } 80%, 100% { opacity: 0; transform: translateY(-34px); } }
+
+/* Punto rojo que late: pestaña del turno en servicio, el dia de hoy en la
+   tira y en la leyenda. */
+.rv-vivo { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: #e5484d; vertical-align: 1px;
+  animation: rv-latido 1.6s infinite; }
+.rv-dia.servicio .rv-est, .rv-cal-dia.servicio i { background: #e5484d; animation: rv-latido 1.6s infinite; }
+.rv-dia.servicio[aria-pressed="true"] .rv-est { background: #ff8a8e; }
+.rv-ley i.s { background: #e5484d; }
+@keyframes rv-latido { 0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.55); } 70% { box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); } }
+
+/* "Cómo llegar": hoja que sube desde abajo para elegir la app de mapas. */
+.rv-hoja-fondo { position: fixed; inset: 0; z-index: 120; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center;
+  animation: rv-hoja-fondo 0.2s ease both; }
+.rv-hoja { width: 100%; max-width: 520px; background: var(--color-superficie); color: var(--color-tinta); border-radius: 22px 22px 0 0;
+  padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; text-align: left; animation: rv-hoja 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.rv-hoja-asa { justify-self: center; width: 40px; height: 4px; border-radius: 4px; background: var(--color-borde); }
+.rv-hoja h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.rv-hoja > p { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-tinta-suave); }
+.rv-hoja-dir { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--rv-apagado); font-size: 13.5px; }
+.rv-hoja-dir span { flex: 1; min-width: 0; }
+.rv-hoja-dir button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--color-tinta); text-decoration: underline; cursor: pointer; }
+.rv-hoja-apps { display: grid; gap: 8px; }
+.rv-hoja-apps a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--color-borde);
+  color: var(--color-tinta); text-decoration: none; font-weight: 600; font-size: 15px; }
+.rv-app-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; }
+.rv-hoja-cancelar { font: inherit; font-size: 15px; height: 46px; border-radius: 14px; border: 0; background: var(--rv-apagado); color: var(--color-tinta); cursor: pointer; }
+@keyframes rv-hoja { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes rv-hoja-fondo { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .rv-cloche .rv-tapa, .rv-cloche .rv-vapor path, .rv-vivo, .rv-dia.servicio .rv-est, .rv-cal-dia.servicio i, .rv-hoja, .rv-hoja-fondo { animation: none; }
+  .rv-cloche .rv-vapor path { opacity: 0.6; }
 }

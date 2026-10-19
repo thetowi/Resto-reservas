@@ -21,7 +21,9 @@ public record PublicoConfigDto(
     DateOnly Hoy);
 
 // Estado: "ok" | "pocos" | "lleno" | "bloqueado" (sin reservas online ese
-// dia: el link muestra Motivo/Mensaje y el boton de WhatsApp).
+// dia: el link muestra Motivo/Mensaje y el boton de WhatsApp) | "servicio"
+// (hoy, sin horarios para reservar porque el turno ya esta en servicio: por
+// orden de llegada).
 public record PublicoDiaDto(DateOnly Fecha, string Estado, string? Motivo = null, string? Mensaje = null);
 
 // Estado: "disponible" | "pocas" (ultimas mesas) | "sin_lugar".
@@ -29,7 +31,9 @@ public record PublicoHorarioDto(string Hora, string Estado);
 
 // PorWhatsApp: el turno esta cerrado para la web por una fecha especial
 // (ver FechaBloqueadaBot): el link muestra el mensaje y el boton de WhatsApp.
-public record PublicoTurnoDto(string Turno, bool Cerrado, List<PublicoHorarioDto> Horarios, bool PorWhatsApp = false);
+// EnServicio: hoy, el turno ya empezo; hasta FinServicio ("15:30") es por
+// orden de llegada (ver ReservaOnlineService.EstaEnServicio).
+public record PublicoTurnoDto(string Turno, bool Cerrado, List<PublicoHorarioDto> Horarios, bool PorWhatsApp = false, bool EnServicio = false, string? FinServicio = null);
 
 public record PublicoSalonDisponibilidadDto(int SalonId, bool HayLugar, List<PublicoTurnoDto> Turnos);
 

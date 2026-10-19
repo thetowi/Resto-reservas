@@ -103,6 +103,38 @@ public class ReservaOnlineService
         return t.ToTimeSpan() < ahora.TimeOfDay.Add(TimeSpan.FromMinutes(MinutosAnticipacion));
     }
 
+    // ---------------------------------------------------------------- en servicio
+
+    // Un turno de HOY esta "en servicio" desde su primer horario de la
+    // planilla hasta el ultimo + MinutosFinServicio (almuerzo 12:30 a 15:30,
+    // cena 20:30 a 23:30 con la planilla actual). Mientras tanto el link no
+    // toma reservas para ese turno: las mesas son por orden de llegada.
+    public const int MinutosFinServicio = 90;
+
+    public static string FinServicio(Turno turno)
+    {
+        var ultimo = HorariosDe(turno).LastOrDefault();
+        if (ultimo is null || !TimeOnly.TryParseExact(ultimo, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
+        {
+            return string.Empty;
+        }
+        return t.AddMinutes(MinutosFinServicio).ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    public static bool EstaEnServicio(DateTime ahoraLocal, DateOnly fecha, Turno turno)
+    {
+        if (fecha != DateOnly.FromDateTime(ahoraLocal)) return false;
+        var horarios = HorariosDe(turno);
+        if (horarios.Count == 0) return false;
+        if (!TimeOnly.TryParseExact(horarios[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var inicio)) return false;
+        if (!TimeOnly.TryParseExact(horarios[^1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var ultimo)) return false;
+        var ahora = ahoraLocal.TimeOfDay;
+        var fin = ultimo.ToTimeSpan().Add(TimeSpan.FromMinutes(MinutosFinServicio));
+        return ahora >= inicio.ToTimeSpan() && ahora < fin;
+    }
+
+    private static bool EnServicio(DateOnly fecha, Turno turno) => EstaEnServicio(AhoraLocal(), fecha, turno);
+
     // ---------------------------------------------------------------- turnos y horarios
 
     private static IEnumerable<Turno> TurnosDe(Salon salon)
@@ -246,12 +278,19 @@ public class ReservaOnlineService
             var disponibles = 0;
             var pocas = 0;
             var total = 0;
+            var enServicio = false;
             foreach (var salon in salones)
             {
                 foreach (var turno in TurnosDe(salon))
                 {
                     // Turno cerrado para la web (el resto del dia sigue abierto).
                     if (cierre is not null && cierre.Cierra(turno)) continue;
+                    // Turno de hoy ya en servicio: por orden de llegada.
+                    if (EnServicio(fecha, turno))
+                    {
+                        enServicio = true;
+                        continue;
+                    }
                     var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
                     total += ev.Horarios.Count;
                     disponibles += ev.Horarios.Count(h => h.Estado == Disponible);
@@ -260,7 +299,7 @@ public class ReservaOnlineService
             }
 
             string estado;
-            if (disponibles + pocas == 0) estado = "lleno";
+            if (disponibles + pocas == 0) estado = enServicio ? "servicio" : "lleno";
             else if (total > 0 && disponibles < total * 0.35) estado = "pocos";
             else estado = "ok";
             resultado.Add(new PublicoDiaDto(fecha, estado));
@@ -292,6 +331,15 @@ public class ReservaOnlineService
                     turnos.Add(new PublicoTurnoDto(Nombre(turno), true,
                         HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
                         PorWhatsApp: !fueraDeRango && cierre is not null));
+                    continue;
+                }
+                if (EnServicio(fecha, turno))
+                {
+                    // Hoy, con el turno ya empezado: el link muestra "Estamos
+                    // en servicio" (por orden de llegada) hasta FinServicio.
+                    turnos.Add(new PublicoTurnoDto(Nombre(turno), false,
+                        HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
+                        EnServicio: true, FinServicio: FinServicio(turno)));
                     continue;
                 }
                 var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
@@ -371,6 +419,11 @@ public class ReservaOnlineService
         if (cierre is not null && cierre.Cierra(turno))
         {
             throw new ReservaOnlineException(cierre.MensajeCliente ?? "Ese día no tomamos reservas online. Escribinos por WhatsApp y lo vemos.");
+        }
+
+        if (EnServicio(req.Fecha, turno))
+        {
+            throw new ReservaOnlineException($"Estamos en servicio: hasta las {FinServicio(turno)} las mesas son por orden de llegada.");
         }
 
         // Limite de reservas web a futuro por el mismo telefono (contra abuso).

@@ -6,7 +6,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5238";
 
 export type TurnoPublico = "almuerzo" | "merienda" | "cena";
-export type EstadoDia = "ok" | "pocos" | "lleno" | "bloqueado";
+// "servicio": hoy, el turno ya empezo y es por orden de llegada.
+export type EstadoDia = "ok" | "pocos" | "lleno" | "bloqueado" | "servicio";
 export type EstadoHorario = "disponible" | "pocas" | "sin_lugar";
 
 export interface SalonPublico {
@@ -47,6 +48,10 @@ export interface TurnoDisponible {
   horarios: HorarioPublico[];
   // Turno cerrado para la web por una fecha especial: se reserva por WhatsApp.
   porWhatsApp?: boolean;
+  // Hoy, con el turno ya empezado: "Estamos en servicio", por orden de
+  // llegada hasta finServicio ("15:30").
+  enServicio?: boolean;
+  finServicio?: string | null;
 }
 
 export interface SalonDisponible {

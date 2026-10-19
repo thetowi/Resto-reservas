@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { preload } from "react-dom";
+import { createPortal, preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
 import ThemeToggle from "@/components/ThemeToggle";
 import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
-import { LOGOS_CLIENTE, MAPS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
+import { DIRECCION_CLIENTE, LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
+import { opcionesMapa, type AppMapa } from "@/lib/mapas";
 import {
   ErrorReserva,
   crearReservaPublica,
@@ -35,6 +36,7 @@ const MES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio
 // elige con "Otra fecha", que abre el calendario.
 const DIAS_TIRA = 14;
 const NOMBRE_TURNO: Record<TurnoPublico, string> = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
+const EL_TURNO: Record<TurnoPublico, string> = { almuerzo: "el almuerzo", merienda: "la merienda", cena: "la cena" };
 const OCASIONES = ["Cumpleaños", "Aniversario", "Negocios", "Silla para bebé"];
 
 // "2026-10-17" -> Date local (sin corrimiento de zona horaria).
@@ -189,8 +191,12 @@ export default function ReservarPage() {
 
   const elegirTurnoPorDefecto = useCallback((d: DisponibilidadPublica, id: number) => {
     const s = d.salones.find((x) => x.salonId === id);
+    // Hoy con un turno ya en servicio: se muestra ese primero (es lo que
+    // busca quien entra a la hora de comer), con el boton al otro turno.
+    const enServicio = s?.turnos.find((t) => t.enServicio);
     const conLugar = s?.turnos.find((t) => t.horarios.some((h) => h.estado !== "sin_lugar"));
-    if (conLugar) setTurno(conLugar.turno);
+    if (enServicio) setTurno(enServicio.turno);
+    else if (conLugar) setTurno(conLugar.turno);
   }, []);
 
   async function cargarDisponibilidad(): Promise<DisponibilidadPublica | null> {
@@ -483,8 +489,15 @@ export default function ReservarPage() {
                     const f = aFecha(d.fecha);
                     const porWa = d.estado === "bloqueado";
                     const ok = seleccionable(d) || porWa;
-                    const titulo =
-                      porWa ? "Se reserva por WhatsApp" : d.estado === "lleno" ? "Completo" : d.estado === "pocos" ? "Pocos lugares" : "Hay lugar";
+                    const titulo = porWa
+                      ? "Se reserva por WhatsApp"
+                      : d.estado === "servicio"
+                        ? "En servicio: por orden de llegada"
+                        : d.estado === "lleno"
+                          ? "Completo"
+                          : d.estado === "pocos"
+                            ? "Pocos lugares"
+                            : "Hay lugar";
                     return (
                       <button
                         key={d.fecha}
@@ -570,6 +583,12 @@ export default function ReservarPage() {
                   <i className="w" />
                   Por WhatsApp
                 </span>
+                {dias?.some((d) => d.estado === "servicio") && (
+                  <span>
+                    <i className="s" />
+                    En servicio
+                  </span>
+                )}
               </div>
             </section>
           </>
@@ -619,6 +638,7 @@ export default function ReservarPage() {
                 >
                   {NOMBRE_TURNO[t.turno]}
                   {t.porWhatsApp && <IconoWhatsApp size={12} className="rv-chip-wa" />}
+                  {t.enServicio && <i className="rv-vivo" aria-label="en servicio" />}
                 </button>
               ))}
             </div>
@@ -627,6 +647,25 @@ export default function ReservarPage() {
               if (!t) return null;
               if (t.porWhatsApp && fecha) {
                 return <AvisoWhatsApp fecha={fecha} pax={pax} turno={t.turno} motivo={disp?.motivo} mensaje={disp?.mensaje} />;
+              }
+              if (t.enServicio) {
+                const otro = dispSalon.turnos.find((x) => x.turno !== t.turno && !x.enServicio && x.horarios.some((h) => h.estado !== "sin_lugar"));
+                return (
+                  <EnServicio
+                    turno={t.turno}
+                    fin={t.finServicio}
+                    otroTurno={otro?.turno ?? null}
+                    onOtroTurno={() => {
+                      if (!otro) return;
+                      setTurno(otro.turno);
+                      setHora(null);
+                    }}
+                    onOtroDia={() => {
+                      setHora(null);
+                      setPaso(0);
+                    }}
+                  />
+                );
               }
               if (t.horarios.every((x) => x.estado === "sin_lugar")) {
                 return <p className="rv-nota">{t.cerrado ? "Este turno está cerrado ese día." : "No queda lugar en este turno. Probá con otro turno u otro día."}</p>;
@@ -1055,6 +1094,162 @@ function LogoBarra() {
   );
 }
 
+// "Estamos en servicio" (opción A del mockup capax-en-servicio): hoy, con el
+// turno ya empezado, las mesas son por orden de llegada. La tapa del plato
+// sube, se abre hacia arriba y sale vapor (ver .rv-cloche en globals.css).
+function EnServicio({
+  turno,
+  fin,
+  otroTurno,
+  onOtroTurno,
+  onOtroDia,
+}: {
+  turno: TurnoPublico;
+  fin?: string | null;
+  otroTurno: TurnoPublico | null;
+  onOtroTurno: () => void;
+  onOtroDia: () => void;
+}) {
+  return (
+    <section className="rv-servicio" role="status">
+      <svg className="rv-cloche" viewBox="0 0 160 120" aria-hidden="true">
+        <g className="rv-vapor">
+          <path d="M50 86 c-7 -9 7 -14 0 -24" />
+          <path d="M68 84 c-7 -9 7 -14 0 -24" />
+          <path d="M86 86 c-7 -9 7 -14 0 -24" />
+        </g>
+        <g className="rv-tapa">
+          <path d="M30 92 a50 46 0 0 1 100 0 z" />
+          <circle cx="80" cy="42" r="6" />
+        </g>
+        <rect className="rv-plato" x="18" y="92" width="124" height="7" rx="3.5" />
+      </svg>
+      <h2>Estamos en servicio</h2>
+      <p>
+        {NOMBRE_TURNO[turno]} ya empezó. Ahora las mesas son <b>por orden de llegada</b>: vení directo, te esperamos.
+      </p>
+      {fin && (
+        <div className="rv-servicio-hora">
+          <IconoReloj />
+          {NOMBRE_TURNO[turno]} hasta las {fin}
+        </div>
+      )}
+      <div className="rv-servicio-acc">
+        <ComoLlegar className="rv-servicio-pri" />
+        {otroTurno ? (
+          <button type="button" className="rv-servicio-sec" onClick={onOtroTurno}>
+            Reservar para {EL_TURNO[otroTurno]}
+          </button>
+        ) : (
+          <button type="button" className="rv-servicio-sec" onClick={onOtroDia}>
+            Elegir otro día
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function IconoReloj() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function IconoPin({ size = 17 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}
+
+// "Cómo llegar": si hay una sola app configurada abre directo; si hay
+// varias, el cliente elige (Google Maps, Apple Maps o Waze) en una hoja que
+// sube desde abajo. Sin direccion ni links, no se muestra (ver lib/mapas.ts).
+const COLOR_APP: Record<AppMapa, string> = { google: "#1a73e8", apple: "#8e8e93", waze: "#33ccff" };
+
+function ComoLlegar({ className }: { className: string }) {
+  // La hoja va en un portal al contenedor .rv (fuera de tarjetas con
+  // animaciones de transform, que romperian el position: fixed).
+  const [abierta, setAbierta] = useState<HTMLElement | null>(null);
+  const [copiada, setCopiada] = useState(false);
+  const opciones = opcionesMapa();
+
+  useEffect(() => {
+    if (!abierta) return;
+    const alTeclear = (e: KeyboardEvent) => e.key === "Escape" && setAbierta(null);
+    document.addEventListener("keydown", alTeclear);
+    return () => document.removeEventListener("keydown", alTeclear);
+  }, [abierta]);
+
+  if (opciones.length === 0) return null;
+  if (opciones.length === 1) {
+    return (
+      <a className={className} href={opciones[0].href} target="_blank" rel="noreferrer">
+        <IconoPin />
+        Cómo llegar
+      </a>
+    );
+  }
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(`${NOMBRE_PUBLICO}, ${DIRECCION_CLIENTE}`);
+      setCopiada(true);
+      setTimeout(() => setCopiada(false), 2000);
+    } catch {
+      // sin permiso de portapapeles: no pasa nada
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className={className} onClick={() => setAbierta(document.querySelector<HTMLElement>(".rv") ?? document.body)} aria-haspopup="dialog">
+        <IconoPin />
+        Cómo llegar
+      </button>
+      {abierta &&
+        createPortal(
+          <div className="rv-hoja-fondo" onClick={(e) => e.target === e.currentTarget && setAbierta(null)}>
+            <div className="rv-hoja" role="dialog" aria-modal="true" aria-labelledby="rv-hoja-t">
+              <i className="rv-hoja-asa" aria-hidden="true" />
+              <h2 id="rv-hoja-t">Cómo llegar</h2>
+              {DIRECCION_CLIENTE && (
+                <div className="rv-hoja-dir">
+                  <IconoPin size={16} />
+                  <span>{DIRECCION_CLIENTE}</span>
+                  <button type="button" onClick={copiar}>
+                    {copiada ? "Copiada" : "Copiar"}
+                  </button>
+                </div>
+              )}
+              <p>Abrir con</p>
+              <div className="rv-hoja-apps">
+                {opciones.map((o) => (
+                  <a key={o.app} href={o.href} target="_blank" rel="noreferrer" onClick={() => setAbierta(null)}>
+                    <span className="rv-app-ico" style={{ background: COLOR_APP[o.app] }}>
+                      <IconoPin size={18} />
+                    </span>
+                    {o.nombre}
+                  </a>
+                ))}
+              </div>
+              <button type="button" className="rv-hoja-cancelar" onClick={() => setAbierta(null)}>
+                Cancelar
+              </button>
+            </div>
+          </div>,
+          abierta,
+        )}
+    </>
+  );
+}
+
 function Pie() {
   return (
     <div className="rv-pie">
@@ -1178,11 +1373,7 @@ function Confirmacion({
           {ok && (
             <AgregarCalendario r={r} />
           )}
-          {MAPS_CLIENTE && (
-            <a className="rv-sec" href={MAPS_CLIENTE} target="_blank" rel="noreferrer">
-              Cómo llegar
-            </a>
-          )}
+          <ComoLlegar className="rv-sec" />
           {WHATSAPP_CLIENTE && (
             <a
               className="rv-sec"

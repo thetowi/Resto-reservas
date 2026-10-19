@@ -13,8 +13,16 @@ export const NOMBRE_PUBLICO = process.env.NEXT_PUBLIC_CLIENTE_NOMBRE_PUBLICO ?? 
 // Numero de WhatsApp del restaurante en formato internacional, solo digitos
 // (ej. 5491155555555), para "Escribinos por WhatsApp".
 export const WHATSAPP_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_WHATSAPP ?? "";
-// Link de Google Maps del lugar, para "Cómo llegar".
+// "Cómo llegar" (ver lib/mapas.ts): el cliente elige con qué app abrirlo.
+// Alcanza con la direccion; los links de cada app son opcionales y, si
+// estan, pisan al que se arma con la direccion.
+export const DIRECCION_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_DIRECCION ?? "";
+// Link de Google Maps del lugar (ej. el de "Compartir" de la ficha).
 export const MAPS_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_MAPS_URL ?? "";
+// Link de Apple Maps ("Compartir" en Mapas del iPhone o la Mac).
+export const MAPS_APPLE_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_MAPS_APPLE_URL ?? "";
+// Link de Waze.
+export const WAZE_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_WAZE_URL ?? "";
 // Link a la politica de privacidad del cliente.
 export const PRIVACIDAD_CLIENTE = process.env.NEXT_PUBLIC_CLIENTE_PRIVACIDAD_URL ?? "";
 
