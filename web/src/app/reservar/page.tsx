@@ -18,6 +18,7 @@ import {
   type DiaPublico,
   type DisponibilidadPublica,
   type ReservaCreada,
+  type SalonDisponible,
   type TurnoPublico,
 } from "@/lib/reservaPublica";
 
@@ -49,6 +50,11 @@ const fechaTxt = (iso: string) => {
   return `${SEM[d.getDay()]} ${d.getDate()} de ${MES[d.getMonth()]}`;
 };
 const personasTxt = (n: number) => `${n} ${n === 1 ? "persona" : "personas"}`;
+// Un salon se puede elegir si tiene horarios libres o si tiene un turno que
+// hay que mostrar igual: en servicio (por orden de llegada) o cerrado para la
+// web (se reserva por WhatsApp). Antes solo contaba hayLugar y, con el turno
+// en servicio, no se podia pasar del paso del salon.
+const entrable = (s: SalonDisponible | null | undefined) => !!s && (s.hayLugar || s.turnos.some((t) => t.enServicio || t.porWhatsApp));
 const seleccionable = (d: DiaPublico) => d.estado !== "lleno" && d.estado !== "bloqueado";
 
 // Tiempo minimo de la pantalla "Confirmando tu reserva…": si la API responde
@@ -221,7 +227,8 @@ export default function ReservarPage() {
       if (!d) return;
       // Salon: se mantiene el elegido si sigue con lugar; si no, el primero que tenga.
       const actual = d.salones.find((s) => s.salonId === salonId && s.hayLugar);
-      const id = actual?.salonId ?? d.salones.find((s) => s.hayLugar)?.salonId ?? d.salones[0]?.salonId ?? null;
+      const id =
+        actual?.salonId ?? d.salones.find((s) => s.hayLugar)?.salonId ?? d.salones.find((s) => entrable(s))?.salonId ?? d.salones[0]?.salonId ?? null;
       setSalonId(id);
       if (id !== null) elegirTurnoPorDefecto(d, id);
       setHora(null);
@@ -327,7 +334,7 @@ export default function ReservarPage() {
 
   const valido = (() => {
     if (pasoActual === "cuando") return !!fecha && diaElegido?.estado !== "bloqueado";
-    if (pasoActual === "salon") return !!dispSalon?.hayLugar;
+    if (pasoActual === "salon") return entrable(dispSalon);
     if (pasoActual === "horario") return !!hora;
     if (pasoActual === "datos")
       return nombre.trim().length >= 2 && telefono.replace(/\D/g, "").length >= 8 && (!huesped || !!habitacion.trim());
@@ -599,6 +606,7 @@ export default function ReservarPage() {
             {salones.map((s) => {
               const ds = disp.salones.find((x) => x.salonId === s.id);
               const libre = !!ds?.hayLugar;
+              const servicio = !libre && !!ds?.turnos.some((t) => t.enServicio);
               const sola = s.confirmaSola && pax < config.limitePaxConfirmaSola;
               const turnos = ds?.turnos.filter((t) => t.horarios.some((x) => x.estado !== "sin_lugar")).map((t) => NOMBRE_TURNO[t.turno]) ?? [];
               return (
@@ -607,14 +615,21 @@ export default function ReservarPage() {
                   type="button"
                   className="rv-salon"
                   aria-pressed={s.id === salonId}
-                  disabled={!libre}
+                  disabled={!entrable(ds)}
                   onClick={() => {
                     setSalonId(s.id);
                     setHora(null);
                   }}
                 >
                   <span className="rv-sn">{s.nombre}</span>
-                  <span className="rv-sd">{libre ? turnos.join(" · ") : "Sin lugar este día"}</span>
+                  <span className="rv-sd">
+                    {libre ? turnos.join(" · ") : servicio ? (
+                      <>
+                        En servicio · por orden de llegada
+                        <i className="rv-vivo" aria-hidden="true" />
+                      </>
+                    ) : entrable(ds) ? "Se reserva por WhatsApp" : "Sin lugar este día"}
+                  </span>
                   {libre && <span className={`rv-sc ${sola ? "si" : "pend"}`}>{sola ? "Confirmación inmediata" : "Te confirmamos por WhatsApp"}</span>}
                 </button>
               );
@@ -1126,7 +1141,8 @@ function EnServicio({
       </svg>
       <h2>Estamos en servicio</h2>
       <p>
-        {NOMBRE_TURNO[turno]} ya empezó. Ahora las mesas son <b>por orden de llegada</b>: vení directo, te esperamos.
+        {EL_TURNO[turno].charAt(0).toUpperCase() + EL_TURNO[turno].slice(1)} ya empezó. Ahora las mesas son <b>por orden de llegada</b>: vení directo,
+        te esperamos.
       </p>
       {fin && (
         <div className="rv-servicio-hora">
