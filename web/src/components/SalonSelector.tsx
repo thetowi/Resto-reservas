@@ -13,39 +13,35 @@ interface Props {
   salonesConAviso?: Set<number>;
 }
 
-// Selector de salón (Restaurant, Bar, Aqua Bar, etc): mismas pastillas que
-// TurnoToggle (antes era un <select> — se cambió a pedido para que se vea y
-// se use igual que el toggle de Almuerzo/Merienda/Cena). A propósito SIN
-// flex-wrap: envolver a una segunda fila agranda la caja "Salones" del
-// header y rompe el resto del layout — si la lista crece mucho desde
-// /admin/salones, la fila se ensancha (y el header entero scrollea
-// horizontal, ver overflow-x-auto en page.tsx) en vez de apilarse.
+// Selector de salón (Restaurant, Lobby bar, etc): control segmentado, igual
+// que TurnoToggle (opción A del mockup capax-encabezado-prototipo). A
+// propósito SIN flex-wrap: si la lista crece mucho desde /admin/salones, el
+// encabezado pasa Salón y Turno a una segunda línea entera.
 //
-// El botón de un salón con reservas cargadas en otro lado (ver
-// salonesConAviso) recibe la clase "boton-salon-aviso" (ver globals.css):
-// un "cometa" rojo que recorre el borde entero sin parar, más el fondo que
-// respira una vez cada ciclo — pensado para notarse sin necesidad de
-// acercar el mouse, en un mostrador donde nadie mira la pantalla fijo todo
-// el día.
+// Un salón con reservas cargadas en otro lado (ver salonesConAviso) lleva
+// un punto rojo que late al lado del nombre (.aviso-punto en globals.css):
+// reemplaza al borde animado y a la leyenda «Hay reservas» de antes.
 export default function SalonSelector({ salones, salonId, onCambiar, salonesConAviso }: Props) {
   if (salones.length === 0) return null;
 
   return (
-    <div className="inline-flex flex-nowrap gap-1 rounded-lg border border-borde bg-arena-suave/60 p-1">
+    <div className="inline-flex flex-nowrap gap-0.5 rounded-[13px] border border-borde bg-arena-suave p-1">
       {salones.map((s) => {
         const activo = s.id === salonId;
         const conAviso = !activo && (salonesConAviso?.has(s.id) ?? false);
         return (
           <button
             key={s.id}
+            type="button"
             onClick={() => onCambiar(s.id)}
             aria-pressed={activo}
             title={conAviso ? `Hay reservas cargadas en ${s.nombre}` : undefined}
-            className={`relative isolate rounded-md px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
-              activo ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
-            } ${conAviso ? "boton-salon-aviso" : ""}`}
+            className={`relative rounded-[10px] py-2 pl-4 text-sm font-semibold whitespace-nowrap transition-colors ${conAviso ? "pr-[26px]" : "pr-4"} ${
+              activo ? "bg-marca text-white" : "text-tinta-suave hover:text-tinta"
+            }`}
           >
             {s.nombre}
+            {conAviso && <i className="aviso-punto" aria-label="hay reservas" />}
           </button>
         );
       })}

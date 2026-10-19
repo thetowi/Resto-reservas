@@ -208,6 +208,13 @@ export interface ReporteDia {
   porcentajeAsistencia: number;
 }
 
+// GET /api/calendario (ver CalendarioController): un dia con reservas.
+export interface CalendarioDia {
+  fecha: string;
+  reservas: number;
+  pax: number;
+}
+
 export interface ReporteMensual {
   anio: number;
   mes: number;

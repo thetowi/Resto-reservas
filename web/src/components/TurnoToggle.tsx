@@ -14,45 +14,38 @@ interface Props {
   // que se está mirando ahora — ver turnosConAviso en app/page.tsx. Hoy en
   // la práctica solo trae "merienda": es la segunda mitad del aviso que
   // arranca en SalonSelector (ver salonesConAviso ahí) para los salones que
-  // SÍ ofrecen Merienda — te "trae" hasta el salón correcto con el anillo
+  // SÍ ofrecen Merienda — te "trae" hasta el salón correcto con el punto
   // del selector, y una vez ahí te termina de llevar hasta el turno con
-  // este mismo anillo en el botón.
+  // el mismo punto rojo en el botón.
   turnosConAviso?: Set<Turno>;
 }
 
+const NOMBRES: Record<Turno, string> = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
+
+// Control segmentado, igual que SalonSelector (ver ahí el punto rojo).
 export default function TurnoToggle({ turno, onCambiar, permiteMerienda = false, turnosConAviso }: Props) {
+  const turnos: Turno[] = permiteMerienda ? ["almuerzo", "merienda", "cena"] : ["almuerzo", "cena"];
   return (
-    <div className="inline-flex rounded-lg border border-borde bg-arena-suave/60 p-1">
-      <button
-        onClick={() => onCambiar("almuerzo")}
-        aria-pressed={turno === "almuerzo"}
-        className={`relative isolate rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            turno === "almuerzo" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
-        } ${turno !== "almuerzo" && turnosConAviso?.has("almuerzo") ? "boton-salon-aviso" : ""}`}
-      >
-        Almuerzo
-      </button>
-      {permiteMerienda && (
-        <button
-          onClick={() => onCambiar("merienda")}
-          aria-pressed={turno === "merienda"}
-          title={turno !== "merienda" && turnosConAviso?.has("merienda") ? "Hay reservas cargadas en Merienda" : undefined}
-          className={`relative isolate rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              turno === "merienda" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
-          } ${turno !== "merienda" && turnosConAviso?.has("merienda") ? "boton-salon-aviso" : ""}`}
-        >
-          Merienda
-        </button>
-      )}
-      <button
-        onClick={() => onCambiar("cena")}
-        aria-pressed={turno === "cena"}
-        className={`relative isolate rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            turno === "cena" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
-        } ${turno !== "cena" && turnosConAviso?.has("cena") ? "boton-salon-aviso" : ""}`}
-      >
-        Cena
-      </button>
+    <div className="inline-flex gap-0.5 rounded-[13px] border border-borde bg-arena-suave p-1">
+      {turnos.map((t) => {
+        const activo = t === turno;
+        const conAviso = !activo && (turnosConAviso?.has(t) ?? false);
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onCambiar(t)}
+            aria-pressed={activo}
+            title={conAviso ? `Hay reservas cargadas en ${NOMBRES[t]}` : undefined}
+            className={`relative rounded-[10px] py-2 pl-4 text-sm font-semibold whitespace-nowrap transition-colors ${conAviso ? "pr-[26px]" : "pr-4"} ${
+              activo ? "bg-marca text-white" : "text-tinta-suave hover:text-tinta"
+            }`}
+          >
+            {NOMBRES[t]}
+            {conAviso && <i className="aviso-punto" aria-label="hay reservas" />}
+          </button>
+        );
+      })}
     </div>
   );
 }

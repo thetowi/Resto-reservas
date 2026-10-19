@@ -1,5 +1,6 @@
 import { getToken, cerrarSesion } from "./auth";
 import type {
+  CalendarioDia,
   DatosRestaurante,
   Dia,
   ElementoPlano,
@@ -397,6 +398,13 @@ export function patchUsuario(
 export function getReporteMensual(anio: number, mes: number, salonId?: number) {
   const query = salonId !== undefined ? `&salonId=${salonId}` : "";
   return request<ReporteMensual>(`/api/reportes/mensual?anio=${anio}&mes=${mes}${query}`);
+}
+
+// Cuanta gente hay reservada por dia (todos los salones y turnos), para las
+// rayitas del calendario del encabezado (components/DateNav.tsx). Lo puede
+// pedir cualquiera del equipo, no solo el Admin.
+export function getCalendario(desde: string, hasta: string) {
+  return request<CalendarioDia[]>(`/api/calendario?desde=${desde}&hasta=${hasta}`);
 }
 
 // --- Salones (/admin/salones, solo Admin para crear/editar/borrar) ---

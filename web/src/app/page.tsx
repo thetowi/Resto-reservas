@@ -1,25 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
-import { getDia, getEspera, getFechasCerradasWeb, getMeta, getResumenReservasWeb, ApiError } from "@/lib/api";
-import { guardarVistoWeb, leerVistoWeb } from "@/lib/avisosWeb";
-import BotonReservasWeb from "@/components/BotonReservasWeb";
-import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
-import { addDays, formatFechaLarga, todayISO } from "@/lib/date";
+import { getDia, getEspera, getFechasCerradasWeb, getMeta, ApiError } from "@/lib/api";
+import { EVENTO_AVISOS_WEB, EVENTO_IMPRIMIR, guardarContextoPlano } from "@/components/BarraLateral";
+import { esAdmin, haySesion } from "@/lib/auth";
+import { addDays, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
 import { turnoPorDefecto, turnoPorDefectoSinMerienda } from "@/lib/turno";
-import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, ResumenReservasWeb, Salon, Turno, TurnoData } from "@/lib/types";
+import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
 import SalonSelector from "@/components/SalonSelector";
 import ShiftSection from "@/components/ShiftSection";
-import ThemeToggle from "@/components/ThemeToggle";
 import TurnoToggle from "@/components/TurnoToggle";
-import { MarcaCapax } from "@/components/MarcaCapax";
-import { SUBTITULO_CLIENTE, introMarcaVista, marcarIntroMarcaVista } from "@/lib/marca";
 
 // Una fila de reserva "vacía" (autogenerada al abrir el turno, con solo la
 // hora default de esa franja) no cuenta como una reserva real cargada —
@@ -41,10 +36,6 @@ function tieneDatosCargados(r: Reserva): boolean {
 export default function HomePage() {
   const router = useRouter();
   const [listo, setListo] = useState(false);
-  // Animación de entrada del logo: solo la primera vez que se abre la app en
-  // esta pestaña (ver lib/marca.ts). Se decide junto con el gate de sesión,
-  // antes del primer render visible, así no hay parpadeo.
-  const [animarMarca, setAnimarMarca] = useState(false);
   const [fecha, setFecha] = useState(todayISO());
   const [turno, setTurno] = useState<Turno>(turnoPorDefecto);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -64,22 +55,7 @@ export default function HomePage() {
   >({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [nombre, setNombre] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
-  // Contador tipo notificacion del boton "Reservas web": reservas del link
-  // nuevas (desde la ultima vez que se abrio /reservas-web en este
-  // navegador) o a confirmar. Ver lib/avisosWeb.ts.
-  const [avisosWeb, setAvisosWeb] = useState<ResumenReservasWeb | null>(null);
-  const cargarAvisosWeb = useCallback(() => {
-    getResumenReservasWeb(leerVistoWeb())
-      .then((r) => {
-        // Primera vez en este navegador: arranca desde la ultima que hay,
-        // asi no aparecen como nuevas todas las viejas.
-        if (!leerVistoWeb()) guardarVistoWeb(r.ultimaCreadaEn);
-        setAvisosWeb(r);
-      })
-      .catch(() => {});
-  }, []);
   const avisosTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Fechas sin reservas web (de hoy en adelante), para el boton/franja de
   // cada turno (ver components/CierreWeb.tsx).
@@ -138,9 +114,7 @@ export default function HomePage() {
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNombre(getNombre());
     setAdmin(esAdmin());
-    setAnimarMarca(!introMarcaVista());
     // Viene de "Panel →" en Reservas por el link: abre directo en esa
     // fecha, turno y salon (?fecha=&turno=&salonId=), y limpia la URL.
     const params = new URLSearchParams(window.location.search);
@@ -154,39 +128,14 @@ export default function HomePage() {
     setListo(true);
   }, [router]);
 
-  // Contador de "Reservas web": al entrar, cada 30 s, al volver a la
-  // pestaña y cuando llega un cambio por SignalR (ver mas abajo). Las
-  // fechas sin reservas web, cada minuto.
+  // Fechas sin reservas web: al entrar y cada minuto. (El contador de
+  // "Reservas web" lo lleva la barra lateral, ver components/BarraLateral.)
   useEffect(() => {
     if (!listo) return;
-    cargarAvisosWeb();
     cargarCierresWeb();
-    const avisos = setInterval(cargarAvisosWeb, 30_000);
     const cierres = setInterval(cargarCierresWeb, 60_000);
-    const alVolver = () => document.visibilityState === "visible" && cargarAvisosWeb();
-    document.addEventListener("visibilitychange", alVolver);
-    return () => {
-      clearInterval(avisos);
-      clearInterval(cierres);
-      document.removeEventListener("visibilitychange", alVolver);
-    };
-  }, [listo, cargarAvisosWeb, cargarCierresWeb]);
-
-  // El numero tambien en el titulo de la pestaña: "(2) Capax · Barrancas".
-  const avisosWebN = avisosWeb?.avisos ?? 0;
-  useEffect(() => {
-    const base = document.title.replace(/^\(\d+\) /, "");
-    document.title = avisosWebN > 0 ? `(${avisosWebN}) ${base}` : base;
-    return () => {
-      document.title = document.title.replace(/^\(\d+\) /, "");
-    };
-  }, [avisosWebN]);
-
-  // Una vez mostrado el header, el logo ya no se vuelve a animar en esta
-  // pestaña (ni al volver desde Reportes, Mesas, etc.).
-  useEffect(() => {
-    if (listo) marcarIntroMarcaVista();
-  }, [listo]);
+    return () => clearInterval(cierres);
+  }, [listo, cargarCierresWeb]);
 
   // Cargar mesas/salones una sola vez
   useEffect(() => {
@@ -299,10 +248,10 @@ export default function HomePage() {
 
     conexion.on("TurnoActualizado", (data: TurnoData) => {
       // Si entra una reserva por el link en el turno que se esta mirando,
-      // llega como TurnoActualizado: se refresca el contador enseguida
-      // (agrupando cambios seguidos). Para el resto alcanza con los 30 s.
+      // llega como TurnoActualizado: se le avisa a la barra lateral para que
+      // refresque el contador (agrupando cambios seguidos).
       if (avisosTimerRef.current) clearTimeout(avisosTimerRef.current);
-      avisosTimerRef.current = setTimeout(cargarAvisosWeb, 1500);
+      avisosTimerRef.current = setTimeout(() => window.dispatchEvent(new Event(EVENTO_AVISOS_WEB)), 1500);
       if (data.fecha !== fechaRef.current || data.salonId !== salonIdRef.current) return;
       setDia((prev) => (prev ? { ...prev, [data.turno]: data } : prev));
     });
@@ -374,7 +323,7 @@ export default function HomePage() {
       if (avisosTimerRef.current) clearTimeout(avisosTimerRef.current);
       conexion.stop();
     };
-  }, [listo, suscribirA, cargarAvisosWeb]);
+  }, [listo, suscribirA]);
 
   // Cargar el dia + (re)suscribirse cuando cambia la fecha o el salon. El
   // fetch depende de "fecha"/"salonId" (estado de React), asi que tiene que
@@ -419,11 +368,6 @@ export default function HomePage() {
     };
   }, [listo, fecha, turno, salonId]);
 
-  function salir() {
-    cerrarSesion();
-    router.push("/login");
-  }
-
   // "Impresion del dia": trae los dos turnos completos (independiente de
   // cual este seleccionado en pantalla) antes de disparar window.print(),
   // para que ReporteImpresion tenga todo listo cuando el navegador arma el
@@ -448,6 +392,45 @@ export default function HomePage() {
       setImprimiendo(false);
     }
   }
+
+  // "Mapa del salón" de la barra lateral: abre /plano con la fecha, turno y
+  // salón que se están viendo acá (ver plano/page.tsx, que los lee de la
+  // URL) en vez de caer siempre en hoy/turno actual/primer salón.
+  useEffect(() => {
+    guardarContextoPlano(`/plano?fecha=${fecha}&turno=${turno}${salonId !== null ? `&salonId=${salonId}` : ""}`);
+  }, [fecha, turno, salonId]);
+
+  // "Imprimir el día" de la barra lateral: imprime lo que se esta viendo.
+  useEffect(() => {
+    const alImprimir = () => void imprimir();
+    window.addEventListener(EVENTO_IMPRIMIR, alImprimir);
+    return () => window.removeEventListener(EVENTO_IMPRIMIR, alImprimir);
+  });
+
+  // Atajos del encabezado: ← y → cambian de día, H vuelve a hoy. No se
+  // toman mientras se escribe en una celda, con una ventana abierta o con
+  // Ctrl/Cmd/Alt (para no pisar los del navegador).
+  useEffect(() => {
+    const alTeclado = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select, [contenteditable=true], [role=dialog]")) return;
+      // Ventanas (confirmaciones, borrar, cierre web, calendario) y menús
+      // abiertos (que ponen una capa .fixed.inset-0 para cerrarse).
+      if (document.querySelector("[role=dialog], [role=alertdialog], .fixed.inset-0")) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setFecha((f) => addDays(f, -1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setFecha((f) => addDays(f, 1));
+      } else if (e.key === "h" || e.key === "H") {
+        setFecha(todayISO());
+      }
+    };
+    window.addEventListener("keydown", alTeclado);
+    return () => window.removeEventListener("keydown", alTeclado);
+  }, []);
 
   if (!listo) return null;
 
@@ -500,13 +483,7 @@ export default function HomePage() {
     turnosConAviso.add("merienda");
   }
 
-  // Link a "Mapa del salón"/"Plano": lleva la fecha, turno y salón tal cual
-  // están elegidos acá, para que /plano abra mostrando exactamente lo mismo
-  // que se estaba viendo en la hoja (ver plano/page.tsx, que los lee de la
-  // URL) en vez de caer siempre en hoy/turno actual/primer salón.
   const cierreWebDelDia = cierresWeb.find((c) => c.fecha === fecha) ?? null;
-
-  const hrefPlano = `/plano?fecha=${fecha}&turno=${turno}${salonId !== null ? `&salonId=${salonId}` : ""}`;
 
   return (
     <div>
@@ -522,92 +499,21 @@ export default function HomePage() {
           Admin" cae justo debajo de la marca en vez de perdido en su
           propio renglón de ancho completo. Ningún cambio de ancho en un
           lado reacomoda al otro: son hermanos de flex, no se pisan. */}
-      <header className="sticky top-0 z-10 flex flex-wrap items-stretch justify-between gap-10 overflow-x-auto border-b border-borde bg-superficie px-7 py-4">
-        <div className="flex flex-col justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-12">
-            <MarcaCapax subtitulo={SUBTITULO_CLIENTE} animado={animarMarca} />
-            <DateNav
-              fecha={fecha}
-              titulo={formatFechaLarga(fecha)}
-              esHoy={fecha === todayISO()}
-              onPrev={() => setFecha((f) => addDays(f, -1))}
-              onNext={() => setFecha((f) => addDays(f, 1))}
-              onHoy={() => setFecha(todayISO())}
-              onFecha={setFecha}
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-start gap-3 text-sm text-tinta-suave">
-            {nombre && <span>Hola, {nombre}</span>}
-            {admin ? (
-              <>
-                <Link
-                  href="/admin/mesas"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Mesas
-                </Link>
-                <Link
-                  href={hrefPlano}
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Mapa del salón
-                </Link>
-                <Link
-                  href="/admin/salones"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Salones
-                </Link>
-                <Link
-                  href="/admin/usuarios"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Usuarios
-                </Link>
-                <Link
-                  href="/admin/fechas-web"
-                  title="Días en que el link no toma reservas (Navidad, eventos…)"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Fechas web
-                </Link>
-                <Link
-                  href="/admin/restaurante"
-                  title="Datos que ve el cliente en el link de reservas (ubicación, Cómo llegar)"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Restaurante
-                </Link>
-                <Link
-                  href="/reportes"
-                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
-                >
-                  Reportes
-                </Link>
-              </>
-            ) : (
-              // El Staff solo puede "ver el plano... para estudiarlo": nada
-              // de crear/mover mesas, eso es exclusivo de /admin/mesas.
-              <Link href={hrefPlano} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
-                Plano
-              </Link>
-            )}
-            <BotonReservasWeb resumen={avisosWeb} />
-            <button
-              onClick={imprimir}
-              disabled={imprimiendo}
-              className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave disabled:opacity-50"
-            >
-              {imprimiendo ? "Preparando…" : "Imprimir"}
-            </button>
-            <button onClick={salir} className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave">
-              Salir
-            </button>
-          </div>
-        </div>
-        <div className="flex items-stretch gap-3">
-          <div className="flex flex-col items-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
-            <span className="text-base font-bold tracking-wide text-tinta">Salones</span>
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-b border-borde bg-superficie px-7 py-3.5">
+        {/* Opción A del mockup capax-encabezado-prototipo: la fecha en una
+            línea a la izquierda (DateNav) y Salón / Turno a la derecha,
+            donde estaban, como controles segmentados con su etiqueta. El
+            logo, los accesos y la cuenta están en la barra lateral. */}
+        <DateNav
+          fecha={fecha}
+          onPrev={() => setFecha((f) => addDays(f, -1))}
+          onNext={() => setFecha((f) => addDays(f, 1))}
+          onHoy={() => setFecha(todayISO())}
+          onFecha={setFecha}
+        />
+        <div className="ml-auto flex flex-wrap items-end gap-4">
+          <div className="grid gap-1.5">
+            <span className="pl-1 text-[10.5px] font-bold tracking-[0.12em] text-tinta-suave uppercase">Salón</span>
             {meta && salonId !== null && (
               <SalonSelector
                 salones={meta.salones}
@@ -616,22 +522,9 @@ export default function HomePage() {
                 salonesConAviso={salonesConReservas}
               />
             )}
-            {/* Referencia de qué significa el borde animado de un salón
-                (ver boton-salon-aviso en globals.css): mismo anillo rojo
-                girando, en miniatura, para que se entienda sin acercarse
-                a leer el title="" de cada botón. */}
-            <div className="flex items-center gap-1.5 text-[11px] text-tinta-suave">
-              <span className="leyenda-salon-aviso" aria-hidden="true" />
-              Hay reservas
-            </div>
           </div>
-          {/* Sin justify-center (a diferencia de antes): misma estructura que
-              la caja de Salones, arriba de todo — así el título "Turno" y el
-              toggle quedan a la misma altura que el título "Salones" y su
-              selector, en vez de centrados verticalmente (y desfasados) en
-              una caja que es igual de alta por la leyenda "Hay reservas". */}
-          <div className="flex flex-col items-center gap-1.5 rounded-xl border border-borde bg-arena-suave/40 px-4 py-2">
-            <span className="text-base font-bold tracking-wide text-tinta">Turno</span>
+          <div className="grid gap-1.5">
+            <span className="pl-1 text-[10.5px] font-bold tracking-[0.12em] text-tinta-suave uppercase">Turno</span>
             <TurnoToggle
               turno={turno}
               onCambiar={setTurno}
@@ -642,7 +535,11 @@ export default function HomePage() {
         </div>
       </header>
 
-      <ThemeToggle />
+      {imprimiendo && (
+        <div role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-tinta px-4 py-2.5 text-sm text-fondo shadow-lg">
+          Preparando la impresión…
+        </div>
+      )}
 
       {error && (
         <div className="mx-7 mt-4 rounded-xl bg-ocupada-suave px-4 py-2.5 text-sm text-ocupada">

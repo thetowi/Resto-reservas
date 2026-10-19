@@ -3,6 +3,7 @@ import "./globals.css";
 import { NOMBRE_CLIENTE } from "@/lib/marca";
 
 import { ConfirmProvider } from "@/components/ConfirmProvider";
+import AppConBarra from "@/components/AppConBarra";
 
 export const metadata: Metadata = {
   // "capax" es el producto; el cliente de esta instancia va al lado (ver
@@ -40,7 +41,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: TEMA_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-fondo text-tinta antialiased">
-        <ConfirmProvider>{children}</ConfirmProvider>
+        <ConfirmProvider>
+          <AppConBarra />
+          {children}
+        </ConfirmProvider>
       </body>
     </html>
   );

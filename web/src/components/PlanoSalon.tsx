@@ -1099,8 +1099,6 @@ export default function PlanoSalon({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <DateNav
           fecha={fecha}
-          titulo={formatFechaLarga(fecha)}
-          esHoy={fecha === todayISO()}
           onPrev={() => setFecha((f) => addDays(f, -1))}
           onNext={() => setFecha((f) => addDays(f, 1))}
           onHoy={() => setFecha(todayISO())}
