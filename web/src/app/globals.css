@@ -1386,6 +1386,13 @@ html.con-barra.barra-fija body { padding-left: var(--bl-abierta); }
 .pc-tabs i { font-style: normal; font-size: 11px; font-weight: 800; background: var(--color-arena-suave); color: var(--color-tinta-suave); border-radius: 99px; padding: 1px 6px; }
 .pc-tabs button.on { color: var(--color-tinta) !important; border-bottom-color: var(--color-asistio); }
 .pc-tabs button.on i { background: var(--color-asistio); color: #04221c; }
+/* Anillo rojo que gira en el salón / turno con reservas (.boton-salon-aviso,
+   el mismo de la compu), acomodado adentro de la pestaña porque la fila de
+   pestañas recorta lo que sale para afuera. */
+.pc-tabs button.boton-salon-aviso, .pc-turnos button.boton-salon-aviso { position: relative; isolation: isolate; border-radius: 11px; }
+.pc-tabs .boton-salon-aviso::before { inset: 1px 0 1px; border-radius: 11px; }
+.pc-tabs .boton-salon-aviso i { background: var(--color-ocupada); color: #fff; }
+.pc-turnos .boton-salon-aviso::before { inset: -2px; border-radius: 12px; }
 .pc-cuerpo { display: grid; gap: 8px; padding: 12px 12px 96px; }
 .pc-stats { display: flex; flex-wrap: wrap; gap: 6px; }
 .pc-stats span { padding: 6px 11px; border-radius: 99px; background: var(--color-superficie); border: 1px solid var(--color-borde); font-size: 12.5px; color: var(--color-tinta-suave);

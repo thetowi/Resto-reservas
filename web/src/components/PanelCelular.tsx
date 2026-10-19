@@ -33,6 +33,10 @@ interface Props {
   onEspera: (lista: Espera[]) => void;
   onTurnoData: (data: TurnoData) => void;
   conteos: Record<number, { almuerzo: number; cena: number; merienda: number }>;
+  // El anillo rojo que gira (boton-salon-aviso, igual que en la compu): otros
+  // salones con reservas en este turno, y Merienda si tiene reservas.
+  salonesConAviso: Set<number>;
+  turnosConAviso: Set<Turno>;
 }
 
 type Vista = "res" | "mesas";
@@ -79,7 +83,7 @@ const IcMas = () => ic(<path d="M12 5v14M5 12h14" />, 24, 2.6);
 const ICONO_TURNO: Record<Turno, () => React.ReactNode> = { almuerzo: IcSol, merienda: IcTaza, cena: IcLuna };
 
 export default function PanelCelular(props: Props) {
-  const { fecha, onFecha, turno, onTurno, salones, salonId, onSalon, dia, espera, onEspera, onTurnoData, conteos } = props;
+  const { fecha, onFecha, turno, onTurno, salones, salonId, onSalon, dia, espera, onEspera, onTurnoData, conteos, salonesConAviso, turnosConAviso } = props;
   const { confirmar } = useConfirm();
   const [vista, setVista] = useState<Vista>("res");
   const [hoja, setHoja] = useState<Hoja>(null);
@@ -266,7 +270,14 @@ export default function PanelCelular(props: Props) {
         {turnos.map((t) => {
           const Ic = ICONO_TURNO[t];
           return (
-            <button key={t} type="button" className={t === turno ? "on" : ""} aria-pressed={t === turno} onClick={() => onTurno(t)}>
+            <button
+              key={t}
+              type="button"
+              className={`${t === turno ? "on" : ""} ${turnosConAviso.has(t) ? "boton-salon-aviso" : ""}`}
+              aria-pressed={t === turno}
+              title={turnosConAviso.has(t) ? `Hay reservas en ${NOMBRE_TURNO[t]}` : undefined}
+              onClick={() => onTurno(t)}
+            >
               <Ic />
               {NOMBRE_TURNO[t]}
             </button>
@@ -278,7 +289,15 @@ export default function PanelCelular(props: Props) {
           // El salón que se mira cuenta en vivo; los otros, con el resumen del día.
           const n = s.id === salonId ? reservas.length : (conteos[s.id]?.[turno] ?? 0);
           return (
-            <button key={s.id} type="button" role="tab" aria-selected={s.id === salonId} className={s.id === salonId ? "on" : ""} onClick={() => onSalon(s.id)}>
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={s.id === salonId}
+              className={`${s.id === salonId ? "on" : ""} ${salonesConAviso.has(s.id) ? "boton-salon-aviso" : ""}`}
+              title={salonesConAviso.has(s.id) ? `Hay reservas en ${s.nombre}` : undefined}
+              onClick={() => onSalon(s.id)}
+            >
               {s.nombre}
               <i>{n}</i>
             </button>

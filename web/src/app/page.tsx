@@ -582,6 +582,8 @@ export default function HomePage() {
           onEspera={setEspera}
           onTurnoData={(data) => setDia((prev) => (prev ? { ...prev, [data.turno]: data } : prev))}
           conteos={resumenSalones}
+          salonesConAviso={salonesConReservas}
+          turnosConAviso={turnosConAviso}
         />
       ) : (
         <main className="flex flex-col gap-7 px-7 py-6 pb-16">
