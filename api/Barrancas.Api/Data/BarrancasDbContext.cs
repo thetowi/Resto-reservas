@@ -24,6 +24,9 @@ public class BarrancasDbContext : DbContext
     public DbSet<ConversacionBot> ConversacionesBot => Set<ConversacionBot>();
     public DbSet<ReservaWeb> ReservasWeb => Set<ReservaWeb>();
     public DbSet<DatosRestaurante> DatosRestaurante => Set<DatosRestaurante>();
+    public DbSet<SesionRecordada> SesionesRecordadas => Set<SesionRecordada>();
+    public DbSet<SuscripcionPush> SuscripcionesPush => Set<SuscripcionPush>();
+    public DbSet<ConfigPush> ConfigPush => Set<ConfigPush>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -253,6 +256,30 @@ public class BarrancasDbContext : DbContext
             // forma unica con quien se esta hablando (ver
             // Models/ConversacionBot.cs).
             e.HasIndex(x => x.Telefono).IsUnique();
+        });
+
+        // «Recordarme» (ver Models/SesionRecordada.cs): se busca por el hash
+        // de la llave; si se borra el usuario, se van sus sesiones.
+        modelBuilder.Entity<SesionRecordada>(e =>
+        {
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasOne(x => x.Usuario)
+                .WithMany()
+                .HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Avisos push (ver Models/SuscripcionPush.cs): un navegador tiene un
+        // solo endpoint; si otro usuario entra en el mismo dispositivo, la
+        // suscripcion pasa a ser suya.
+        modelBuilder.Entity<SuscripcionPush>(e =>
+        {
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.HasIndex(x => x.SesionRecordadaId);
+            e.HasOne(x => x.Usuario)
+                .WithMany()
+                .HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

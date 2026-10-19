@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login, ApiError } from "@/lib/api";
-import { setSesion } from "@/lib/auth";
+import { nombreDispositivo, setSesion } from "@/lib/auth";
 import { MarcaCapaxVertical } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
 import { SUBTITULO_CLIENTE, marcarIntroMarcaVista } from "@/lib/marca";
@@ -13,6 +13,8 @@ import { SUBTITULO_CLIENTE, marcarIntroMarcaVista } from "@/lib/marca";
 // formulario en una tarjeta translúcida. El ingreso funciona igual que
 // antes; se suman el botón para ver la contraseña, el aviso de mayúsculas y
 // los atributos para que el navegador ofrezca guardar la contraseña.
+const CLAVE_RECORDARME = "capax-recordarme";
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -21,11 +23,20 @@ export default function LoginPage() {
   const [mayusculas, setMayusculas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  // «Recordarme»: la sesión de este dispositivo no se cierra sola (se
+  // renueva mientras se use, ver lib/api.ts). Se recuerda la última elección.
+  const [recordarme, setRecordarme] = useState(false);
 
   // El logo se anima acá; se marca como visto para que la pantalla principal
   // no lo repita justo después de ingresar.
   useEffect(() => {
     marcarIntroMarcaVista();
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRecordarme(localStorage.getItem(CLAVE_RECORDARME) === "1");
+    } catch {
+      // sin almacenamiento: arranca sin tildar
+    }
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -33,8 +44,13 @@ export default function LoginPage() {
     setError(null);
     setCargando(true);
     try {
-      const res = await login(username.trim().toLowerCase(), password);
-      setSesion(res.token, res.nombre, res.rol);
+      const res = await login(username.trim().toLowerCase(), password, recordarme, nombreDispositivo());
+      setSesion(res.token, res.nombre, res.rol, res.llave ?? null, res.sesionId ?? null);
+      try {
+        localStorage.setItem(CLAVE_RECORDARME, recordarme ? "1" : "0");
+      } catch {
+        // sin almacenamiento
+      }
       router.push(res.debeCambiarPassword ? "/cambiar-password" : "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
@@ -128,6 +144,23 @@ export default function LoginPage() {
               </div>
             )}
           </div>
+
+          <label className="login-recordarme flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-borde bg-superficie px-3 py-2.5">
+            <input
+              id="login-recordarme"
+              type="checkbox"
+              className="mt-0.5 size-[18px] flex-none accent-asistio"
+              checked={recordarme}
+              onChange={(e) => setRecordarme(e.target.checked)}
+              aria-describedby="login-recordarme-ayuda"
+            />
+            <span className="grid gap-0.5">
+              <span className="text-sm font-medium text-tinta">Recordarme en este dispositivo</span>
+              <span id="login-recordarme-ayuda" className={`text-xs leading-snug text-tinta-suave ${recordarme ? "" : "sr-only"}`}>
+                No se va a cerrar la sesión acá. Usalo solo en los equipos del trabajo.
+              </span>
+            </span>
+          </label>
 
           {error && (
             <div role="alert" className="rounded-[10px] bg-ocupada-suave px-3 py-2 text-sm text-ocupada">

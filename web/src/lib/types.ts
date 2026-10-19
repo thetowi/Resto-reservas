@@ -186,6 +186,22 @@ export interface LoginResponse {
   nombre: string;
   rol: Rol;
   debeCambiarPassword: boolean;
+  // Solo al entrar con «Recordarme» (ver lib/auth.ts).
+  llave?: string | null;
+  sesionId?: number | null;
+}
+
+// Una fila de «Mis dispositivos»: "sesion" = entró con «Recordarme»;
+// "avisos" = solo tiene los avisos de reservas web prendidos.
+export interface DispositivoSesion {
+  tipo: "sesion" | "avisos";
+  id: number;
+  nombre: string;
+  desde: string;
+  ultimoUso: string;
+  recordado: boolean;
+  conAvisos: boolean;
+  esEste: boolean;
 }
 
 // Cuenta de login (solo la administra un Admin, /admin/usuarios): quién

@@ -55,6 +55,30 @@ namespace Barrancas.Api.Migrations
                     b.ToTable("CierresTurno");
                 });
 
+            modelBuilder.Entity("Barrancas.Api.Models.ConfigPush", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PrivateKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConfigPush");
+                });
+
             modelBuilder.Entity("Barrancas.Api.Models.ConversacionBot", b =>
                 {
                     b.Property<int>("Id")
@@ -637,6 +661,95 @@ namespace Barrancas.Api.Migrations
                     b.ToTable("Salones");
                 });
 
+            modelBuilder.Entity("Barrancas.Api.Models.SesionRecordada", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Dispositivo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RevocadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UltimoUsoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("SesionesRecordadas");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.SuscripcionPush", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ActualizadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Dispositivo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("FallosSeguidos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SesionRecordadaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("SesionRecordadaId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("SuscripcionesPush");
+                });
+
             modelBuilder.Entity("Barrancas.Api.Models.Usuario", b =>
                 {
                     b.Property<int>("Id")
@@ -890,6 +1003,28 @@ namespace Barrancas.Api.Migrations
                     b.Navigation("Reserva");
 
                     b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.SesionRecordada", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.SuscripcionPush", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Barrancas.Api.Models.WalkIn", b =>

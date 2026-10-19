@@ -1,0 +1,233 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Avisos y Recordarme</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 70px}
+button{font:inherit;cursor:pointer;color:inherit}
+.wrap{max-width:1250px;margin:0 auto;display:grid;gap:30px}
+h1{font-size:25px}h2{font-size:18px;display:flex;align-items:center;gap:9px}
+h2 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:13px;flex:none}
+.intro{color:#5b6870;font-size:14.5px;line-height:1.5;max-width:92ch;margin-top:6px}
+.sec{display:grid;gap:12px}.sec>p{color:#5b6870;font-size:14px;line-height:1.5;max-width:92ch}
+.fila{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.col{display:grid;gap:8px;min-width:0;max-width:100%}.col>small{font-size:12.5px;color:#5b6870;font-weight:600;letter-spacing:.02em}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52;max-width:92ch}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:4px;margin-top:4px}
+
+/* teléfono */
+.tel{width:340px;height:640px;border-radius:46px;padding:11px;background:#0b0d0e;box-shadow:0 26px 50px -26px rgba(0,0,0,.5);flex:none}
+.pant{position:relative;height:100%;border-radius:36px;overflow:hidden;background:#000;color:#f2f2f2;font-size:14px}
+/* compu */
+.pc{width:560px;max-width:calc(100vw - 32px);border-radius:14px;overflow:hidden;background:#0e0e0f;box-shadow:0 26px 50px -26px rgba(0,0,0,.5);border:1px solid #1f2124}
+.pc-barra{height:30px;background:#1a1b1d;display:flex;align-items:center;gap:6px;padding:0 12px}.pc-barra i{width:10px;height:10px;border-radius:50%;background:#3a3b3e}
+.pc-cuerpo{position:relative;height:330px;background:#000;color:#f2f2f2}
+
+/* login */
+.login{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:radial-gradient(120% 70% at 50% 0%,#0f2a3d 0%,#000 70%)}
+.lg-card{width:100%;display:grid;gap:13px;padding:22px 20px;border-radius:18px;background:rgba(14,14,15,.85);border:1px solid #242426}
+.lg-logo{display:flex;align-items:center;gap:9px;justify-content:center;margin-bottom:4px;font-weight:800;font-size:22px;letter-spacing:-.02em}
+.lg-logo span{width:30px;height:30px;border-radius:50%;border:4px solid #32b49d;display:inline-block;position:relative}
+.lg-logo span::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#f2f2f2}
+.lab{font-size:11.5px;color:#8c8c8c;font-weight:500}
+.inp{height:42px;border-radius:11px;border:1px solid #2a2a2d;background:#0b0b0c;display:flex;align-items:center;padding:0 12px;color:#d6d6d6;font-size:15px}
+.chk{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-radius:12px;border:1px solid #242426;background:#121214;text-align:left;width:100%}
+.chk .cuadro{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid #4a4a4e;display:grid;place-items:center;color:transparent;margin-top:1px;transition:.15s}
+.chk.on .cuadro{background:#32b49d;border-color:#32b49d;color:#04221c}
+.chk b{font-size:14px;font-weight:600;display:block}.chk small{display:block;font-size:12px;color:#8c8c8c;line-height:1.4;margin-top:2px}
+.chk .extra{display:none}.chk.on .extra{display:block}
+.btn{height:44px;border:0;border-radius:11px;background:#32b49d;color:#04221c;font-weight:700;font-size:15px;width:100%}
+
+/* panel celular simplificado */
+.cab{background:#0e0e0f;border-bottom:1px solid #242426;padding:34px 14px 12px;display:flex;align-items:center;gap:8px}
+.cab b{font-size:16px;flex:1;text-align:center}
+.ph{height:62px;border-radius:15px;background:#0e0e0f;border:1px solid #1c1c1f;margin:10px 12px 0}
+.nav{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);padding:8px 4px 20px;background:#0e0e0f;border-top:1px solid #242426}
+.nav span{display:grid;justify-items:center;gap:3px;font-size:10.5px;color:#8c8c8c;font-weight:600;position:relative}.nav span.on{color:#f2f2f2}.nav span.on svg{color:#32b49d}
+.nav em{position:absolute;top:-3px;left:calc(50% + 3px);font-style:normal;background:#e5484d;color:#fff;font-size:9.5px;font-weight:800;border-radius:99px;padding:0 4px;min-width:15px;text-align:center}
+.velo{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:#0e0e0f;border-radius:24px 24px 0 0;padding:8px 14px 22px;display:grid;gap:4px;box-shadow:0 -20px 50px -20px rgba(0,0,0,.8)}
+.asa{justify-self:center;width:40px;height:4px;border-radius:99px;background:#2e2e31;margin-bottom:8px}
+.it{display:flex;align-items:center;gap:12px;padding:10px 6px;font-size:14.5px;color:#d6d6d6}.it svg{color:#8c8c8c;flex:none}
+
+/* tarjeta de avisos (igual en celu y compu) */
+.av{border-radius:16px;border:1px solid #2a2a2d;background:#141416;padding:13px;display:grid;gap:10px;margin:4px 0 6px}
+.av-t{display:flex;align-items:center;gap:10px}.av-t .ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:#1f2a24;color:#32b49d;flex:none}
+.av-t b{font-size:14.5px;display:block}.av-t small{font-size:12px;color:#8c8c8c}
+.sw{margin-left:auto;flex:none;width:46px;height:28px;border-radius:99px;border:0;background:#3a3a3e;position:relative;transition:.2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:#32b49d}.sw.on::after{left:21px}
+.opc{display:grid;gap:6px}.opc.off{display:none}
+.op{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;border:1px solid #242426;background:none;text-align:left;font-size:13.5px;width:100%}
+.op i{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid #4a4a4e}
+.op.on{border-color:#32b49d;background:#10221d}.op.on i{border:5px solid #32b49d}
+.op span small{display:block;font-size:11.5px;color:#8c8c8c;margin-top:1px}
+.probar{justify-self:start;border:0;background:none;color:#32b49d;font-weight:700;font-size:13px;padding:2px 0}
+.ios{display:none;gap:8px;padding:11px;border-radius:12px;background:#2a2210;color:#f2d38a;font-size:12.5px;line-height:1.45}
+.ios.ver{display:grid}.ios b{color:#ffe3a3}
+.ios ol{padding-left:18px;display:grid;gap:3px}
+
+/* diálogo de permiso del navegador */
+.permiso{position:absolute;left:14px;right:14px;top:120px;background:#2b2c2f;border-radius:16px;padding:16px;display:none;gap:12px;box-shadow:0 24px 60px -10px rgba(0,0,0,.9);z-index:5}
+.permiso.ver{display:grid}.permiso p{font-size:14px;line-height:1.4}.permiso small{font-size:11.5px;color:#9a9a9e}
+.permiso div{display:flex;gap:8px;justify-content:flex-end}.permiso button{border:0;border-radius:99px;padding:8px 16px;font-weight:700;font-size:13.5px;background:#3a3b3f}.permiso button.si{background:#a8c7fa;color:#062e6f}
+
+/* pantalla bloqueada */
+.bloq{position:absolute;inset:0;background:linear-gradient(160deg,#1d3b52 0%,#0b1620 55%,#05090c 100%);padding:46px 12px 0;display:grid;align-content:start;gap:8px}
+.hora-b{text-align:center;font-size:66px;font-weight:300;letter-spacing:-.02em;line-height:1}.fecha-b{text-align:center;font-size:14px;color:#c9d6df;margin-bottom:14px}
+.noti{display:flex;gap:10px;padding:11px 12px;border-radius:20px;background:rgba(40,46,52,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#f2f2f2;animation:cae .45s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes cae{from{transform:translateY(-30px);opacity:0}}
+.noti .app{flex:none;width:38px;height:38px;border-radius:10px;background:#0f2a3d;display:grid;place-items:center}
+.noti .app span{width:20px;height:20px;border-radius:50%;border:3px solid #32b49d;position:relative}.noti .app span::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#f2f2f2}
+.noti .tx{flex:1;min-width:0;display:grid;gap:1px}.noti .cab-n{display:flex;justify-content:space-between;font-size:12px;color:#c4ccd2}
+.noti b{font-size:14px}.noti p{font-size:13.5px;line-height:1.35;color:#e6eaed}
+.noti.sol .app{background:#3a2a08}.noti.sol .app span{border-color:#e0a942}
+.tocar{font-size:11.5px;color:#8fa6b5;text-align:center;margin-top:4px}
+
+/* toast de compu */
+.escr{position:absolute;inset:0;padding:14px;display:grid;grid-template-columns:44px 1fr;gap:12px}
+.escr .lat{border-radius:10px;background:#0e0e0f;border:1px solid #1c1c1f}.escr .gr{display:grid;gap:8px;align-content:start}.escr .gr i{height:30px;border-radius:8px;background:#0e0e0f;border:1px solid #1c1c1f}
+.toast{position:absolute;right:14px;bottom:14px;width:330px;max-width:calc(100% - 28px);border-radius:12px;background:#2b2b2e;border:1px solid #3a3a3e;box-shadow:0 20px 50px -14px rgba(0,0,0,.9);padding:12px;display:grid;gap:8px;animation:entra .4s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes entra{from{transform:translateX(40px);opacity:0}}
+.toast .top{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#b5b5ba}.toast .top span{width:14px;height:14px;border-radius:50%;border:2.5px solid #32b49d}
+.toast b{font-size:14px}.toast p{font-size:13px;color:#d6d6d9;line-height:1.4}
+.toast .acc{display:flex;gap:6px}.toast .acc button{flex:1;border:0;border-radius:7px;padding:7px;background:#3a3b3f;font-size:12.5px;font-weight:600}
+.simular{display:flex;gap:8px;flex-wrap:wrap}
+.simular button{border:1px solid #c3ccd3;background:#fff;border-radius:10px;padding:8px 13px;font-size:13.5px;font-weight:600}
+.simular button:hover{background:#f3f6f8}
+
+/* dispositivos */
+.disp{width:560px;max-width:calc(100vw - 32px);background:#0e0e0f;color:#f2f2f2;border-radius:16px;padding:16px;display:grid;gap:10px;border:1px solid #1f2124}
+.disp>b{font-size:16px}.disp>small{font-size:12.5px;color:#8c8c8c;margin-top:-6px}
+.dv{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;border:1px solid #242426;background:#141416}
+.dv .ico{flex:none;width:38px;height:38px;border-radius:11px;background:#1c1c1f;display:grid;place-items:center;color:#c4c4c8}
+.dv .tx{flex:1;min-width:0;display:grid;gap:3px}.dv .tx b{font-size:14px}.dv .tx small{font-size:12px;color:#8c8c8c}
+.chips{display:flex;gap:5px;flex-wrap:wrap}.chips i{font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:#1f2a24;color:#6fd3bf}.chips i.g{background:#222326;color:#a5a5aa}
+.dv button{flex:none;border:1px solid #3a2226;background:none;color:#ff8a8f;border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:600}
+.dv.este{border-color:#24433b}
+.dv.ido{opacity:.45}.dv.ido button{display:none}
+</style></head><body><div class="wrap">
+
+<div><h1>Avisos de reservas web y «Recordarme»</h1>
+<p class="intro">Cómo quedaría todo en capax: el login con «Recordarme», dónde se activan los avisos en cada dispositivo, cómo llega el aviso en el celular y en la compu, y la lista de dispositivos para cerrar la sesión de uno perdido. Todo se puede tocar.</p></div>
+
+<!-- 1 -->
+<section class="sec"><h2><i>1</i>Login con «Recordarme»</h2>
+<p>Una casilla debajo de la contraseña. Tildada, la sesión de ese dispositivo no se cierra sola: se renueva cada vez que se usa. Sin tildar, queda como hoy (se cierra a las 12 horas).</p>
+<div class="fila">
+ <div class="tel"><div class="pant"><div class="login"><div class="lg-card">
+  <div class="lg-logo"><span></span>capax</div>
+  <div style="display:grid;gap:5px"><span class="lab">Usuario</span><div class="inp">martina</div></div>
+  <div style="display:grid;gap:5px"><span class="lab">Contraseña</span><div class="inp">••••••••</div></div>
+  <button class="chk on" data-chk><span class="cuadro"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+   <span><b>Recordarme en este dispositivo</b><small class="extra">No se va a cerrar la sesión acá. Usalo solo en los equipos del trabajo.</small></span></button>
+  <button class="btn">Ingresar</button>
+ </div></div></div></div>
+ <div class="nota" style="max-width:520px"><b>Cómo funciona por dentro</b>
+  <ul>
+   <li>Con «Recordarme» el servidor le da al dispositivo una llave de sesión larga que se guarda en la base (cifrada). El ingreso diario sigue durando 12 h, pero cuando vence se renueva solo con esa llave, sin pedir contraseña.</li>
+   <li>Cada uso extiende la llave. Si un dispositivo no se usa en <b>90 días</b>, se cierra (para no dejar sesiones olvidadas para siempre).</li>
+   <li>Se cierra si: tocás «Salir», cambiás la contraseña, el admin desactiva el usuario, o la cerrás desde «Mis dispositivos» (abajo).</li>
+   <li>Si el bloqueo de 12 h hoy te saca a mitad del servicio, esto también lo arregla.</li>
+  </ul></div>
+</div></section>
+
+<!-- 2 -->
+<section class="sec"><h2><i>2</i>Activar los avisos en este dispositivo</h2>
+<p>En el celular está en «Más»; en la compu, en el menú del usuario de la barra lateral. Al prender el interruptor el navegador pide permiso una sola vez. Después se elige qué avisar.</p>
+<div class="fila">
+ <div class="col"><small>Celular (Android o iPhone con capax instalado)</small>
+ <div class="tel"><div class="pant" id="p2">
+  <div class="cab"><b>Sáb 17 oct</b></div><div class="ph"></div><div class="ph"></div><div class="ph"></div>
+  <div class="nav"><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Reservas</span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Web<em>2</em></span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Mesas</span><span><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/></svg>Mapa</span><span class="on"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>Más</span></div>
+  <div class="velo"></div>
+  <div class="hoja"><i class="asa"></i>
+   <div class="av" data-av>
+    <div class="av-t"><span class="ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+     <span><b>Avisos de reservas web</b><small data-estado>Apagados en este celular</small></span><button class="sw" data-sw aria-label="Avisos"></button></div>
+    <div class="opc off" data-opc>
+     <button class="op on" data-op><i></i><span>Todas las reservas web<small>Las que entran solas y las solicitudes</small></span></button>
+     <button class="op" data-op><i></i><span>Solo las que hay que aprobar<small>Grupos de 6+ y Lobby bar</small></span></button>
+     <button class="probar" data-probar>Mandar un aviso de prueba</button>
+    </div>
+   </div>
+   <div class="it"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Mis dispositivos</div>
+   <div class="it"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reportes</div>
+   <div class="it" style="color:#ff6b70"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" style="color:#ff6b70"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Salir</div>
+  </div>
+  <div class="permiso" data-permiso><p><b>www.reservascapax.app</b> quiere enviarte notificaciones</p><small>Las podés apagar cuando quieras desde capax.</small><div><button data-no>Bloquear</button><button class="si" data-si>Permitir</button></div></div>
+ </div></div></div>
+
+ <div class="col"><small>iPhone abierto desde Safari (sin instalar)</small>
+ <div class="tel"><div class="pant">
+  <div class="cab"><b>Sáb 17 oct</b></div><div class="ph"></div><div class="ph"></div>
+  <div class="velo"></div>
+  <div class="hoja"><i class="asa"></i>
+   <div class="av"><div class="av-t"><span class="ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
+    <span><b>Avisos de reservas web</b><small>En el iPhone hace falta un paso más</small></span></div>
+    <div class="ios ver"><b>Para recibir avisos en el iPhone:</b><ol><li>Tocá <b>Compartir</b> (el cuadrado con la flecha) abajo.</li><li>Elegí <b>Agregar a inicio</b>.</li><li>Abrí capax desde el ícono nuevo y activá los avisos acá.</li></ol></div>
+   </div>
+   <div class="it"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Mis dispositivos</div>
+   <div class="it"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reportes</div>
+  </div>
+ </div></div></div>
+</div></section>
+
+<!-- 3 -->
+<section class="sec"><h2><i>3</i>Cómo llega el aviso</h2>
+<p>Llega aunque capax esté cerrado y el celular bloqueado. Tocarlo abre capax en el lugar justo: la reserva confirmada abre el panel en ese día, turno y salón; la solicitud abre Reservas web con esa tarjeta marcada para aprobar o rechazar.</p>
+<div class="simular"><button data-sim="ok">Simular reserva que entra sola</button><button data-sim="sol">Simular solicitud de grupo</button><button data-sim="can">Simular cancelación</button><button data-sim="limpiar">Limpiar</button></div>
+<div class="fila">
+ <div class="col"><small>Celular bloqueado</small>
+ <div class="tel"><div class="pant"><div class="bloq" id="bloq"><div class="hora-b">20:47</div><div class="fecha-b">sábado, 17 de octubre</div>
+  <div class="noti"><span class="app"><span></span></span><span class="tx"><span class="cab-n"><span>capax</span><span>ahora</span></span><b>Nueva reserva web · Restaurant</b><p>Laura Gómez · 2 pax · Sáb 17 · 21:00</p></span></div>
+  <div class="noti sol"><span class="app"><span></span></span><span class="tx"><span class="cab-n"><span>capax</span><span>hace 12 min</span></span><b>Solicitud para aprobar · Restaurant</b><p>Familia Ruiz · 8 pax · Dom 18 · 21:30 — Tocá para revisar</p></span></div>
+ </div></div></div></div>
+ <div class="col"><small>Compu (Windows / Mac, con el navegador abierto aunque capax no esté en pantalla)</small>
+ <div class="pc"><div class="pc-barra"><i></i><i></i><i></i></div><div class="pc-cuerpo" id="pc3"><div class="escr"><div class="lat"></div><div class="gr"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="toast"><div class="top"><span></span>capax · www.reservascapax.app</div><b>Solicitud para aprobar · Restaurant</b><p>Familia Ruiz · 8 pax · Dom 18 · 21:30</p><div class="acc"><button>Revisar</button><button>Más tarde</button></div></div>
+ </div></div>
+ <div class="nota" style="max-width:560px;margin-top:6px"><b>Texto de cada aviso</b>
+  <ul><li><b>Entra sola:</b> «Nueva reserva web · Salón» / «Nombre · pax · día · hora».</li>
+  <li><b>Solicitud:</b> «Solicitud para aprobar · Salón» / «Nombre · pax · día · hora». En la compu con botón «Revisar».</li>
+  <li><b>Cancelación desde el link:</b> «Canceló una reserva web» / «Nombre · día · hora · se liberó la mesa 12». (opcional)</li>
+  <li>Sin teléfono en el aviso: queda a la vista en la pantalla bloqueada.</li></ul></div>
+ </div>
+</div></section>
+
+<!-- 4 -->
+<section class="sec"><h2><i>4</i>Mis dispositivos</h2>
+<p>Cada usuario ve dónde tiene la sesión abierta y dónde llegan los avisos. Si se pierde un celular o se cambia la tablet, se cierra desde acá. El admin ve lo mismo para cada usuario en /admin/usuarios.</p>
+<div class="disp"><b>Mis dispositivos</b><small>Martina · 3 con la sesión abierta</small>
+ <div class="dv este"><span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><span class="tx"><b>Este dispositivo · iPhone (app)</b><small>Recordado desde el 12 oct · ahora</small><span class="chips"><i>Recordado</i><i>Avisos: todas</i></span></span></div>
+ <div class="dv"><span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span><span class="tx"><b>Compu de la recepción · Chrome en Windows</b><small>Recordado desde el 2 oct · hace 2 h</small><span class="chips"><i>Recordado</i><i>Avisos: solicitudes</i></span></span><button data-cerrar>Cerrar sesión</button></div>
+ <div class="dv"><span class="ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><span class="tx"><b>Tablet del salón · Chrome en Android</b><small>Recordado desde el 20 sep · ayer 23:40</small><span class="chips"><i>Recordado</i><i class="g">Sin avisos</i></span></span><button data-cerrar>Cerrar sesión</button></div>
+</div>
+</section>
+
+<div class="nota"><b>Para decidir</b>
+<ul>
+ <li><b>Qué avisar:</b> lo dejé elegible por dispositivo (todas / solo las que hay que aprobar), arrancando en «todas». ¿Te sirve así o lo fijamos?</li>
+ <li><b>Cancelaciones:</b> ¿también avisamos cuando un cliente cancela desde el link?</li>
+ <li><b>Quién puede activar avisos:</b> cualquier usuario del equipo, o solo los admin.</li>
+ <li><b>«Recordarme»:</b> la sesión se mantiene mientras el dispositivo se use al menos una vez cada 90 días. Si preferís que no venza nunca, se puede, pero un dispositivo olvidado quedaría abierto para siempre.</li>
+ <li>Para los avisos hay que cargar 2 claves nuevas en Railway (te paso cómo generarlas; la privada la pegás vos directo en Railway).</li>
+</ul></div>
+
+</div>
+<script>
+document.querySelectorAll('[data-chk]').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
+const p2=document.getElementById('p2'),sw=p2.querySelector('[data-sw]'),opc=p2.querySelector('[data-opc]'),est=p2.querySelector('[data-estado]'),per=p2.querySelector('[data-permiso]');
+let permitido=false;
+function prender(on){sw.classList.toggle('on',on);opc.classList.toggle('off',!on);est.textContent=on?'Prendidos en este celular':'Apagados en este celular';}
+sw.onclick=()=>{if(sw.classList.contains('on'))return prender(false);if(!permitido){per.classList.add('ver');return;}prender(true);};
+per.querySelector('[data-si]').onclick=()=>{permitido=true;per.classList.remove('ver');prender(true);};
+per.querySelector('[data-no]').onclick=()=>{per.classList.remove('ver');est.textContent='Bloqueados: se habilitan desde el candado de la barra de direcciones';};
+p2.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>p2.querySelectorAll('[data-op]').forEach(x=>x.classList.toggle('on',x===b)));
+p2.querySelector('[data-probar]').onclick=()=>{simular('ok');document.getElementById('bloq').scrollIntoView({behavior:'smooth',block:'center'});};
+const datos={ok:['','Nueva reserva web · Restaurant','Gonzalo Pérez · 3 pax · Sáb 17 · 21:30'],sol:['sol','Solicitud para aprobar · Lobby bar','Cumple Sofi · 10 pax · Vie 23 · 21:00 — Tocá para revisar'],can:['sol','Canceló una reserva web','Castro · Sáb 17 · 20:30 · se liberó la mesa 1']};
+function simular(t){const bl=document.getElementById('bloq');if(t==='limpiar'){bl.querySelectorAll('.noti').forEach(n=>n.remove());document.querySelector('#pc3 .toast')?.remove();return;}
+ const [c,ti,tx]=datos[t];const n=document.createElement('div');n.className='noti '+c;n.innerHTML=`<span class="app"><span></span></span><span class="tx"><span class="cab-n"><span>capax</span><span>ahora</span></span><b>${ti}</b><p>${tx}</p></span>`;
+ bl.insertBefore(n,bl.querySelector('.noti'));bl.querySelectorAll('.noti').forEach((x,i)=>{if(i>0)x.querySelector('.cab-n span:last-child').textContent=i===1?'hace 1 min':'hace 12 min';if(i>3)x.remove();});
+ const pc=document.getElementById('pc3');pc.querySelector('.toast')?.remove();const to=document.createElement('div');to.className='toast';to.innerHTML=`<div class="top"><span></span>capax · www.reservascapax.app</div><b>${ti}</b><p>${tx.replace(' — Tocá para revisar','')}</p><div class="acc"><button>${t==='sol'?'Revisar':'Abrir'}</button><button>Más tarde</button></div>`;pc.appendChild(to);}
+document.querySelectorAll('[data-sim]').forEach(b=>b.onclick=()=>simular(b.dataset.sim));
+document.querySelectorAll('[data-cerrar]').forEach(b=>b.onclick=()=>{const d=b.closest('.dv');d.classList.add('ido');d.querySelector('small').textContent='Sesión cerrada · tiene que volver a ingresar';});
+</script></body></html>

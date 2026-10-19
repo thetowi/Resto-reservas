@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getResumenReservasWeb } from "@/lib/api";
-import { cerrarSesion, esAdmin, getNombre, haySesion } from "@/lib/auth";
+import { getResumenReservasWeb, salirEnServidor } from "@/lib/api";
+import { cerrarSesion, esAdmin, getLlave, getNombre, haySesion } from "@/lib/auth";
+import { apagarAvisosLocal, endpointLocal, sincronizarAvisos } from "@/lib/push";
 import { guardarVistoWeb, leerVistoWeb, textoAvisosWeb } from "@/lib/avisosWeb";
 import { NOMBRE_CLIENTE, RUBRO_CLIENTE, introMarcaVista, marcarIntroMarcaVista } from "@/lib/marca";
 import type { ResumenReservasWeb } from "@/lib/types";
 import { SimboloCapax, WordmarkCapax } from "./MarcaCapax";
+import AvisosDispositivo from "./AvisosDispositivo";
 import { IconoTema } from "./ThemeToggle";
 
 // Barra lateral del panel (opción 3 del mockup capax-barra-lateral-logo):
@@ -52,9 +54,15 @@ function contextoPlano() {
 }
 const STORAGE_TEMA = "barrancas-theme";
 
-type Icono = "reservas" | "web" | "mapa" | "reportes" | "imprimir" | "mesas" | "salones" | "fechas" | "restaurante" | "usuarios" | "chinche" | "llave" | "luna" | "sol" | "salir";
+type Icono = "campana" | "reservas" | "web" | "mapa" | "reportes" | "imprimir" | "mesas" | "salones" | "fechas" | "restaurante" | "usuarios" | "chinche" | "llave" | "luna" | "sol" | "salir";
 
 const TRAZOS: Record<Icono, React.ReactNode> = {
+  campana: (
+    <>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </>
+  ),
   reservas: (
     <>
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
@@ -186,6 +194,9 @@ export default function BarraLateral() {
     setTema(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
     setAnimar(!introMarcaVista());
     marcarIntroMarcaVista();
+    // Si este navegador tiene los avisos prendidos, se le recuerda al
+    // servidor de quién es (por si entró otra persona).
+    sincronizarAvisos();
   }, []);
 
   // La pantalla se corre para dejarle lugar a la barra (ver .con-barra en
@@ -291,7 +302,13 @@ export default function BarraLateral() {
     setTema(nuevo);
   }
 
-  function salir() {
+  // «Salir» cierra también la sesión recordada de este dispositivo y le
+  // saca los avisos (ver api/Controllers/AuthController.cs → salir).
+  async function salir() {
+    const llave = getLlave();
+    const endpoint = await endpointLocal();
+    await salirEnServidor(llave, endpoint);
+    await apagarAvisosLocal();
     cerrarSesion();
     router.push("/login");
   }
@@ -347,7 +364,7 @@ export default function BarraLateral() {
     if (enPanel) window.dispatchEvent(new CustomEvent(EVENTO_VISTA, { detail: v }));
     else router.push(v === "mesas" ? "/?vista=mesas" : "/");
   }
-  const enMas = [...informes, ...configuracion].some((it) => it.activo) || pathname.startsWith("/cambiar-password");
+  const enMas = [...informes, ...configuracion].some((it) => it.activo) || pathname.startsWith("/cambiar-password") || pathname.startsWith("/dispositivos");
 
   return (
     <>
@@ -399,6 +416,11 @@ export default function BarraLateral() {
               <small>{admin ? "Admin" : "Equipo"}</small>
             </span>
           </div>
+          <AvisosDispositivo />
+          <Link href="/dispositivos" className={pathname.startsWith("/dispositivos") ? "activo" : ""}>
+            <Ico n="campana" size={20} />
+            Mis dispositivos
+          </Link>
           {[...informes.filter((it) => it.icono !== "imprimir"), ...configuracion].map((it) => (
             <Link key={it.texto} href={it.href!} className={it.activo ? "activo" : ""}>
               <Ico n={it.icono} size={20} />
@@ -492,6 +514,10 @@ export default function BarraLateral() {
       <div className="bl-yo">
         {menuUsuario && (
           <div className="bl-menu-usuario" role="menu">
+            <Link href="/dispositivos" role="menuitem">
+              <Ico n="campana" size={17} />
+              Avisos y dispositivos
+            </Link>
             <Link href="/cambiar-password" role="menuitem">
               <Ico n="llave" size={17} />
               Cambiar contraseña

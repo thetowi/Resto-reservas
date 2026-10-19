@@ -1,6 +1,7 @@
-import { getToken, cerrarSesion } from "./auth";
+import { getLlave, getToken, cerrarSesion, setToken } from "./auth";
 import type {
   CalendarioDia,
+  DispositivoSesion,
   ChequeoSolicitud,
   DatosRestaurante,
   Dia,
@@ -30,8 +31,70 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// ---- «Recordarme»: el token de un dispositivo recordado dura 30 min y se
+// renueva solo con la llave (POST /api/auth/renovar) un rato antes de vencer
+// o cuando la API contesta 401. Si varias llamadas lo piden juntas, se hace
+// una sola renovación.
+type Renovacion = "ok" | "cerrada" | "sin-red";
+let renovando: Promise<Renovacion> | null = null;
+
+function venceEn(token: string): number | null {
+  try {
+    const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const exp = JSON.parse(atob(parte)).exp;
+    return typeof exp === "number" ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+export function renovarSesion(): Promise<Renovacion> {
+  const llave = getLlave();
+  if (!llave) return Promise.resolve("cerrada");
+  if (!renovando) {
+    renovando = (async (): Promise<Renovacion> => {
+      try {
+        const res = await fetch(`${API_URL}/api/auth/renovar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ llave }),
+        });
+        if (res.status === 401) return "cerrada";
+        if (!res.ok) return "sin-red";
+        const body = (await res.json()) as LoginResponse;
+        setToken(body.token, body.nombre, body.rol);
+        return "ok";
+      } catch {
+        return "sin-red";
+      } finally {
+        setTimeout(() => (renovando = null), 0);
+      }
+    })();
+  }
+  return renovando;
+}
+
+// El token para usar ahora: si es de un dispositivo recordado y vence en
+// menos de 5 minutos, primero se renueva. Lo usan los pedidos y SignalR.
+export async function tokenVigente(): Promise<string | null> {
   const token = getToken();
+  if (!token || !getLlave()) return token;
+  const vence = venceEn(token);
+  if (vence !== null && vence - Date.now() < 5 * 60_000) await renovarSesion();
+  return getToken();
+}
+
+function irAlLogin() {
+  cerrarSesion();
+  // Redireccion "dura" a proposito: este modulo no es un componente y no
+  // tiene acceso al router de Next; forzamos una recarga completa a
+  // /login para garantizar que no quede ningun estado viejo en memoria.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  if (typeof window !== "undefined") window.location.href = "/login";
+}
+
+async function request<T>(path: string, options: RequestInit = {}, reintento = false): Promise<T> {
+  const token = await tokenVigente();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
@@ -40,13 +103,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    cerrarSesion();
-    // Redireccion "dura" a proposito: este modulo no es un componente y no
-    // tiene acceso al router de Next; forzamos una recarga completa a
-    // /login para garantizar que no quede ningun estado viejo en memoria.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    if (typeof window !== "undefined") window.location.href = "/login";
+  // Usuario o contraseña mal en el login: es un 401 pero no hay sesión que cerrar.
+  if (res.status === 401 && path !== "/api/auth/login") {
+    if (!reintento && getLlave()) {
+      const r = await renovarSesion();
+      if (r === "ok") return request<T>(path, options, true);
+      if (r === "sin-red") throw new ApiError(0, "Sin conexión con el servidor");
+    }
+    irAlLogin();
     throw new ApiError(401, "Sesión expirada");
   }
 
@@ -65,11 +129,71 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function login(username: string, password: string) {
+export function login(username: string, password: string, recordarme = false, dispositivo: string | null = null) {
   return request<LoginResponse>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, recordarme, dispositivo }),
   });
+}
+
+// «Salir»: cierra la sesión recordada de este dispositivo y le saca los
+// avisos. Sin login a propósito (puede que el token ya haya vencido).
+export async function salirEnServidor(llave: string | null, pushEndpoint: string | null) {
+  if (!llave && !pushEndpoint) return;
+  try {
+    await fetch(`${API_URL}/api/auth/salir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ llave, pushEndpoint }),
+    });
+  } catch {
+    // sin conexión: la sesión vence sola a los 90 días sin uso
+  }
+}
+
+// ---- Mis dispositivos
+export function getDispositivos() {
+  return request<DispositivoSesion[]>("/api/auth/dispositivos");
+}
+
+export function quitarDispositivo(tipo: DispositivoSesion["tipo"], id: number) {
+  return request<DispositivoSesion[]>(`/api/auth/dispositivos/${tipo}/${id}`, { method: "DELETE" });
+}
+
+export function getDispositivosDeUsuario(usuarioId: number) {
+  return request<DispositivoSesion[]>(`/api/usuarios/${usuarioId}/dispositivos`);
+}
+
+export function quitarDispositivoDeUsuario(usuarioId: number, tipo: DispositivoSesion["tipo"], id: number) {
+  return request<DispositivoSesion[]>(`/api/usuarios/${usuarioId}/dispositivos/${tipo}/${id}`, { method: "DELETE" });
+}
+
+// ---- Avisos push de reservas web (ver lib/push.ts)
+export function getClavePush() {
+  return request<{ clave: string }>("/api/push/clave");
+}
+
+export function suscribirPush(endpoint: string, p256dh: string, auth: string, dispositivo: string) {
+  return request<void>("/api/push/suscripciones", {
+    method: "POST",
+    body: JSON.stringify({ endpoint, p256dh, auth, dispositivo }),
+  });
+}
+
+export async function bajaPush(endpoint: string) {
+  try {
+    await fetch(`${API_URL}/api/push/baja`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint }),
+    });
+  } catch {
+    // sin conexión: el servidor la borra cuando el navegador la rechace
+  }
+}
+
+export function probarPush() {
+  return request<{ enviados: number }>("/api/push/prueba", { method: "POST" });
 }
 
 export function cambiarPassword(passwordActual: string, passwordNueva: string) {

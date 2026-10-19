@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ApiError, crearUsuario, getUsuarios, patchUsuario } from "@/lib/api";
+import { ApiError, crearUsuario, getDispositivosDeUsuario, getUsuarios, patchUsuario, quitarDispositivoDeUsuario } from "@/lib/api";
+import ListaDispositivos from "@/components/ListaDispositivos";
 import { esAdmin, haySesion } from "@/lib/auth";
-import type { Rol, UsuarioCuenta } from "@/lib/types";
+import type { DispositivoSesion, Rol, UsuarioCuenta } from "@/lib/types";
 
 export default function AdminUsuariosPage() {
   const router = useRouter();
@@ -49,6 +50,8 @@ function PanelCuentas() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
+  // Cuenta con la lista de dispositivos abierta (ver ListaDispositivos).
+  const [conDispositivos, setConDispositivos] = useState<number | null>(null);
 
   useEffect(() => {
     getUsuarios()
@@ -131,6 +134,13 @@ function PanelCuentas() {
             </span>
             <div className="ml-auto flex items-center gap-1.5">
               <button
+                onClick={() => setConDispositivos((id) => (id === cuenta.id ? null : cuenta.id))}
+                aria-expanded={conDispositivos === cuenta.id}
+                className="rounded-lg border border-borde px-2.5 py-1 text-xs hover:bg-arena-suave"
+              >
+                Dispositivos
+              </button>
+              <button
                 onClick={() => onResetearPassword(cuenta)}
                 className="rounded-lg border border-borde px-2.5 py-1 text-xs hover:bg-arena-suave"
               >
@@ -143,6 +153,11 @@ function PanelCuentas() {
                 {cuenta.activo ? "Desactivar" : "Reactivar"}
               </button>
             </div>
+            {conDispositivos === cuenta.id && (
+              <div className="basis-full pt-1">
+                <DispositivosDeCuenta usuarioId={cuenta.id} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -160,6 +175,15 @@ function PanelCuentas() {
       </div>
     </div>
   );
+}
+
+// Dónde tiene la sesión abierta («Recordarme») y los avisos esa cuenta, para
+// cerrar un dispositivo perdido. Resetear la contraseña o desactivar la
+// cuenta ya los cierra a todos.
+function DispositivosDeCuenta({ usuarioId }: { usuarioId: number }) {
+  const cargar = useCallback(() => getDispositivosDeUsuario(usuarioId), [usuarioId]);
+  const quitar = useCallback((d: DispositivoSesion) => quitarDispositivoDeUsuario(usuarioId, d.tipo, d.id), [usuarioId]);
+  return <ListaDispositivos cargar={cargar} quitar={quitar} vacio="Esta cuenta no tiene dispositivos recordados ni con avisos." />;
 }
 
 function FormularioCuenta({

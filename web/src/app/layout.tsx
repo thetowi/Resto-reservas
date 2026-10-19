@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: `Capax · ${NOMBRE_CLIENTE}`,
   description: `Reservas y carta de ${NOMBRE_CLIENTE}`,
   applicationName: "Capax",
+  // Instalable como app (ver app/manifest.ts): en el iPhone se abre a
+  // pantalla completa desde el ícono, que es lo que permite los avisos.
+  appleWebApp: { capable: true, title: "capax", statusBarStyle: "default" },
 };
 
 // Fija el tema (claro/oscuro) ANTES del primer render, leyendo la

@@ -25,6 +25,18 @@ builder.Services.AddDbContext<BarrancasDbContext>(options =>
 // --- Servicios de dominio ---
 builder.Services.AddScoped<DiaService>();
 builder.Services.AddScoped<TokenService>();
+// «Recordarme» en el login y «Mis dispositivos» (ver Services/SesionService.cs).
+builder.Services.AddScoped<SesionService>();
+
+// --- Avisos push de reservas web (ver Services/PushService.cs) ---
+// Las claves VAPID se generan solas la primera vez (tabla ConfigPush) salvo
+// que vengan VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY. El envio va en segundo
+// plano (PushWorker) para no demorar al cliente que reserva.
+builder.Services.AddSingleton<ClavesPush>();
+builder.Services.AddSingleton<ColaAvisosPush>();
+builder.Services.AddScoped<PushService>();
+builder.Services.AddHttpClient<IEnviadorPush, WebPushEnviador>();
+builder.Services.AddHostedService<PushWorker>();
 
 // --- Bot de WhatsApp (ver claude/whatsapp-bot-reservas.md en el proyecto) ---
 // AddHttpClient (no AddScoped a secas): le da a cada cliente su propio

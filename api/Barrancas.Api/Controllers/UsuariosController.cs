@@ -1,6 +1,7 @@
 using Barrancas.Api.Data;
 using Barrancas.Api.Dtos;
 using Barrancas.Api.Models;
+using Barrancas.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +21,12 @@ namespace Barrancas.Api.Controllers;
 public class UsuariosController : ControllerBase
 {
     private readonly BarrancasDbContext _db;
+    private readonly SesionService _sesiones;
 
-    public UsuariosController(BarrancasDbContext db)
+    public UsuariosController(BarrancasDbContext db, SesionService sesiones)
     {
         _db = db;
+        _sesiones = sesiones;
     }
 
     [HttpGet]
@@ -115,6 +118,9 @@ public class UsuariosController : ControllerBase
             }
             usuario.Activo = req.Activo.Value;
         }
+        // Desactivada o con contraseña nueva: se cierran sus dispositivos
+        // recordados y se le sacan los avisos (ver SesionService).
+        var cerrarDispositivos = req.Activo == false || req.Password is not null;
 
         if (req.Password is not null)
         {
@@ -127,8 +133,31 @@ public class UsuariosController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        if (cerrarDispositivos)
+        {
+            await _sesiones.RevocarTodasAsync(usuario.Id);
+        }
 
         return Ok(await ListaAsync());
+    }
+
+    // Dispositivos de una cuenta (los recordados y los que tienen avisos),
+    // para cerrar uno perdido desde /admin/usuarios.
+    [HttpGet("{id:int}/dispositivos")]
+    public async Task<ActionResult<List<DispositivoDto>>> Dispositivos(int id)
+    {
+        if (!await _db.Usuarios.AnyAsync(u => u.Id == id)) return NotFound(new { error = "no encontrada" });
+        return Ok(await _sesiones.ListaAsync(id, null));
+    }
+
+    [HttpDelete("{id:int}/dispositivos/{tipo}/{dispositivoId:int}")]
+    public async Task<ActionResult<List<DispositivoDto>>> QuitarDispositivo(int id, string tipo, int dispositivoId)
+    {
+        if (!await _sesiones.QuitarAsync(id, tipo, dispositivoId))
+        {
+            return NotFound(new { error = "Ese dispositivo ya no está en la lista." });
+        }
+        return Ok(await _sesiones.ListaAsync(id, null));
     }
 
     private async Task<List<UsuarioDto>> ListaAsync()

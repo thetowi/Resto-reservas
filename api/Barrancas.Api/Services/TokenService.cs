@@ -15,13 +15,20 @@ public class TokenService
         _config = config;
     }
 
-    public string GenerarToken(Usuario usuario)
+    // Claim con el Id de la sesion recordada (ver SesionService): asi el
+    // servidor sabe desde que dispositivo viene el pedido («Este
+    // dispositivo» en la lista, no cerrar esa sesion al cambiar la clave).
+    public const string ClaimSesion = "sesion";
+
+    public string GenerarToken(Usuario usuario, TimeSpan? duracion = null, int? sesionId = null)
     {
         var secret = _config["Jwt:Secret"]
             ?? throw new InvalidOperationException("Falta configurar Jwt:Secret");
         var issuer = _config["Jwt:Issuer"] ?? "barrancas-api";
         var audience = _config["Jwt:Audience"] ?? "barrancas-web";
-        var expiresMinutes = int.TryParse(_config["Jwt:ExpiresMinutes"], out var m) ? m : 60 * 12;
+        var expiresMinutes = duracion.HasValue
+            ? duracion.Value.TotalMinutes
+            : int.TryParse(_config["Jwt:ExpiresMinutes"], out var m) ? m : 60 * 12;
 
         var claims = new List<Claim>
         {
@@ -33,6 +40,10 @@ public class TokenService
             new(ClaimTypes.Role, usuario.Rol.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+        if (sesionId.HasValue)
+        {
+            claims.Add(new Claim(ClaimSesion, sesionId.Value.ToString()));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

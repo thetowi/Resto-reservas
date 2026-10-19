@@ -71,12 +71,16 @@ public class ReservaOnlineService
     private readonly IHubContext<ReservasHub> _hub;
     private readonly IMemoryCache _cache;
 
-    public ReservaOnlineService(BarrancasDbContext db, DiaService diaService, IHubContext<ReservasHub> hub, IMemoryCache cache)
+    // Aviso push a los dispositivos del equipo (ver Services/PushService.cs).
+    private readonly ColaAvisosPush _avisosPush;
+
+    public ReservaOnlineService(BarrancasDbContext db, DiaService diaService, IHubContext<ReservasHub> hub, IMemoryCache cache, ColaAvisosPush avisosPush)
     {
         _db = db;
         _diaService = diaService;
         _hub = hub;
         _cache = cache;
+        _avisosPush = avisosPush;
     }
 
     // ---------------------------------------------------------------- hora local
@@ -527,6 +531,8 @@ public class ReservaOnlineService
         // solicitud la grilla no cambia, pero el panel actualiza la burbuja
         // de Reservas web y la franja de solicitudes del turno).
         await AvisarTurnoAsync(req.Fecha, turno, salon.Id);
+        // Y el aviso al celular / la compu del equipo, aunque capax esté cerrado.
+        _avisosPush.Encolar(PushService.DeReservaWeb(registro, salon.Nombre, confirmada));
 
         return new PublicoReservaResultado(
             confirmada ? "confirmada" : "pendiente",
