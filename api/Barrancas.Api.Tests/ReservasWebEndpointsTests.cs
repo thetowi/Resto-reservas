@@ -213,7 +213,7 @@ public class ReservasWebEndpointsTests : IClassFixture<BarrancasWebApplicationFa
         Assert.Equal("21:30", movida.Hora);
         Assert.Equal("Gabriel Sosa", movida.Nombre);
         Assert.Equal(OrigenReserva.Web, movida.Origen);
-        Assert.NotEmpty(movida.MesaIds);
+        Assert.Empty(movida.MesaIds); // las del link entran sin mesa
         var registro = Assert.Single(await ListarAsync(client), w => w.Id == web.Id);
         Assert.Equal(destino.Id, registro.ReservaId);
         Assert.Equal("21:30", registro.Hora);

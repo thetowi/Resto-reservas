@@ -203,8 +203,9 @@ export function DialogoAprobar({ r, onCerrar, onHecho }: { r: ReservaWeb; onCerr
   const [error, setError] = useState<string | null>(null);
   const numero = numeroWhatsApp(r.telefono);
   const chequeo = ch && ch !== "error" ? ch : null;
-  // Arranca con las sugeridas; después manda lo que se toque.
-  const seleccion = elegidas ?? chequeo?.sugeridas ?? [];
+  // Arranca sin mesas: la mesa la decide el equipo según cómo arme el
+  // salón (la sugerencia del chequeo es solo una ayuda, no se marca sola).
+  const seleccion = elegidas ?? [];
   const suma = chequeo ? chequeo.libres.filter((m) => seleccion.includes(m.id)).reduce((a, m) => a + m.capacidad, 0) : 0;
 
   async function aprobar(escribir: boolean) {

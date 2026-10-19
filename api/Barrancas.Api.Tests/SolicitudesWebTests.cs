@@ -128,15 +128,34 @@ public class SolicitudesWebTests : IClassFixture<BarrancasWebApplicationFactory>
     {
         var client = await ClienteAsync();
         var fecha = EnDias(22);
-        var chica = await ReservarAsync(client, fecha, 2, "Ana Paz"); // se confirma sola, con mesa
-        var mesaOcupada = Assert.Single((await CenaAsync(client, fecha)).Reservas, r => r.Id == chica.ReservaId).MesaIds.First();
+        var primero = await ReservarAsync(client, fecha, 8, "Familia Paz");
+        var chequeo = await client.GetFromJsonAsync<ChequeoSolicitudDto>($"/api/reservas-web/{primero.Id}/chequeo");
+        var mesa = chequeo!.Libres.First().Id;
+        (await client.PostAsJsonAsync($"/api/reservas-web/{primero.Id}/confirmar", new AprobarSolicitudRequest([mesa]))).EnsureSuccessStatusCode();
         var grupo = await ReservarAsync(client, fecha, 8, "Familia Gil");
 
-        var res = await client.PostAsJsonAsync($"/api/reservas-web/{grupo.Id}/confirmar", new AprobarSolicitudRequest([mesaOcupada]));
+        var res = await client.PostAsJsonAsync($"/api/reservas-web/{grupo.Id}/confirmar", new AprobarSolicitudRequest([mesa]));
 
         Assert.Equal(HttpStatusCode.Conflict, res.StatusCode);
         var lista = await client.GetFromJsonAsync<List<ReservaWebDto>>("/api/reservas-web", Json);
         Assert.Equal("pendiente", Assert.Single(lista!, w => w.Id == grupo.Id).Estado);
+    }
+
+    [Fact]
+    public async Task Una_reserva_del_link_sin_mesa_igual_descuenta_lugar()
+    {
+        var client = await ClienteAsync();
+        var fecha = EnDias(24);
+        var grupo = await ReservarAsync(client, fecha, 8, "Grupo Vera");
+        var antes = await client.GetFromJsonAsync<ChequeoSolicitudDto>($"/api/reservas-web/{grupo.Id}/chequeo");
+
+        var chica = await ReservarAsync(client, fecha, 2, "Ana Ríos"); // se confirma sola, sin mesa
+
+        Assert.Equal("confirmada", chica.Estado);
+        Assert.Empty(Assert.Single((await CenaAsync(client, fecha)).Reservas, r => r.Id == chica.ReservaId).MesaIds);
+        var despues = await client.GetFromJsonAsync<ChequeoSolicitudDto>($"/api/reservas-web/{grupo.Id}/chequeo");
+        Assert.Equal(antes!.MesasLibres - 1, despues!.MesasLibres);
+        Assert.True(despues.LugaresLibres < antes.LugaresLibres);
     }
 
     [Fact]

@@ -30,7 +30,8 @@ public class ReservaOnlineException : Exception
 ///   con capacidad para esa cantidad de personas. Para grupos grandes alcanza
 ///   con que la suma de mesas libres llegue (lo arma el staff).
 /// - Se confirma sola si: salon "Restaurant" Y menos de 6 personas Y hay mesa;
-///   la mesa se asigna sola (la mas chica que entre). Cualquier otro caso queda
+///   la mesa NO se asigna: la elige el equipo en la grilla (la reserva igual
+///   descuenta lugar, ver MesasLibresEfectivas). Cualquier otro caso queda
 ///   como SOLICITUD: solo el registro ReservaWeb (Pendiente, sin fila), que el
 ///   equipo aprueba o rechaza en Reservas web; recien al aprobarla entra a la
 ///   grilla, ya confirmada (ver ColocarEnGrillaAsync). No guarda lugar
@@ -172,6 +173,37 @@ public class ReservaOnlineService
 
     // ---------------------------------------------------------------- evaluacion de un turno
 
+    /// <summary>
+    /// Mesas que quedan libres en el turno, contando tambien las reservas que
+    /// todavia no tienen mesa: las del link entran SIN mesa (la asigna el
+    /// equipo segun como arme el salon), asi que no ocupan ninguna en la
+    /// grilla, pero igual se descuentan aca: cada una "se lleva" la mesa mas
+    /// chica en la que entra (o, si es un grupo, las mas grandes hasta sumar
+    /// su gente). Sin esto el link seguiria ofreciendo lugar indefinidamente.
+    /// </summary>
+    private static List<MesaDto> MesasLibresEfectivas(TurnoDataDto data, int? sinContar = null)
+    {
+        var ocupadas = data.MesasOcupadas.Concat(data.MesasWalkIn).ToHashSet();
+        var libres = data.Mesas.Where(m => !m.Reducida && !ocupadas.Contains(m.Id)).OrderBy(m => m.Capacidad).ThenBy(m => m.Orden).ToList();
+        foreach (var r in data.Reservas.Where(r => r.Pax is > 0 && r.MesaIds.Count == 0 && !r.Retirada && r.Id != sinContar).OrderByDescending(r => r.Pax))
+        {
+            var una = libres.FirstOrDefault(m => m.Capacidad >= r.Pax);
+            if (una is not null)
+            {
+                libres.Remove(una);
+                continue;
+            }
+            var suma = 0;
+            while (suma < r.Pax && libres.Count > 0)
+            {
+                var grande = libres[^1];
+                libres.RemoveAt(libres.Count - 1);
+                suma += grande.Capacidad;
+            }
+        }
+        return libres;
+    }
+
     private record EvaluacionTurno(bool Cerrado, bool HayLugar, List<PublicoHorarioDto> Horarios, MesaDto? MesaParaAsignar);
 
     private async Task<EvaluacionTurno> EvaluarTurnoAsync(DateOnly fecha, Turno turno, int salonId, int pax, bool sembrar)
@@ -184,8 +216,7 @@ public class ReservaOnlineService
             return new(true, false, horarios.Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(), null);
         }
 
-        var ocupadas = data.MesasOcupadas.Concat(data.MesasWalkIn).ToHashSet();
-        var libres = data.Mesas.Where(m => !m.Reducida && !ocupadas.Contains(m.Id)).ToList();
+        var libres = MesasLibresEfectivas(data);
 
         bool hayLugar;
         int mesasAptas;
@@ -453,7 +484,9 @@ public class ReservaOnlineService
         }
 
         // Se confirma sola solo si el salon lo permite, es de menos de 6 y hay
-        // una mesa que le sirva. Si no, queda como SOLICITUD: no entra a la
+        // una mesa que le sirva (se mira que haya lugar, pero NO se asigna:
+        // la mesa la elige el equipo segun como organice el salon, ver
+        // MesasLibresEfectivas). Si no, queda como SOLICITUD: no entra a la
         // grilla (ni ocupa lugar) hasta que alguien del equipo la aprueba en
         // Reservas web (ver ReservasWebController.Confirmar / Rechazar).
         MesaDto? mesa = null;
@@ -484,7 +517,7 @@ public class ReservaOnlineService
         };
         if (confirmada)
         {
-            var reserva = await ColocarEnGrillaAsync(registro, [mesa!.Id], EstadoReserva.Confirmada);
+            var reserva = await ColocarEnGrillaAsync(registro, [], EstadoReserva.Confirmada);
             registro.ReservaId = reserva.Id;
         }
         _db.ReservasWeb.Add(registro);
@@ -578,8 +611,7 @@ public class ReservaOnlineService
     public async Task<ChequeoSolicitudDto> ChequearAsync(ReservaWeb w)
     {
         var data = await _diaService.GetTurnoAsync(w.Fecha, w.Turno, w.SalonId, sembrar: false);
-        var ocupadas = data.MesasOcupadas.Concat(data.MesasWalkIn).ToHashSet();
-        var libres = data.Mesas.Where(m => !m.Reducida && !ocupadas.Contains(m.Id)).OrderBy(m => m.Orden).ToList();
+        var libres = MesasLibresEfectivas(data, w.ReservaId).OrderBy(m => m.Orden).ToList();
         var lugares = libres.Sum(m => m.Capacidad);
         var aLaHora = data.Reservas.Count(r => r.Pax is not null && r.Hora == w.Hora && r.Id != w.ReservaId);
         var cupo = CupoDe(w.Turno, w.Hora);

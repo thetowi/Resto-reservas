@@ -9,6 +9,7 @@ import { guardarVistoWeb, leerVistoWeb, textoAvisosWeb } from "@/lib/avisosWeb";
 import { NOMBRE_CLIENTE, RUBRO_CLIENTE, introMarcaVista, marcarIntroMarcaVista } from "@/lib/marca";
 import type { ResumenReservasWeb } from "@/lib/types";
 import { SimboloCapax, WordmarkCapax } from "./MarcaCapax";
+import { IconoTema } from "./ThemeToggle";
 
 // Barra lateral del panel (opción 3 del mockup capax-barra-lateral-logo):
 // cerrada muestra solo los iconos, el circulito de capax y la burbuja de
@@ -418,7 +419,9 @@ export default function BarraLateral() {
           data-nombre={tema === "dark" ? "Modo claro" : "Modo oscuro"}
           aria-label={tema === "dark" ? "Pasar a modo claro" : "Pasar a modo oscuro"}
         >
-          <Ico n={tema === "dark" ? "sol" : "luna"} />
+          {/* El sol que pierde los rayos y se recorta en luna (el mismo del
+              link de reservas, ver ThemeToggle). */}
+          <IconoTema oscuro={tema === "dark"} />
           <span className="bl-texto">{tema === "dark" ? "Modo claro" : "Modo oscuro"}</span>
         </button>
         <button type="button" className="bl-usuario" onClick={() => setMenuUsuario((m) => !m)} aria-expanded={menuUsuario} aria-haspopup="menu">

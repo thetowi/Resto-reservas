@@ -80,7 +80,7 @@ public class ReservasPublicasEndpointsTests : IClassFixture<BarrancasWebApplicat
     }
 
     [Fact]
-    public async Task Reservar_pocas_personas_en_restaurant_se_confirma_y_asigna_mesa()
+    public async Task Reservar_pocas_personas_en_restaurant_se_confirma_sin_asignar_mesa()
     {
         var client = _factory.CreateClient();
         var salonId = await SalonRestaurantIdAsync();
@@ -98,7 +98,7 @@ public class ReservasPublicasEndpointsTests : IClassFixture<BarrancasWebApplicat
             .SingleAsync(r => r.Fecha == fecha && r.Nombre == "Laura Gómez");
         Assert.Equal(OrigenReserva.Web, reserva.Origen);
         Assert.Equal(EstadoReserva.Confirmada, reserva.Estado);
-        Assert.Single(reserva.ReservaMesas);
+        Assert.Empty(reserva.ReservaMesas); // la mesa la elige el equipo
         Assert.Equal("21:00", reserva.Hora);
     }
 
