@@ -5,6 +5,7 @@ import { createPortal, preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
 import ThemeToggle from "@/components/ThemeToggle";
+import IntroLogoCliente from "@/components/IntroLogoCliente";
 import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
 import { LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
 import { direccionMapa, opcionesMapa, type AppMapa } from "@/lib/mapas";
@@ -945,17 +946,22 @@ function IconoPersonas() {
   );
 }
 
-// Intro al entrar al link (opción B2 del mockup capax-intro-reservar): en
-// negro, capax se dibuja con la animación del login mientras detrás se arma
-// el plano del salón; después el fondo sube como un telón y queda la
-// portada de Barrancas (también negra, con el plano suave). Una sola vez por
-// visita (sessionStorage), se saltea tocando la pantalla y no aparece con
-// "reducir movimiento". Mientras tanto la página carga por detrás.
+// Intro al entrar al link (opción A del mockup barrancas-intro): en negro,
+// el logo del restaurante se arma solo — la B se dibuja con un trazo y se
+// rellena, la onda dorada corre de izquierda a derecha, el nombre sube
+// letra por letra y la bajada se acomoda (ver IntroLogoCliente); abajo,
+// chiquito, «Reservas con capax». Después el fondo sube como un telón y
+// queda la portada. Una sola vez por visita (sessionStorage), se saltea
+// tocando la pantalla y no aparece con "reducir movimiento". Mientras tanto
+// la página carga por detrás.
 const CLAVE_INTRO_RESERVAR = "capax-intro-reservar";
-const DURACION_INTRO_MS = 3600;
+// Telón a los 2,75 s (cuando el logo terminó de armarse) + 0,85 s que tarda
+// en subir; cuenta desde que el logo está listo para animarse.
+const DURACION_INTRO_MS = 3800;
 
 function IntroCapax() {
   const [visible, setVisible] = useState(true);
+  const [listo, setListo] = useState(false);
 
   const terminar = useCallback(() => {
     try {
@@ -977,29 +983,44 @@ function IntroCapax() {
     if (vista || reducido) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(false);
-      return;
     }
+  }, []);
+
+  // El reloj arranca cuando el logo ya está para animarse (se lee el SVG).
+  useEffect(() => {
+    if (!visible || !listo) return;
     const t = setTimeout(terminar, DURACION_INTRO_MS);
     return () => clearTimeout(t);
-  }, [terminar]);
+  }, [visible, listo, terminar]);
+
+  // Por si el logo nunca llega: no dejar la pantalla en negro.
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(terminar, 6000);
+    return () => clearTimeout(t);
+  }, [visible, terminar]);
+
+  const alListo = useCallback(() => setListo(true), []);
 
   if (!visible) return null;
   return (
     <div
-      className="rv-intro"
+      className={`rv-intro ${listo ? "listo" : ""}`}
       aria-hidden="true"
       onPointerDown={terminar}
       // Se desmonta justo cuando el telón termina de subir (el timeout queda
       // de respaldo, por si el navegador no dispara el evento).
       onAnimationEnd={(e) => e.target === e.currentTarget && e.animationName === "rv-subir-telon" && terminar()}
     >
-      <div className="rv-intro-plano rv-plano-negro">
-        <PlanoLogin animado />
+      <div className="rv-intro-logo">
+        <IntroLogoCliente src={LOGOS_CLIENTE.portada} alt={NOMBRE_PUBLICO} onListo={alListo} />
       </div>
-      <div className="rv-intro-marca capax-intro">
-        <SimboloCapax size={76} className="text-[#f2f2f2]!" />
-        <WordmarkCapax size={44} className="text-white" />
-      </div>
+      {listo && (
+        <div className="rv-intro-pie">
+          Reservas con <SimboloCapax size={13} className="text-[#f2f2f2]!" />
+          <WordmarkCapax size={10} className="text-white" />
+        </div>
+      )}
     </div>
   );
 }

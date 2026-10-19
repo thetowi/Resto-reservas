@@ -959,23 +959,42 @@ select option {
 .rv-atras-anim { animation: rv-entrar-i 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes rv-entrar-d { from { opacity: 0; transform: translateX(24px); } }
 @keyframes rv-entrar-i { from { opacity: 0; transform: translateX(-24px); } }
-/* Intro al entrar (ver IntroCapax en reservar/page.tsx): negro, capax con
-   la animacion del login y el plano del salon armandose detras; a los 2.2 s
-   el fondo sube como un telon y deja ver la portada (tambien negra). */
+/* Intro al entrar (ver IntroCapax en reservar/page.tsx y
+   components/IntroLogoCliente.tsx, opción A del mockup barrancas-intro):
+   negro, el logo del restaurante se arma solo y a los 2,75 s el fondo sube
+   como un telón y deja ver la portada (también negra). */
 /* El telón sube con transform (no con clip-path): así lo mueve la placa de
    video sin redibujar el plano en cada cuadro, y no se traba aunque la página
    esté cargando por detrás. El borde de abajo se difumina (::after) para que
    no se vea una línea dura subiendo. */
 .rv-intro { position: fixed; inset: 0; z-index: 200; background: #0b0b0c; display: grid; place-items: center;
   will-change: transform; transform: translate3d(0, 0, 0); backface-visibility: hidden; contain: layout;
-  animation: rv-subir-telon 0.85s cubic-bezier(0.76, 0, 0.24, 1) 2.15s both; cursor: pointer; }
+  cursor: pointer; }
+/* El telón espera a que el logo esté listo para animarse (.listo). */
+.rv-intro.listo { animation: rv-subir-telon 0.85s cubic-bezier(0.76, 0, 0.24, 1) 2.75s both; }
 .rv-intro::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 90px; pointer-events: none;
   background: linear-gradient(#0b0b0c, rgba(11, 11, 12, 0)); }
 .rv-intro-plano { position: absolute; inset: 0; overflow: hidden; }
-.rv-intro-marca { position: relative; z-index: 1; display: grid; justify-items: center; gap: 12px; color: #fff;
-  will-change: opacity, transform; animation: rv-salir-capax 0.4s ease 1.9s both; }
 @keyframes rv-subir-telon { to { transform: translate3d(0, calc(-100% - 90px), 0); } }
-@keyframes rv-salir-capax { to { opacity: 0; transform: translate3d(0, -10px, 0) scale(0.94); } }
+
+/* El logo: la B se dibuja (trazo) y se rellena, la onda corre de izquierda a
+   derecha, las letras suben de a una y la bajada se acomoda. */
+.rv-intro-logo { position: relative; z-index: 1; width: min(240px, 62vw); }
+.ri-logo { display: block; width: 100%; height: auto; overflow: visible; }
+.ri-marca { fill-opacity: 0; stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: ri-trazar 1s ease-in-out 0.15s both, ri-rellenar 0.45s ease 1s both; }
+.ri-acento { clip-path: inset(0 100% 0 0); animation: ri-barrer 0.6s cubic-bezier(0.6, 0, 0.2, 1) 1.05s both; }
+.ri-letra { opacity: 0; transform: translateY(16px); animation: ri-subir 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) calc(1.3s + var(--i, 0) * 0.05s) both; }
+.ri-sub { opacity: 0; transform-box: fill-box; transform-origin: center; animation: ri-acomodar 0.6s ease 1.85s both; }
+.ri-logo-img { opacity: 0; transform: scale(0.96); animation: ri-subir 0.8s ease 0.2s both; }
+.rv-intro-pie { position: absolute; left: 0; right: 0; bottom: max(28px, env(safe-area-inset-bottom, 0px)); z-index: 1; display: flex;
+  justify-content: center; align-items: center; gap: 6px; font-size: 11.5px; color: #8b959b; animation: ri-aparecer 0.5s ease 1.6s both; }
+@keyframes ri-trazar { to { stroke-dashoffset: 0; } }
+@keyframes ri-rellenar { to { fill-opacity: 1; stroke-width: 0; } }
+@keyframes ri-barrer { to { clip-path: inset(0 0 0 0); } }
+@keyframes ri-subir { to { opacity: 1; transform: none; } }
+@keyframes ri-acomodar { from { opacity: 0; transform: scaleX(1.25); } to { opacity: 1; transform: none; } }
+@keyframes ri-aparecer { from { opacity: 0; } }
 
 /* El plano del login sobre negro (intro y portada): mismos trazos, pero con
    colores claros y un poco mas de presencia. */
