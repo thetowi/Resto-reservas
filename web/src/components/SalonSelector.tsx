@@ -19,13 +19,12 @@ interface Props {
 // encabezado pasa Salón y Turno a una segunda línea entera.
 //
 // Un salón con reservas cargadas en otro lado (ver salonesConAviso) lleva
-// un punto rojo que late al lado del nombre (.aviso-punto en globals.css):
-// reemplaza al borde animado y a la leyenda «Hay reservas» de antes.
+// el anillo rojo que recorre el borde (.boton-salon-aviso en globals.css).
 export default function SalonSelector({ salones, salonId, onCambiar, salonesConAviso }: Props) {
   if (salones.length === 0) return null;
 
   return (
-    <div className="inline-flex flex-nowrap gap-0.5 rounded-[13px] border border-borde bg-arena-suave p-1">
+    <div className="inline-flex flex-nowrap gap-1 rounded-[13px] border border-borde bg-arena-suave p-1">
       {salones.map((s) => {
         const activo = s.id === salonId;
         const conAviso = !activo && (salonesConAviso?.has(s.id) ?? false);
@@ -36,12 +35,11 @@ export default function SalonSelector({ salones, salonId, onCambiar, salonesConA
             onClick={() => onCambiar(s.id)}
             aria-pressed={activo}
             title={conAviso ? `Hay reservas cargadas en ${s.nombre}` : undefined}
-            className={`relative rounded-[10px] py-2 pl-4 text-sm font-semibold whitespace-nowrap transition-colors ${conAviso ? "pr-[26px]" : "pr-4"} ${
+            className={`relative isolate rounded-[10px] px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${conAviso ? "boton-salon-aviso" : ""} ${
               activo ? "bg-marca text-white" : "text-tinta-suave hover:text-tinta"
             }`}
           >
             {s.nombre}
-            {conAviso && <i className="aviso-punto" aria-label="hay reservas" />}
           </button>
         );
       })}

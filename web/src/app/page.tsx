@@ -502,7 +502,8 @@ export default function HomePage() {
       <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-b border-borde bg-superficie px-7 py-3.5">
         {/* Opción A del mockup capax-encabezado-prototipo: la fecha en una
             línea a la izquierda (DateNav) y Salón / Turno a la derecha,
-            donde estaban, como controles segmentados con su etiqueta. El
+            donde estaban, como controles segmentados con su etiqueta (y el
+            anillo rojo de siempre en el salón con reservas). El
             logo, los accesos y la cuenta están en la barra lateral. */}
         <DateNav
           fecha={fecha}
@@ -513,7 +514,17 @@ export default function HomePage() {
         />
         <div className="ml-auto flex flex-wrap items-end gap-4">
           <div className="grid gap-1.5">
-            <span className="pl-1 text-[10.5px] font-bold tracking-[0.12em] text-tinta-suave uppercase">Salón</span>
+            <span className="flex items-center gap-3 pl-1 text-[10.5px] font-bold tracking-[0.12em] text-tinta-suave uppercase">
+              Salón
+              {/* Qué significa el anillo rojo que gira en un salón (ver
+                  boton-salon-aviso en globals.css): solo cuando hay alguno. */}
+              {salonesConReservas.size > 0 && (
+                <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-normal normal-case">
+                  <span className="leyenda-salon-aviso" aria-hidden="true" />
+                  Hay reservas
+                </span>
+              )}
+            </span>
             {meta && salonId !== null && (
               <SalonSelector
                 salones={meta.salones}
