@@ -31,7 +31,7 @@ public record PublicoHorarioDto(string Hora, string Estado);
 
 // PorWhatsApp: el turno esta cerrado para la web por una fecha especial
 // (ver FechaBloqueadaBot): el link muestra el mensaje y el boton de WhatsApp.
-// EnServicio: hoy, el turno ya empezo; hasta FinServicio ("15:30") es por
+// EnServicio: hoy, el turno ya empezo; hasta FinServicio ("15:00") es por
 // orden de llegada (ver ReservaOnlineService.EstaEnServicio).
 public record PublicoTurnoDto(string Turno, bool Cerrado, List<PublicoHorarioDto> Horarios, bool PorWhatsApp = false, bool EnServicio = false, string? FinServicio = null);
 

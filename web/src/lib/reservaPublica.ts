@@ -49,7 +49,7 @@ export interface TurnoDisponible {
   // Turno cerrado para la web por una fecha especial: se reserva por WhatsApp.
   porWhatsApp?: boolean;
   // Hoy, con el turno ya empezado: "Estamos en servicio", por orden de
-  // llegada hasta finServicio ("15:30").
+  // llegada hasta finServicio ("15:00", cena "00:00").
   enServicio?: boolean;
   finServicio?: string | null;
 }

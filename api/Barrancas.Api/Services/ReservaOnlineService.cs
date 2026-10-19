@@ -106,30 +106,28 @@ public class ReservaOnlineService
     // ---------------------------------------------------------------- en servicio
 
     // Un turno de HOY esta "en servicio" desde su primer horario de la
-    // planilla hasta el ultimo + MinutosFinServicio (almuerzo 12:30 a 15:30,
-    // cena 20:30 a 23:30 con la planilla actual). Mientras tanto el link no
-    // toma reservas para ese turno: las mesas son por orden de llegada.
-    public const int MinutosFinServicio = 90;
-
-    public static string FinServicio(Turno turno)
+    // planilla hasta que cierra la cocina (FinDeServicio): almuerzo de 12:30
+    // a 15:00 y cena de 20:30 a 00:00. Mientras tanto el link no toma
+    // reservas para ese turno: las mesas son por orden de llegada.
+    // "00:00" = medianoche (fin del dia).
+    private static readonly Dictionary<Turno, TimeOnly> FinDeServicio = new()
     {
-        var ultimo = HorariosDe(turno).LastOrDefault();
-        if (ultimo is null || !TimeOnly.TryParseExact(ultimo, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t))
-        {
-            return string.Empty;
-        }
-        return t.AddMinutes(MinutosFinServicio).ToString("HH:mm", CultureInfo.InvariantCulture);
-    }
+        [Turno.Almuerzo] = new TimeOnly(15, 0),
+        [Turno.Merienda] = new TimeOnly(19, 0),
+        [Turno.Cena] = new TimeOnly(0, 0),
+    };
+
+    public static string FinServicio(Turno turno) =>
+        FinDeServicio.TryGetValue(turno, out var fin) ? fin.ToString("HH:mm", CultureInfo.InvariantCulture) : string.Empty;
 
     public static bool EstaEnServicio(DateTime ahoraLocal, DateOnly fecha, Turno turno)
     {
         if (fecha != DateOnly.FromDateTime(ahoraLocal)) return false;
         var horarios = HorariosDe(turno);
-        if (horarios.Count == 0) return false;
+        if (horarios.Count == 0 || !FinDeServicio.TryGetValue(turno, out var finHora)) return false;
         if (!TimeOnly.TryParseExact(horarios[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var inicio)) return false;
-        if (!TimeOnly.TryParseExact(horarios[^1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var ultimo)) return false;
+        var fin = finHora == TimeOnly.MinValue ? TimeSpan.FromHours(24) : finHora.ToTimeSpan();
         var ahora = ahoraLocal.TimeOfDay;
-        var fin = ultimo.ToTimeSpan().Add(TimeSpan.FromMinutes(MinutosFinServicio));
         return ahora >= inicio.ToTimeSpan() && ahora < fin;
     }
 
