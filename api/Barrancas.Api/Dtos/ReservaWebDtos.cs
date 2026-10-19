@@ -3,9 +3,11 @@ using Barrancas.Api.Models;
 namespace Barrancas.Api.Dtos;
 
 // Una reserva hecha por el link, para el panel "Reservas por el link".
-// Estado: "pendiente" (a confirmar), "confirmada", "asistio", "novino" o
-// "cancelada" (ver ReservaWebService.EstadoDe). ReservaId es la fila de la
-// grilla mientras siga siendo esta reserva (null si se cancelo).
+// Estado: "pendiente" (solicitud sin aprobar), "confirmada", "asistio",
+// "novino", "cancelada", "rechazada" o "vencida" (solicitud que nadie
+// respondio y ya paso la fecha) — ver ReservaWebService.EstadoDe. ReservaId
+// es la fila de la grilla mientras siga siendo esta reserva (null si se
+// cancelo, se rechazo o es una solicitud que todavia no se aprobo).
 public record ReservaWebDto(
     int Id,
     string Codigo,
@@ -25,8 +27,33 @@ public record ReservaWebDto(
     DateTime? ConfirmadaEn,
     string? ConfirmadaPor,
     DateTime? CanceladaEn,
-    string? CanceladaPor
+    string? CanceladaPor,
+    DateTime? RechazadaEn = null,
+    string? RechazadaPor = null,
+    string? MotivoRechazo = null
 );
+
+// Aprobar una solicitud (POST /api/reservas-web/{id}/confirmar). MesaIds es
+// opcional: las mesas tambien se pueden asignar despues en la grilla.
+public record AprobarSolicitudRequest(List<int>? MesaIds);
+
+// Rechazar una solicitud (POST /api/reservas-web/{id}/rechazar).
+public record RechazarSolicitudRequest(string? Motivo);
+
+// Chequeo de lugar de una solicitud (GET /api/reservas-web/{id}/chequeo, ver
+// ReservaOnlineService.ChequearAsync). Estado: "ok", "justo", "sin_lugar" o
+// "cerrado". Sugeridas: ids de las mesas que conviene usar (o juntar).
+public record ChequeoSolicitudDto(
+    string Estado,
+    int MesasLibres,
+    int LugaresLibres,
+    int ReservasALaHora,
+    int CupoHora,
+    List<int> Sugeridas,
+    List<MesaLibreDto> Libres
+);
+
+public record MesaLibreDto(int Id, string Codigo, int Capacidad);
 
 // Para el contador (tipo notificacion) del boton "Reservas web" del panel.
 // Ver ReservaWebService.ResumenAsync.

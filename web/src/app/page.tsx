@@ -14,6 +14,7 @@ import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
 import SalonSelector from "@/components/SalonSelector";
 import ShiftSection from "@/components/ShiftSection";
+import SolicitudesTurno from "@/components/SolicitudesTurno";
 import TurnoToggle from "@/components/TurnoToggle";
 
 // Una fila de reserva "vacía" (autogenerada al abrir el turno, con solo la
@@ -562,6 +563,8 @@ export default function HomePage() {
         <div className="p-16 text-center text-tinta-suave">Cargando…</div>
       ) : (
         <main className="flex flex-col gap-7 px-7 py-6 pb-16">
+          {/* Solicitudes del link para este turno (todavía fuera de la grilla). */}
+          <SolicitudesTurno fecha={fecha} turno={turno} salonId={salonId} />
           {turno === "almuerzo" ? (
             <ShiftSection
               titulo="Almuerzo"

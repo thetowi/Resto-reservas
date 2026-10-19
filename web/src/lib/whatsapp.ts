@@ -45,3 +45,54 @@ export function linkWhatsAppCambio(numero: string, nombre: string | null | undef
   const texto = `Hola${primerNombre ? ` ${primerNombre}` : ""}, te escribimos de ${NOMBRE_PUBLICO}: tu reserva del ${fechaCorta(fechaISO)} quedó para las ${hora ?? ""}. `;
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
 }
+
+// ---- Mensajes para responder una solicitud (Reservas web → Solicitudes).
+// El equipo los puede editar antes de mandarlos.
+
+const DIAS_LARGOS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+// "2026-10-24" -> "sábado 24/10"
+export function fechaMensaje(fechaISO: string): string {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return `${DIAS_LARGOS[dt.getDay()]} ${d}/${m}`;
+}
+
+interface DatosSolicitud {
+  nombre: string;
+  pax: number;
+  fecha: string;
+  hora: string;
+  salon: string;
+  codigo: string;
+}
+
+// "¡Hola Lucía!"; si es "Familia Ortiz" o "Grupo ...", el nombre entero.
+const saludo = (nombre: string) => {
+  const limpio = nombre.trim();
+  const primer = limpio.split(/\s+/)[0] ?? "";
+  const quien = /^(familia|flia\.?|grupo)$/i.test(primer) ? limpio : primer;
+  return `¡Hola${quien ? ` ${quien}` : ""}!`;
+};
+
+export function mensajeAprobada(s: DatosSolicitud): string {
+  return `${saludo(s.nombre)} Te confirmamos la reserva en ${NOMBRE_PUBLICO} para ${s.pax} personas el ${fechaMensaje(s.fecha)} a las ${s.hora} (${s.salon}). Tu código es ${s.codigo}. Si necesitás cambiar algo, respondé este mensaje. ¡Te esperamos!`;
+}
+
+// Motivos que se ofrecen al rechazar (el elegido se guarda en el registro).
+export const MOTIVOS_RECHAZO = ["Esa hora está completa", "Ese día está completo", "Ofrecer otro horario", "Grupo muy grande", "Otro"] as const;
+
+export function mensajeRechazo(s: DatosSolicitud, motivo: string | null, propuesta: string): string {
+  const cuando = `el ${fechaMensaje(s.fecha)} a las ${s.hora}`;
+  const otra = propuesta.trim();
+  let cuerpo: string;
+  if (motivo === "Ese día está completo") cuerpo = `El ${fechaMensaje(s.fecha)} ya estamos completos para ${s.pax} personas.`;
+  else if (motivo === "Grupo muy grande") cuerpo = `Para ${s.pax} personas ${cuando} no tenemos cómo armar la mesa.`;
+  else cuerpo = `${cuando[0].toUpperCase()}${cuando.slice(1)} no tenemos lugar para ${s.pax} personas.`;
+  const oferta = otra ? ` Podemos ofrecerte ${otra}. ¿Te sirve?` : " ¿Querés que veamos otro día u horario?";
+  return `${saludo(s.nombre)} Gracias por elegir ${NOMBRE_PUBLICO}. ${cuerpo}${oferta}`;
+}
+
+export function linkWhatsAppTexto(numero: string, texto: string) {
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+}

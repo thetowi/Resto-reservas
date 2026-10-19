@@ -565,6 +565,9 @@ namespace Barrancas.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("MotivoRechazo")
+                        .HasColumnType("text");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("text");
@@ -574,6 +577,12 @@ namespace Barrancas.Api.Migrations
 
                     b.Property<int>("Pax")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RechazadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RechazadaPor")
+                        .HasColumnType("text");
 
                     b.Property<int?>("ReservaId")
                         .HasColumnType("integer");

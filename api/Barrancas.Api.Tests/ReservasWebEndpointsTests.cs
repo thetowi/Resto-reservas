@@ -162,11 +162,12 @@ public class ReservasWebEndpointsTests : IClassFixture<BarrancasWebApplicationFa
     }
 
     [Fact]
-    public async Task Confirmar_una_solicitud_la_pasa_a_confirmada_en_el_registro_y_en_la_grilla()
+    public async Task Aprobar_una_solicitud_la_confirma_y_recien_ahi_entra_a_la_grilla()
     {
         var client = await ClienteAutenticadoAsync();
         var web = await ReservarPorLinkAsync(client, EnDias(16), 8, "Familia Ortiz");
         Assert.Equal("pendiente", web.Estado);
+        Assert.Null(web.ReservaId); // la solicitud no entra a la grilla hasta aprobarla
         var antes = await client.GetFromJsonAsync<ReservaWebResumenDto>("/api/reservas-web/resumen");
 
         var res = await client.PostAsync($"/api/reservas-web/{web.Id}/confirmar", null);
@@ -178,8 +179,10 @@ public class ReservasWebEndpointsTests : IClassFixture<BarrancasWebApplicationFa
         Assert.Equal(antes!.AConfirmar - 1, despues!.AConfirmar);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BarrancasDbContext>();
-        var fila = await db.Reservas.SingleAsync(r => r.Id == web.ReservaId);
+        var fila = await db.Reservas.SingleAsync(r => r.Id == confirmada.ReservaId);
         Assert.Equal(EstadoReserva.Confirmada, fila.Estado);
+        Assert.Equal(8, fila.Pax);
+        Assert.Equal("Familia Ortiz", fila.Nombre);
     }
 
     private async Task<TurnoDataDto> CenaAsync(HttpClient client, DateOnly fecha)

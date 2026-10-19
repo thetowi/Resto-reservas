@@ -1,6 +1,7 @@
 import { getToken, cerrarSesion } from "./auth";
 import type {
   CalendarioDia,
+  ChequeoSolicitud,
   DatosRestaurante,
   Dia,
   ElementoPlano,
@@ -164,8 +165,27 @@ export function getResumenReservasWeb(vistoHasta?: string | null) {
   return request<ResumenReservasWeb>(`/api/reservas-web/resumen${q}`);
 }
 
-export function confirmarReservaWeb(id: number) {
-  return request<ReservaWeb>(`/api/reservas-web/${id}/confirmar`, { method: "POST" });
+// Aprueba una solicitud: recién ahí entra a la grilla, con las mesas
+// elegidas (opcional, también se asignan después en la grilla).
+export function confirmarReservaWeb(id: number, mesaIds?: number[]) {
+  return request<ReservaWeb>(`/api/reservas-web/${id}/confirmar`, {
+    method: "POST",
+    body: JSON.stringify({ mesaIds: mesaIds && mesaIds.length > 0 ? mesaIds : null }),
+  });
+}
+
+export function rechazarReservaWeb(id: number, motivo: string | null) {
+  return request<ReservaWeb>(`/api/reservas-web/${id}/rechazar`, { method: "POST", body: JSON.stringify({ motivo }) });
+}
+
+export function getChequeoSolicitud(id: number) {
+  return request<ChequeoSolicitud>(`/api/reservas-web/${id}/chequeo`);
+}
+
+// Solicitudes sin aprobar de un día (todos los salones y turnos), para la
+// franja del panel (components/SolicitudesTurno.tsx).
+export function getSolicitudesDelDia(fecha: string) {
+  return request<ReservaWeb[]>(`/api/reservas-web/solicitudes?fecha=${fecha}`);
 }
 
 // Togglea la marca de walk-in de una mesa desde el panel de mesas

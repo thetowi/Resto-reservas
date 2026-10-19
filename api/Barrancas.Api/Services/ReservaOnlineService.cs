@@ -31,7 +31,10 @@ public class ReservaOnlineException : Exception
 ///   con que la suma de mesas libres llegue (lo arma el staff).
 /// - Se confirma sola si: salon "Restaurant" Y menos de 6 personas Y hay mesa;
 ///   la mesa se asigna sola (la mas chica que entre). Cualquier otro caso queda
-///   como solicitud (EstadoReserva.PendienteBot) para que el equipo confirme.
+///   como SOLICITUD: solo el registro ReservaWeb (Pendiente, sin fila), que el
+///   equipo aprueba o rechaza en Reservas web; recien al aprobarla entra a la
+///   grilla, ya confirmada (ver ColocarEnGrillaAsync). No guarda lugar
+///   mientras espera: al aprobar se ve el lugar que hay en ese momento.
 /// - Dias bloqueados: los mismos de FechaBloqueadaBot (sin reservas online ese
 ///   dia). Turnos cerrados (CierreTurno): sin lugar.
 /// - Consultar disponibilidad NUNCA crea filas (DiaService sin sembrar): solo
@@ -432,7 +435,7 @@ public class ReservaOnlineService
         // Limite de reservas web a futuro por el mismo telefono (contra abuso).
         // Se cuenta sobre el registro de reservas web (sin las canceladas).
         var webFuturas = await _db.ReservasWeb
-            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada)
+            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada && w.Estado != EstadoReservaWeb.Rechazada)
             .Select(w => w.Telefono)
             .ToListAsync();
         if (webFuturas.Count(h => SoloDigitos(h).EndsWith(digitos, StringComparison.Ordinal)) >= MaxReservasWebFuturasPorTelefono)
@@ -449,61 +452,24 @@ public class ReservaOnlineService
             throw new ReservaOnlineException("Ese horario se acaba de ocupar. Elegí otro, por favor.");
         }
 
-        // Recien ahora se generan las filas del turno (como al abrir el dia).
-        await _diaService.SeedTurnoSiVacioAsync(req.Fecha, turno, salon.Id);
-        var evaluacion = await EvaluarTurnoAsync(req.Fecha, turno, salon.Id, req.Pax, sembrar: false);
-        var data = await _diaService.GetTurnoAsync(req.Fecha, turno, salon.Id, sembrar: false);
-
-        var mesa = evaluacion.MesaParaAsignar;
-        var confirmada = ConfirmaSola(salon) && req.Pax < LimitePaxConfirmaSola && mesa is not null;
-
-        // Usa la primera fila vacia de esa misma hora (la planilla trae varias
-        // por horario); si no queda ninguna, abre una nueva al final.
-        var filaLibre = data.Reservas
-            .Where(r => r.Pax is null && string.IsNullOrEmpty(r.Nombre) && r.Hora == hora)
-            .OrderBy(r => r.Orden)
-            .FirstOrDefault();
-
-        Reserva reserva;
-        if (filaLibre is not null)
+        // Se confirma sola solo si el salon lo permite, es de menos de 6 y hay
+        // una mesa que le sirva. Si no, queda como SOLICITUD: no entra a la
+        // grilla (ni ocupa lugar) hasta que alguien del equipo la aprueba en
+        // Reservas web (ver ReservasWebController.Confirmar / Rechazar).
+        MesaDto? mesa = null;
+        if (ConfirmaSola(salon) && req.Pax < LimitePaxConfirmaSola)
         {
-            reserva = await _db.Reservas.FirstAsync(r => r.Id == filaLibre.Id);
+            // Recien ahora se generan las filas del turno (como al abrir el dia).
+            await _diaService.SeedTurnoSiVacioAsync(req.Fecha, turno, salon.Id);
+            mesa = (await EvaluarTurnoAsync(req.Fecha, turno, salon.Id, req.Pax, sembrar: false)).MesaParaAsignar;
         }
-        else
-        {
-            var maxOrden = data.Reservas.Count == 0 ? -1 : data.Reservas.Max(r => r.Orden);
-            reserva = new Reserva { Fecha = req.Fecha, Turno = turno, SalonId = salon.Id, Orden = maxOrden + 1 };
-            _db.Reservas.Add(reserva);
-        }
-
-        var partesComentario = new[] { ocasion, comentarios }.Where(p => p is not null);
-        reserva.Hora = hora;
-        reserva.Pax = req.Pax;
-        reserva.Nombre = nombre;
-        reserva.HabTel = habitacion is not null ? $"Hab {habitacion} · {telefono}" : telefono;
-        reserva.Comentarios = partesComentario.Any() ? string.Join(" · ", partesComentario) : null;
-        reserva.Asistio = false;
-        reserva.PidioMesa = false;
-        reserva.Retirada = false;
-        reserva.Origen = OrigenReserva.Web;
-        reserva.Estado = confirmada ? EstadoReserva.Confirmada : EstadoReserva.PendienteBot;
-        reserva.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        if (confirmada && mesa is not null)
-        {
-            var actuales = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
-            _db.ReservaMesas.RemoveRange(actuales);
-            _db.ReservaMesas.Add(new ReservaMesa { ReservaId = reserva.Id, MesaId = mesa.Id });
-            await _db.SaveChangesAsync();
-        }
+        var confirmada = mesa is not null;
 
         // Registro aparte (panel "Reservas por el link"): queda aunque despues
         // la fila se vacie o se quite. Su Id es el codigo que ve el cliente.
         var registro = new ReservaWeb
         {
             CreadaEn = DateTime.UtcNow,
-            ReservaId = reserva.Id,
             Fecha = req.Fecha,
             Turno = turno,
             SalonId = salon.Id,
@@ -516,15 +482,18 @@ public class ReservaOnlineService
             Comentarios = comentarios,
             Estado = confirmada ? EstadoReservaWeb.Confirmada : EstadoReservaWeb.Pendiente,
         };
+        if (confirmada)
+        {
+            var reserva = await ColocarEnGrillaAsync(registro, [mesa!.Id], EstadoReserva.Confirmada);
+            registro.ReservaId = reserva.Id;
+        }
         _db.ReservasWeb.Add(registro);
         await _db.SaveChangesAsync();
 
-        Interlocked.Increment(ref _versionCache);
-
-        // Mismo aviso en vivo que una reserva cargada por el staff.
-        var actualizado = await _diaService.GetTurnoAsync(req.Fecha, turno, salon.Id, sembrar: false);
-        var grupo = ReservasHub.GrupoDe(req.Fecha.ToString("yyyy-MM-dd"), Nombre(turno), salon.Id);
-        await _hub.Clients.Group(grupo).SendAsync("TurnoActualizado", actualizado);
+        // Mismo aviso en vivo que una reserva cargada por el staff (con una
+        // solicitud la grilla no cambia, pero el panel actualiza la burbuja
+        // de Reservas web y la franja de solicitudes del turno).
+        await AvisarTurnoAsync(req.Fecha, turno, salon.Id);
 
         return new PublicoReservaResultado(
             confirmada ? "confirmada" : "pendiente",
@@ -534,5 +503,119 @@ public class ReservaOnlineService
             Nombre(turno),
             salon.Nombre,
             req.Pax);
+    }
+
+    // ---------------------------------------------------------------- grilla y solicitudes
+
+    /// <summary>
+    /// Carga una reserva del link en la grilla: usa la primera fila vacia de
+    /// esa hora (la planilla trae varias por horario) o abre una nueva al
+    /// final, con las mesas indicadas. La usan la reserva que se confirma
+    /// sola y la aprobacion de una solicitud. Guarda; no avisa por SignalR.
+    /// </summary>
+    public async Task<Reserva> ColocarEnGrillaAsync(ReservaWeb w, IReadOnlyCollection<int> mesaIds, EstadoReserva estado)
+    {
+        await _diaService.SeedTurnoSiVacioAsync(w.Fecha, w.Turno, w.SalonId);
+        var data = await _diaService.GetTurnoAsync(w.Fecha, w.Turno, w.SalonId, sembrar: false);
+
+        var filaLibre = data.Reservas
+            .Where(r => r.Pax is null && string.IsNullOrEmpty(r.Nombre) && r.Hora == w.Hora)
+            .OrderBy(r => r.Orden)
+            .FirstOrDefault();
+
+        Reserva reserva;
+        if (filaLibre is not null)
+        {
+            reserva = await _db.Reservas.FirstAsync(r => r.Id == filaLibre.Id);
+        }
+        else
+        {
+            var maxOrden = data.Reservas.Count == 0 ? -1 : data.Reservas.Max(r => r.Orden);
+            reserva = new Reserva { Fecha = w.Fecha, Turno = w.Turno, SalonId = w.SalonId, Orden = maxOrden + 1 };
+            _db.Reservas.Add(reserva);
+        }
+
+        var partesComentario = new[] { w.Ocasion, w.Comentarios }.Where(p => !string.IsNullOrWhiteSpace(p));
+        reserva.Hora = w.Hora;
+        reserva.Pax = w.Pax;
+        reserva.Nombre = w.Nombre;
+        reserva.HabTel = w.Habitacion is not null ? $"Hab {w.Habitacion} · {w.Telefono}" : w.Telefono;
+        reserva.Comentarios = partesComentario.Any() ? string.Join(" · ", partesComentario) : null;
+        reserva.Asistio = false;
+        reserva.PidioMesa = false;
+        reserva.Retirada = false;
+        reserva.Origen = OrigenReserva.Web;
+        reserva.Estado = estado;
+        reserva.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var actuales = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
+        _db.ReservaMesas.RemoveRange(actuales);
+        foreach (var mesaId in mesaIds.Distinct())
+        {
+            _db.ReservaMesas.Add(new ReservaMesa { ReservaId = reserva.Id, MesaId = mesaId });
+        }
+        await _db.SaveChangesAsync();
+
+        Interlocked.Increment(ref _versionCache);
+        return reserva;
+    }
+
+    public async Task AvisarTurnoAsync(DateOnly fecha, Turno turno, int salonId)
+    {
+        var actualizado = await _diaService.GetTurnoAsync(fecha, turno, salonId, sembrar: false);
+        var grupo = ReservasHub.GrupoDe(fecha.ToString("yyyy-MM-dd"), Nombre(turno), salonId);
+        await _hub.Clients.Group(grupo).SendAsync("TurnoActualizado", actualizado);
+    }
+
+    /// <summary>
+    /// Chequeo de lugar para una solicitud, en el momento (Reservas web):
+    /// mesas libres del turno y cuanta gente entra, reservas ya cargadas a
+    /// esa hora contra el cupo de la planilla, y que mesas convendria juntar.
+    /// Estado: "ok", "justo" (entra pero con poco margen u hora llena),
+    /// "sin_lugar" o "cerrado".
+    /// </summary>
+    public async Task<ChequeoSolicitudDto> ChequearAsync(ReservaWeb w)
+    {
+        var data = await _diaService.GetTurnoAsync(w.Fecha, w.Turno, w.SalonId, sembrar: false);
+        var ocupadas = data.MesasOcupadas.Concat(data.MesasWalkIn).ToHashSet();
+        var libres = data.Mesas.Where(m => !m.Reducida && !ocupadas.Contains(m.Id)).OrderBy(m => m.Orden).ToList();
+        var lugares = libres.Sum(m => m.Capacidad);
+        var aLaHora = data.Reservas.Count(r => r.Pax is not null && r.Hora == w.Hora && r.Id != w.ReservaId);
+        var cupo = CupoDe(w.Turno, w.Hora);
+        var sugeridas = SugerirMesas(libres, w.Pax);
+
+        string estado;
+        if (data.EstaCerrado) estado = "cerrado";
+        else if (data.Mesas.Count == 0) estado = "ok"; // salon sin mesas cargadas: lo decide el equipo
+        else if (lugares < w.Pax || sugeridas.Count == 0) estado = "sin_lugar";
+        else if (aLaHora >= cupo || lugares < w.Pax * 2 || libres.Count <= 3) estado = "justo";
+        else estado = "ok";
+
+        return new ChequeoSolicitudDto(
+            estado,
+            libres.Count,
+            lugares,
+            aLaHora,
+            cupo,
+            sugeridas,
+            libres.Select(m => new MesaLibreDto(m.Id, m.Codigo, m.Capacidad)).ToList());
+    }
+
+    // Una sola mesa (la mas chica en la que entran) o, si no hay, las mas
+    // grandes hasta sumar la gente (pocas mesas para juntar).
+    private static List<int> SugerirMesas(List<MesaDto> libres, int pax)
+    {
+        var una = libres.Where(m => m.Capacidad >= pax).OrderBy(m => m.Capacidad).ThenBy(m => m.Orden).FirstOrDefault();
+        if (una is not null) return [una.Id];
+        var elegidas = new List<int>();
+        var suma = 0;
+        foreach (var m in libres.OrderByDescending(m => m.Capacidad).ThenBy(m => m.Orden))
+        {
+            elegidas.Add(m.Id);
+            suma += m.Capacidad;
+            if (suma >= pax) return elegidas;
+        }
+        return [];
     }
 }

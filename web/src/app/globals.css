@@ -1158,6 +1158,85 @@ tr.fila-destino-fuerte > td:first-child { box-shadow: inset 3px 0 0 var(--color-
   .rv-cloche .rv-vapor path { opacity: 0.6; }
 }
 
+/* ---- Link de reservas: paso 1 ordenado en tarjetas (opción A del mockup
+   capax-reservar-paso1-grupos) y, en la compu, dos columnas (opción C):
+   la marca y «Cómo llegar» a la izquierda (.rv-lado) y el formulario a la
+   derecha (.rv-col). La portada ya no lleva los horarios. */
+.rv-col { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.rv-col > .rv-pie { margin-top: auto; padding-top: 18px; }
+.rv-lado, .rv-top-pc { display: none; }
+.rv-hero { padding: 24px 22px 20px; }
+.rv-logo-portada { height: 84px; margin-bottom: 12px; }
+.rv-hero-t { margin: 0; font-size: 23px; }
+.rv-tit { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.rv-tit small { flex: none; font-size: 12px; font-weight: 600; color: var(--color-tinta-suave); white-space: nowrap; }
+.rv-card { display: grid; gap: 12px; min-width: 0; padding: 14px; border-radius: 18px; border: 1px solid var(--color-borde); background: var(--color-superficie); }
+.rv-card-fila { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.rv-card-et { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.rv-card-et svg { flex: none; color: var(--rv-teal-tx); }
+.rv-card-et div { display: grid; min-width: 0; }
+.rv-card-et b { font-size: 15px; }
+.rv-card-et small { font-size: 12px; color: var(--color-tinta-suave); }
+.rv-card .rv-contador { gap: 4px; padding: 4px; border-radius: 14px; background: var(--rv-apagado); }
+.rv-card .rv-contador button { width: 40px; height: 40px; border-radius: 11px; border: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); }
+.rv-card .rv-v { min-width: 40px; font-size: 20px; font-weight: 800; }
+/* Grupo grande: la tarjeta se marca y el aviso aparece adentro. */
+.rv-card-grupo { border-color: color-mix(in srgb, var(--color-aviso) 45%, var(--color-borde));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-aviso) 14%, transparent); }
+.rv-grupo { grid-column: 1 / -1; display: flex; gap: 11px; align-items: flex-start; padding: 11px 12px; border-radius: 13px;
+  background: var(--color-aviso-suave); color: var(--color-aviso); animation: rv-grupo 0.3s ease-out; }
+.rv-grupo b { display: block; font-size: 13.5px; color: var(--color-tinta); }
+.rv-grupo p { margin: 3px 0 0; font-size: 12.5px; line-height: 1.45; }
+.rv-grupo-ic { flex: none; width: 32px; height: 32px; border-radius: 10px; background: #25d366; color: #fff; display: grid; place-items: center; }
+@keyframes rv-grupo { from { opacity: 0; transform: translateY(-4px); } }
+.rv-card-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rv-card-cab b { font-size: 15px; }
+.rv-card .rv-ver-cal { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--color-borde);
+  background: var(--color-superficie); color: var(--rv-teal-tx); font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.rv-card .rv-ver-cal svg { width: 16px; height: 16px; }
+/* La tira muestra días enteros (7 en el celular, 9 en la compu) y se
+   desliza sin barra de scroll ni un día cortado al final. */
+.rv-card .rv-dias { --rv-vista: 7; display: grid; grid-auto-flow: column; gap: 6px; padding-bottom: 0; overflow-x: auto; scroll-snap-type: x mandatory;
+  grid-auto-columns: calc((100% - (var(--rv-vista) - 1) * 6px) / var(--rv-vista)); scrollbar-width: none; }
+.rv-card .rv-dias::-webkit-scrollbar { display: none; }
+.rv-card .rv-dia, .rv-card .rv-dia.rv-otra { width: auto; padding: 7px 0 8px; border-radius: 13px; scroll-snap-align: start; }
+.rv-card .rv-num { font-size: 18px; }
+.rv-card .rv-dsem { font-size: 10.5px; }
+.rv-card .rv-otra-t { font-size: 10.5px; text-align: center; }
+.rv-elegido { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-radius: 11px; background: var(--rv-apagado); font-size: 13px; color: var(--color-tinta-suave); }
+.rv-elegido b { color: var(--color-tinta); }
+.rv-elegido i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #32b49d; }
+.rv-elegido i.pocos { background: var(--color-aviso); }
+.rv-elegido i.servicio { background: #e5484d; }
+.rv-card .rv-ley { gap: 4px 12px; font-size: 11.5px; }
+.rv-res-wa { color: #178c4a; font-weight: 600; }
+:root[data-theme="dark"] .rv-res-wa { color: #4ade80; }
+@media (prefers-reduced-motion: reduce) { .rv-grupo { animation: none; } }
+
+@media (min-width: 1000px) {
+  .rv { padding: 28px 24px; }
+  .rv-pantalla { max-width: 1180px; display: grid; grid-template-columns: 420px minmax(0, 1fr); min-height: calc(100vh - 56px); }
+  .rv-lado { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 56px 44px 40px; background: #0b0b0c; color: #f2f2f2; }
+  .rv-lado > :not(.rv-hero-plano) { position: relative; z-index: 1; }
+  .rv-lado .rv-hero-plano { opacity: 0.45; }
+  .rv-lado .rv-logo-portada { height: 96px; margin: 0; align-self: flex-start; }
+  .rv-lado .rv-lugar { align-self: flex-start; }
+  .rv-lado-t { margin: 22px 0 0; font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
+  .rv-lado p { margin: 0; max-width: 32ch; color: #b7c0c5; font-size: 15px; line-height: 1.55; }
+  .rv-lado-dir { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13.5px; color: #cfd6da; }
+  .rv-lado-llegar { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06); color: #6fd3bf; font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; }
+  .rv-lado-llegar:hover { background: rgba(255, 255, 255, 0.12); }
+  .rv-hero { display: none; }
+  .rv-col .rv-top { padding: 18px 40px 0; background: transparent; border-bottom: 0; }
+  .rv-top-pc { display: flex; }
+  .rv-col .rv-top .rv-logo-barra, .rv-col .rv-top .rv-lugar-c { display: none; }
+  .rv-progreso { padding-inline: 40px; max-width: 800px; }
+  .rv-vista { padding: 20px 40px 28px; max-width: 800px; }
+  .rv-titulo { font-size: 26px; }
+  .rv-card .rv-dias { --rv-vista: 9; }
+}
+
 /* ---- Barra lateral del panel (components/BarraLateral.tsx, opción 3 del
    mockup capax-barra-lateral-logo): cerrada 68 px con iconos, el circulito
    de capax y la burbuja de Reservas web; se despliega al pasar el mouse

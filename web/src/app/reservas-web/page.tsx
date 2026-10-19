@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ApiError, confirmarReservaWeb, getReservasWeb } from "@/lib/api";
+import { ApiError, getReservasWeb } from "@/lib/api";
 import { haySesion } from "@/lib/auth";
+import { EVENTO_AVISOS_WEB } from "@/components/BarraLateral";
 import type { EstadoReservaWeb, ReservaWeb, Turno } from "@/lib/types";
 import { fechaCorta, linkWhatsApp, numeroWhatsApp } from "@/lib/whatsapp";
 import { IconoWhatsApp } from "@/components/BorrarReserva";
 import { esNuevaWeb, guardarVistoWeb, leerVistoWeb } from "@/lib/avisosWeb";
+import { DialogoAprobar, DialogoRechazar, TarjetaSolicitud } from "@/components/Solicitudes";
 
 // Reservas por el link: todas las que hicieron los clientes desde /reservar,
 // de cualquier dia y salon, incluidas las canceladas (el registro queda
@@ -16,12 +18,13 @@ import { esNuevaWeb, guardarVistoWeb, leerVistoWeb } from "@/lib/avisosWeb";
 // ReservasWebController). Desde aca se confirman las solicitudes, se le
 // escribe al cliente o se va a la reserva en el panel.
 
-type Filtro = "pendiente" | "proximas" | "pasadas" | "cancelada" | "todas";
+type Filtro = "pendiente" | "proximas" | "pasadas" | "rechazada" | "cancelada" | "todas";
 
 const FILTROS: { clave: Filtro; titulo: string }[] = [
-  { clave: "pendiente", titulo: "A confirmar" },
+  { clave: "pendiente", titulo: "Solicitudes" },
   { clave: "proximas", titulo: "Próximas" },
   { clave: "pasadas", titulo: "Pasadas" },
+  { clave: "rechazada", titulo: "Rechazadas" },
   { clave: "cancelada", titulo: "Canceladas" },
   { clave: "todas", titulo: "Todas" },
 ];
@@ -30,13 +33,15 @@ const pasaFiltro = (r: ReservaWeb, f: Filtro) =>
   f === "todas"
     ? true
     : f === "proximas"
-      ? r.estado === "confirmada" || r.estado === "pendiente"
+      ? r.estado === "confirmada"
       : f === "pasadas"
-        ? r.estado === "asistio" || r.estado === "novino"
+        ? r.estado === "asistio" || r.estado === "novino" || r.estado === "vencida"
         : r.estado === f;
 
 const ESTADO: Record<EstadoReservaWeb, { texto: string; clase: string }> = {
-  pendiente: { texto: "A confirmar", clase: "bg-aviso-suave text-aviso" },
+  pendiente: { texto: "Solicitud", clase: "bg-aviso-suave text-aviso" },
+  rechazada: { texto: "Rechazada", clase: "bg-ocupada-suave text-ocupada [[data-theme=dark]_&]:bg-[#3a1418] [[data-theme=dark]_&]:text-[#ff8a8a]" },
+  vencida: { texto: "Sin respuesta", clase: "bg-arena-suave text-tinta-suave" },
   confirmada: { texto: "Confirmada", clase: "bg-asistio-suave text-[#1d7a69] [[data-theme=dark]_&]:text-[#6fd3bf]" },
   asistio: { texto: "Asistió", clase: "bg-fila-asistio text-[#155d27] [[data-theme=dark]_&]:text-tinta" },
   novino: { texto: "No vino", clase: "bg-ocupada-suave text-ocupada [[data-theme=dark]_&]:bg-[#3a1418] [[data-theme=dark]_&]:text-[#ff8a8a]" },
@@ -70,7 +75,12 @@ export default function ReservasWebPage() {
   const [error, setError] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("pendiente");
   const [busqueda, setBusqueda] = useState("");
-  const [confirmando, setConfirmando] = useState<number | null>(null);
+  // Solicitud abierta en la ventana de Aprobar o Rechazar.
+  const [dialogo, setDialogo] = useState<{ tipo: "aprobar" | "rechazar"; r: ReservaWeb } | null>(null);
+  // La que se pidió desde la franja del panel (?solicitud=ID): se resalta.
+  const [resaltada, setResaltada] = useState<number | null>(null);
+  // Cada vez que se recarga la lista, las tarjetas vuelven a ver el lugar.
+  const [vuelta, setVuelta] = useState(0);
   // Hasta donde se habian visto al entrar (lib/avisosWeb.ts): las que
   // entraron despues llevan la etiqueta "Nueva" durante esta visita.
   const [vistoAlEntrar] = useState(() => leerVistoWeb());
@@ -88,6 +98,7 @@ export default function ReservasWebPage() {
     getReservasWeb()
       .then((lista) => {
         setReservas(lista);
+        setVuelta((v) => v + 1);
         setError(null);
         // Ya se vieron: el contador del panel deja de contarlas como nuevas.
         const ultima = lista.reduce<string | null>((max, r) => (!max || Date.parse(r.creadaEn) > Date.parse(max) ? r.creadaEn : max), null);
@@ -113,6 +124,15 @@ export default function ReservasWebPage() {
   // Si no hay nada para confirmar, se arranca mostrando las próximas.
   const [filtroElegido, setFiltroElegido] = useState(false);
   useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("solicitud"));
+    if (id > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResaltada(id);
+      setFiltro("pendiente");
+      setFiltroElegido(true);
+    }
+  }, []);
+  useEffect(() => {
     if (!reservas || filtroElegido) return;
     if (!reservas.some((r) => r.estado === "pendiente")) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -134,16 +154,12 @@ export default function ReservasWebPage() {
       );
   }, [reservas, filtro, busqueda]);
 
-  async function confirmar(r: ReservaWeb) {
-    setConfirmando(r.id);
-    try {
-      const nueva = await confirmarReservaWeb(r.id);
-      setReservas((lista) => lista?.map((x) => (x.id === r.id ? nueva : x)) ?? null);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudo confirmar");
-    } finally {
-      setConfirmando(null);
-    }
+  // Aprobada o rechazada: se actualiza en la lista (sale de Solicitudes) y
+  // el contador de la barra lateral se vuelve a pedir.
+  function resuelta(nueva: ReservaWeb) {
+    setReservas((lista) => lista?.map((x) => (x.id === nueva.id ? nueva : x)) ?? null);
+    setDialogo(null);
+    window.dispatchEvent(new Event(EVENTO_AVISOS_WEB));
   }
 
   if (!listo) return null;
@@ -155,8 +171,10 @@ export default function ReservasWebPage() {
           <Link href="/" className="text-xs text-tinta-suave underline hover:text-tinta">
             ← Volver a reservas
           </Link>
-          <h1 className="mt-1 text-lg font-bold">Reservas por el link</h1>
-          <p className="mt-0.5 text-sm text-tinta-suave">Todas las que hicieron los clientes desde el link de reservas, de cualquier día y salón.</p>
+          <h1 className="mt-1 text-lg font-bold">Reservas web</h1>
+          <p className="mt-0.5 text-sm text-tinta-suave">
+            Lo que entra por el link. Las solicitudes (grupos de 6 o más y salones que no confirman solos) no aparecen en la grilla hasta que alguien las aprueba.
+          </p>
         </div>
         <CopiarLink />
       </div>
@@ -195,6 +213,28 @@ export default function ReservasWebPage() {
 
       {error && <div className="mb-3 rounded-lg bg-ocupada-suave px-3 py-2 text-sm text-ocupada">{error}</div>}
 
+      {filtro === "pendiente" ? (
+        <div className="grid gap-2.5">
+          {!reservas ? (
+            <div className="rounded-2xl border border-borde bg-superficie px-4 py-6 text-sm text-tinta-suave">Cargando…</div>
+          ) : visibles.length === 0 ? (
+            <div className="rounded-2xl border border-borde bg-superficie px-4 py-6 text-sm text-tinta-suave">
+              {busqueda ? "No hay solicitudes que coincidan con la búsqueda." : "No hay solicitudes para responder."}
+            </div>
+          ) : (
+            visibles.map((r) => (
+              <TarjetaSolicitud
+                key={r.id}
+                r={r}
+                resaltada={resaltada === r.id}
+                actualizacion={vuelta}
+                onAprobar={() => setDialogo({ tipo: "aprobar", r })}
+                onRechazar={() => setDialogo({ tipo: "rechazar", r })}
+              />
+            ))
+          )}
+        </div>
+      ) : (
       <div className="overflow-x-auto rounded-2xl border border-borde bg-superficie">
         <table className="w-full min-w-[960px] text-sm">
           <thead>
@@ -226,8 +266,8 @@ export default function ReservasWebPage() {
             ) : (
               visibles.map((r) => {
                 const numero = numeroWhatsApp(r.telefono);
-                const activa = r.estado === "pendiente" || r.estado === "confirmada";
-                const cancelada = r.estado === "cancelada";
+                const activa = r.estado === "confirmada";
+                const cancelada = r.estado === "cancelada" || r.estado === "rechazada" || r.estado === "vencida";
                 return (
                   <tr key={r.id} className={`border-t border-borde align-middle ${cancelada ? "text-tinta-suave" : ""}`}>
                     <td className="px-4 py-2.5 whitespace-nowrap">
@@ -254,7 +294,13 @@ export default function ReservasWebPage() {
                     <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">{r.telefono}</td>
                     <td className="max-w-[220px] px-4 py-2.5">
                       {r.pedido ?? <span className="text-tinta-suave">—</span>}
-                      {cancelada && <small className="block text-[11.5px] text-tinta-suave">{quienCancelo(r)}</small>}
+                      {r.estado === "cancelada" && <small className="block text-[11.5px] text-tinta-suave">{quienCancelo(r)}</small>}
+                      {r.estado === "rechazada" && (
+                        <small className="block text-[11.5px] text-tinta-suave">
+                          Rechazada{r.rechazadaPor ? ` por ${r.rechazadaPor}` : ""}
+                          {r.motivoRechazo ? ` · ${r.motivoRechazo}` : ""}
+                        </small>
+                      )}
                       {r.confirmadaPor && r.estado === "confirmada" && (
                         <small className="block text-[11.5px] text-tinta-suave">Confirmada por {r.confirmadaPor}</small>
                       )}
@@ -269,11 +315,10 @@ export default function ReservasWebPage() {
                         {r.estado === "pendiente" && (
                           <button
                             type="button"
-                            disabled={confirmando === r.id}
-                            onClick={() => confirmar(r)}
-                            className="rounded-lg bg-asistio px-3 py-1 text-[13px] font-bold text-[#04221c] hover:brightness-95 disabled:opacity-50"
+                            onClick={() => setDialogo({ tipo: "aprobar", r })}
+                            className="rounded-lg bg-asistio px-3 py-1 text-[13px] font-bold text-[#04221c] hover:brightness-95"
                           >
-                            {confirmando === r.id ? "Confirmando…" : "Confirmar"}
+                            Aprobar
                           </button>
                         )}
                         {numero && (
@@ -306,6 +351,9 @@ export default function ReservasWebPage() {
           </tbody>
         </table>
       </div>
+      )}
+      {dialogo?.tipo === "aprobar" && <DialogoAprobar r={dialogo.r} onCerrar={() => setDialogo(null)} onHecho={resuelta} />}
+      {dialogo?.tipo === "rechazar" && <DialogoRechazar r={dialogo.r} onCerrar={() => setDialogo(null)} onHecho={resuelta} />}
       <p className="mt-3 text-xs text-tinta-suave">
         Las canceladas quedan registradas aunque se borren de la grilla. Se muestran las de los últimos 90 días y todas las próximas.
       </p>

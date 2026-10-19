@@ -17,7 +17,10 @@ public class ReservaWeb
     public DateTime CreadaEn { get; set; } = DateTime.UtcNow;
 
     // La fila de la grilla que ocupa. Queda en null si la fila se quita
-    // (ver ReservasController.Borrar) — el registro no se borra con ella.
+    // (ver ReservasController.Borrar) — el registro no se borra con ella —
+    // y mientras sea una solicitud sin aprobar: las solicitudes (grupos de 6
+    // o mas, salones que no confirman solos) no entran a la grilla hasta que
+    // alguien las aprueba en Reservas web (ver ReservasWebController).
     public int? ReservaId { get; set; }
     public Reserva? Reserva { get; set; }
 
@@ -41,6 +44,12 @@ public class ReservaWeb
     public string? ConfirmadaPor { get; set; }
     public DateTime? CanceladaEn { get; set; }
     public string? CanceladaPor { get; set; }
+
+    // Solicitud rechazada desde Reservas web (no habia lugar, se le ofrecio
+    // otro horario, etc.): quien, cuando y el motivo que se eligio.
+    public DateTime? RechazadaEn { get; set; }
+    public string? RechazadaPor { get; set; }
+    public string? MotivoRechazo { get; set; }
 }
 
 public enum EstadoReservaWeb
@@ -53,4 +62,7 @@ public enum EstadoReservaWeb
 
     // Se borro desde el panel (tachito o quitar fila).
     Cancelada = 2,
+
+    // Era una solicitud y el equipo la rechazo (nunca llego a la grilla).
+    Rechazada = 3,
 }

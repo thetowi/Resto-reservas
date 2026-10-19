@@ -79,7 +79,7 @@ public class ReservaWebService
         var registros = await _db.ReservasWeb
             .AsNoTracking()
             .Include(w => w.Reserva)
-            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada)
+            .Where(w => w.Fecha >= hoy && w.Estado != EstadoReservaWeb.Cancelada && w.Estado != EstadoReservaWeb.Rechazada)
             .ToListAsync();
         var aConfirmar = 0;
         var nuevas = 0;
@@ -107,10 +107,14 @@ public class ReservaWebService
     // Estado para el panel. Ademas de lo guardado en el registro, mira la
     // fila: si ya no es una reserva web (alguien la vacio a mano o la
     // quito), cuenta como cancelada; si se tildo Asistio, "asistio"; si la
-    // fecha ya paso sin tildarlo, "novino".
+    // fecha ya paso sin tildarlo, "novino". Una solicitud sin fila es
+    // "pendiente" hasta que se aprueba o rechaza ("vencida" si paso la fecha).
     public static string EstadoDe(ReservaWeb w, DateOnly hoy)
     {
         if (w.Estado == EstadoReservaWeb.Cancelada) return "cancelada";
+        if (w.Estado == EstadoReservaWeb.Rechazada) return "rechazada";
+        // Solicitud sin aprobar: todavia no tiene fila en la grilla.
+        if (w.Estado == EstadoReservaWeb.Pendiente && w.ReservaId is null) return w.Fecha < hoy ? "vencida" : "pendiente";
         var fila = w.Reserva;
         if (fila is null || fila.Origen != OrigenReserva.Web || string.IsNullOrWhiteSpace(fila.Nombre)) return "cancelada";
         if (fila.Asistio) return "asistio";
@@ -143,6 +147,46 @@ public class ReservaWebService
             w.ConfirmadaEn,
             w.ConfirmadaPor,
             w.CanceladaEn,
-            w.CanceladaPor);
+            w.CanceladaPor,
+            w.RechazadaEn,
+            w.RechazadaPor,
+            w.MotivoRechazo);
+    }
+
+    /// <summary>
+    /// Solicitudes sin aprobar de un dia (todos los salones y turnos), para
+    /// la franja «N solicitudes para esta cena» del panel.
+    /// </summary>
+    public async Task<List<ReservaWebDto>> SolicitudesDelDiaAsync(DateOnly fecha)
+    {
+        var hoy = ReservaOnlineService.HoyLocal();
+        var registros = await _db.ReservasWeb
+            .AsNoTracking()
+            .Include(w => w.Reserva)
+            .Include(w => w.Salon)
+            .Where(w => w.Fecha == fecha && w.Estado == EstadoReservaWeb.Pendiente)
+            .OrderBy(w => w.Hora)
+            .ToListAsync();
+        return registros.Select(w => ADto(w, hoy)).Where(d => d.Estado == "pendiente").ToList();
+    }
+
+    /// <summary>
+    /// Deja vacia una fila de la grilla (como el tachito): sin datos ni
+    /// mesas, de nuevo una fila comun del staff. No guarda.
+    /// </summary>
+    public async Task VaciarFilaAsync(Reserva reserva)
+    {
+        reserva.Pax = null;
+        reserva.Nombre = null;
+        reserva.HabTel = null;
+        reserva.Comentarios = null;
+        reserva.Asistio = false;
+        reserva.PidioMesa = false;
+        reserva.Retirada = false;
+        reserva.Origen = OrigenReserva.Staff;
+        reserva.Estado = EstadoReserva.Confirmada;
+        reserva.UpdatedAt = DateTime.UtcNow;
+        var mesas = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
+        _db.ReservaMesas.RemoveRange(mesas);
     }
 }

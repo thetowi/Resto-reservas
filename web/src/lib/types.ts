@@ -238,7 +238,10 @@ export interface ResumenReservasWeb {
   ultimaCreadaEn: string | null;
 }
 
-export type EstadoReservaWeb = "pendiente" | "confirmada" | "asistio" | "novino" | "cancelada";
+// pendiente: solicitud sin aprobar (no está en la grilla). vencida: una
+// solicitud que nadie respondió y ya pasó la fecha. rechazada: la rechazó
+// el equipo desde Reservas web.
+export type EstadoReservaWeb = "pendiente" | "confirmada" | "asistio" | "novino" | "cancelada" | "rechazada" | "vencida";
 
 export interface ReservaWeb {
   id: number;
@@ -260,6 +263,20 @@ export interface ReservaWeb {
   confirmadaPor: string | null;
   canceladaEn: string | null;
   canceladaPor: string | null;
+  rechazadaEn?: string | null;
+  rechazadaPor?: string | null;
+  motivoRechazo?: string | null;
+}
+
+// Chequeo de lugar de una solicitud (GET /api/reservas-web/{id}/chequeo).
+export interface ChequeoSolicitud {
+  estado: "ok" | "justo" | "sin_lugar" | "cerrado";
+  mesasLibres: number;
+  lugaresLibres: number;
+  reservasALaHora: number;
+  cupoHora: number;
+  sugeridas: number[];
+  libres: { id: number; codigo: string; capacidad: number }[];
 }
 
 // Fecha sin reservas web (ver FechasBloqueadasBotController): ese dia (o

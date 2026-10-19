@@ -33,6 +33,7 @@ type Paso = "cuando" | "salon" | "horario" | "datos" | "detalles";
 
 const SEM = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DIA_LARGO = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 // Cuantos dias se ven en la tira; el resto (hasta config.diasAdelante) se
 // elige con "Otra fecha", que abre el calendario.
@@ -377,7 +378,7 @@ export default function ReservarPage() {
   }
   if (resultado) {
     return (
-      <Marco>
+      <Marco ubicacion={config?.ubicacion}>
         <Confirmacion r={resultado} nombre={nombre} comentarios={comentarios} tituloRef={tituloRef} onOtra={reiniciar} ubicacion={config?.ubicacion} />
       </Marco>
     );
@@ -389,11 +390,13 @@ export default function ReservarPage() {
   if (salon && salones.length > 1 && paso > pasos.indexOf("salon")) contexto.push(salon.nombre);
   if (hora && paso > pasos.indexOf("horario")) contexto.push(`${hora} · ${NOMBRE_TURNO[turno]}`);
   const ultimo = paso === pasos.length - 1;
-  const h = config.horarios;
-  const hayMerienda = salones.some((s) => s.permiteMerienda);
+  const grupo = pax >= config.limitePaxConfirmaSola;
+  // Lo elegido hasta ahora, abajo junto a Continuar.
+  const resumen = [personasTxt(pax), fecha ? fechaTxt(fecha) : null, hora && paso > pasos.indexOf("horario") ? hora : null].filter(Boolean).join(" · ");
+  const confirmaPorWhatsApp = grupo || (!!salon && !salon.confirmaSola);
 
   return (
-    <Marco>
+    <Marco ubicacion={config.ubicacion}>
       {paso === 0 ? (
         <header className="rv-hero">
           {/* El plano del salón (como en el login), suave de fondo. */}
@@ -404,20 +407,11 @@ export default function ReservarPage() {
           <ThemeToggle className="rv-tema rv-tema-hero" />
           <LogoPortada />
           <h1 className="rv-hero-t">Reservá tu mesa</h1>
-          <p>Elegí el día y el horario entre los que tienen lugar.</p>
-          <div className="rv-datos">
-            <span>
-              Almuerzo de {h.almuerzo[0]} a {h.almuerzo.at(-1)} h
-            </span>
-            {hayMerienda && (
-              <span>
-                Merienda de {h.merienda[0]} a {h.merienda.at(-1)} h
-              </span>
-            )}
-            <span>
-              Cena de {h.cena[0]} a {h.cena.at(-1)} h
-            </span>
-          </div>
+        </header>
+      ) : null}
+      {paso === 0 ? (
+        <header className="rv-top rv-top-pc">
+          <ThemeToggle className="rv-tema" />
         </header>
       ) : (
         <header className="rv-top">
@@ -438,13 +432,18 @@ export default function ReservarPage() {
       </div>
 
       <main key={paso} className={`rv-vista ${dir > 0 ? "rv-adelante" : "rv-atras-anim"}`}>
-        <h2 ref={tituloRef} tabIndex={-1} className="rv-titulo">
-          {pasoActual === "cuando" && "¿Cuántos son y qué día?"}
-          {pasoActual === "salon" && "¿En qué salón?"}
-          {pasoActual === "horario" && "¿A qué hora?"}
-          {pasoActual === "datos" && "Tus datos"}
-          {pasoActual === "detalles" && "¿Algo que debamos saber?"}
-        </h2>
+        <div className="rv-tit">
+          <h2 ref={tituloRef} tabIndex={-1} className="rv-titulo">
+            {pasoActual === "cuando" && "¿Cuántos son y qué día?"}
+            {pasoActual === "salon" && "¿En qué salón?"}
+            {pasoActual === "horario" && "¿A qué hora?"}
+            {pasoActual === "datos" && "Tus datos"}
+            {pasoActual === "detalles" && "¿Algo que debamos saber?"}
+          </h2>
+          <small>
+            Paso {paso + 1} de {pasos.length}
+          </small>
+        </div>
         {contexto.length > 0 && (
           <div className="rv-contexto">
             {contexto.map((c) => (
@@ -460,33 +459,43 @@ export default function ReservarPage() {
 
         {pasoActual === "cuando" && (
           <>
-            <section className="rv-bloque">
-              <div className="rv-et">Personas</div>
+            <section className={`rv-card rv-card-fila ${grupo ? "rv-card-grupo" : ""}`}>
+              <div className="rv-card-et">
+                <IconoPersonas />
+                <div>
+                  <b>Personas</b>
+                  <small>{grupo ? "Con confirmación" : `Hasta ${config.paxMaximo} por reserva`}</small>
+                </div>
+              </div>
               <div className="rv-contador">
                 <button type="button" onClick={() => cambiarPax(Math.max(1, pax - 1))} aria-label="Una persona menos" disabled={pax <= 1}>
                   −
                 </button>
-                <div className="rv-v" aria-live="polite">
+                <output className="rv-v" aria-live="polite" aria-label={personasTxt(pax)}>
                   {pax}
-                  <small>{pax === 1 ? "persona" : "personas"}</small>
-                </div>
+                </output>
                 <button type="button" onClick={() => cambiarPax(Math.min(config.paxMaximo, pax + 1))} aria-label="Una persona más" disabled={pax >= config.paxMaximo}>
                   +
                 </button>
               </div>
-              {pax >= config.limitePaxConfirmaSola && (
-                <div className="rv-aviso">
-                  Para grupos de {config.limitePaxConfirmaSola} o más tomamos la solicitud y te confirmamos por WhatsApp.
+              {grupo && (
+                <div className="rv-grupo" role="note">
+                  <span className="rv-grupo-ic">
+                    <IconoWhatsApp size={18} />
+                  </span>
+                  <div>
+                    <b>Grupo de {pax}: te confirmamos por WhatsApp</b>
+                    <p>Seguí y elegí el día y el horario. Queda como solicitud hasta que te escribamos.</p>
+                  </div>
                 </div>
               )}
             </section>
-            <section className="rv-bloque">
-              <div className="rv-et rv-et-fila">
-                <span>
-                  Día {fecha && <span className="rv-sel">{fechaTxt(fecha)}</span>}
-                </span>
+            <section className="rv-card">
+              <div className="rv-card-cab">
+                <b>{MES_LARGO[aFecha(fecha ?? config.hoy).getMonth()]}</b>
                 <button type="button" className="rv-ver-cal" onClick={alternarCalendario} aria-expanded={calAbierto}>
-                  {calAbierto ? "Cerrar calendario" : "Ver calendario"}
+                  <IconoCalendario />
+                  {calAbierto ? "Cerrar" : "Calendario"}
                 </button>
               </div>
               {!dias ? (
@@ -555,6 +564,14 @@ export default function ReservarPage() {
                       </button>
                     );
                   })()}
+                </div>
+              )}
+              {fecha && diaElegido && diaElegido.estado !== "bloqueado" && (
+                <div className="rv-elegido">
+                  <i className={diaElegido.estado} />
+                  <span>
+                    <b>{textoDiaElegido(fecha, config.hoy)}</b> · {ESTADO_ELEGIDO[diaElegido.estado] ?? "hay lugar"}
+                  </span>
                 </div>
               )}
               {diaElegido?.estado === "bloqueado" && fecha && (
@@ -857,10 +874,8 @@ export default function ReservarPage() {
       )}
       <div className="rv-barra">
         <div className="rv-res">
-          <b>
-            Paso {paso + 1} de {pasos.length}
-          </b>
-          Sujeto a disponibilidad
+          <b>{resumen}</b>
+          {confirmaPorWhatsApp ? <span className="rv-res-wa">Te confirmamos por WhatsApp</span> : "Sujeto a disponibilidad"}
         </div>
         <button
           type="button"
@@ -875,12 +890,58 @@ export default function ReservarPage() {
   );
 }
 
-function Marco({ children }: { children: React.ReactNode }) {
+// En el celular, una sola columna. En la compu (ver .rv-lado en
+// globals.css, opción C del mockup capax-reservar-paso1-grupos), a la
+// izquierda va la marca del restaurante y «Cómo llegar», y el formulario a
+// la derecha; la portada del paso 1 no se muestra ahí.
+function Marco({ children, ubicacion }: { children: React.ReactNode; ubicacion?: UbicacionPublica | null }) {
+  const direccion = direccionMapa(ubicacion);
   return (
     <div className="rv">
       <IntroCapax />
-      <div className="rv-pantalla">{children}</div>
+      <div className="rv-pantalla">
+        <aside className="rv-lado">
+          <div className="rv-hero-plano rv-plano-negro">
+            <PlanoLogin animado={false} />
+          </div>
+          <LogoPortada />
+          <h1 className="rv-lado-t">Reservá tu mesa</h1>
+          <p>Elegí el día y el horario entre los que tienen lugar.</p>
+          {direccion && (
+            <div className="rv-lado-dir">
+              <span>{direccion}</span>
+              <ComoLlegar className="rv-lado-llegar" ubicacion={ubicacion} />
+            </div>
+          )}
+        </aside>
+        <div className="rv-col">{children}</div>
+      </div>
     </div>
+  );
+}
+
+// "Hoy, lunes 19" / "Mañana, martes 20" / "Viernes 23 de octubre".
+function textoDiaElegido(fecha: string, hoy: string) {
+  const d = aFecha(fecha);
+  const n = Math.round((d.getTime() - aFecha(hoy).getTime()) / 86_400_000);
+  if (n === 0) return `Hoy, ${DIA_LARGO[d.getDay()]} ${d.getDate()}`;
+  if (n === 1) return `Mañana, ${DIA_LARGO[d.getDay()]} ${d.getDate()}`;
+  const dia = DIA_LARGO[d.getDay()];
+  return `${dia[0].toUpperCase()}${dia.slice(1)} ${d.getDate()} de ${MES_LARGO[d.getMonth()].toLowerCase()}`;
+}
+
+const ESTADO_ELEGIDO: Record<string, string> = {
+  ok: "hay lugar",
+  pocos: "quedan pocos lugares",
+  servicio: "estamos en servicio: por orden de llegada",
+};
+
+function IconoPersonas() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20c0-2.8-1.6-4.9-4-5.7" />
+    </svg>
   );
 }
 
