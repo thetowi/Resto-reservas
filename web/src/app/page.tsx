@@ -16,6 +16,8 @@ import SalonSelector from "@/components/SalonSelector";
 import ShiftSection from "@/components/ShiftSection";
 import SolicitudesTurno from "@/components/SolicitudesTurno";
 import TurnoToggle from "@/components/TurnoToggle";
+import PanelCelular from "@/components/PanelCelular";
+import { useEsCelular } from "@/lib/useEsCelular";
 
 // Una fila de reserva "vacía" (autogenerada al abrir el turno, con solo la
 // hora default de esa franja) no cuenta como una reserva real cargada —
@@ -58,6 +60,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
   const avisosTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // En el celular el panel va en tarjetas (PanelCelular); en la compu y la
+  // tablet, la planilla de siempre.
+  const esCelular = useEsCelular();
   // Fechas sin reservas web (de hoy en adelante), para el boton/franja de
   // cada turno (ver components/CierreWeb.tsx).
   const [cierresWeb, setCierresWeb] = useState<FechaCerradaWeb[]>([]);
@@ -500,6 +505,7 @@ export default function HomePage() {
           Admin" cae justo debajo de la marca en vez de perdido en su
           propio renglón de ancho completo. Ningún cambio de ancho en un
           lado reacomoda al otro: son hermanos de flex, no se pisan. */}
+      {!esCelular && (
       <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-b border-borde bg-superficie px-7 py-3.5">
         {/* Opción A del mockup capax-encabezado-prototipo: la fecha en una
             línea a la izquierda (DateNav) y Salón / Turno a la derecha,
@@ -546,6 +552,7 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+      )}
 
       {imprimiendo && (
         <div role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-tinta px-4 py-2.5 text-sm text-fondo shadow-lg">
@@ -561,6 +568,21 @@ export default function HomePage() {
 
       {!meta || salonId === null || cargando || !dia ? (
         <div className="p-16 text-center text-tinta-suave">Cargando…</div>
+      ) : esCelular ? (
+        <PanelCelular
+          fecha={fecha}
+          onFecha={setFecha}
+          turno={turno}
+          onTurno={setTurno}
+          salones={meta.salones}
+          salonId={salonId}
+          onSalon={setSalonId}
+          dia={dia}
+          espera={espera}
+          onEspera={setEspera}
+          onTurnoData={(data) => setDia((prev) => (prev ? { ...prev, [data.turno]: data } : prev))}
+          conteos={resumenSalones}
+        />
       ) : (
         <main className="flex flex-col gap-7 px-7 py-6 pb-16">
           {/* Solicitudes del link para este turno (todavía fuera de la grilla). */}

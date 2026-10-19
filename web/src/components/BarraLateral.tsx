@@ -25,6 +25,11 @@ import { IconoTema } from "./ThemeToggle";
 
 export const EVENTO_AVISOS_WEB = "capax:avisos-web";
 export const EVENTO_IMPRIMIR = "capax:imprimir";
+// En el celular la barra de abajo cambia el panel entre Reservas y Mesas
+// (ver PanelCelular): EVENTO_VISTA lo pide, EVENTO_VISTA_ACTUAL avisa cuál
+// se está viendo para marcar el botón.
+export const EVENTO_VISTA = "capax:vista-celular";
+export const EVENTO_VISTA_ACTUAL = "capax:vista-celular-actual";
 const CLAVE_FIJA = "capax-barra-fija";
 const CLAVE_PLANO = "capax-contexto-plano";
 
@@ -168,6 +173,8 @@ export default function BarraLateral() {
   const [tema, setTema] = useState<"light" | "dark">("light");
   const [animar, setAnimar] = useState(false);
   const [avisos, setAvisos] = useState<ResumenReservasWeb | null>(null);
+  const [vistaCel, setVistaCel] = useState<"res" | "mesas">("res");
+  const [mas, setMas] = useState(false);
 
   // Datos que solo existen en el navegador (sesion, preferencia de la
   // chinche, tema): se leen una vez al montar.
@@ -195,7 +202,14 @@ export default function BarraLateral() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTocada(false);
     setMenuUsuario(false);
+    setMas(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const alCambiar = (e: Event) => setVistaCel((e as CustomEvent<"res" | "mesas">).detail === "mesas" ? "mesas" : "res");
+    window.addEventListener(EVENTO_VISTA_ACTUAL, alCambiar);
+    return () => window.removeEventListener(EVENTO_VISTA_ACTUAL, alCambiar);
+  }, []);
 
   // Tocar afuera cierra la barra abierta a mano (tablet) y el menu del usuario.
   useEffect(() => {
@@ -328,7 +342,84 @@ export default function BarraLateral() {
 
   const clase = ["barra-lateral", fija ? "fija" : "", tocada ? "abierta" : ""].join(" ").trim();
 
+  // Celular: Reservas y Mesas son dos vistas del mismo panel.
+  function irAVista(v: "res" | "mesas") {
+    if (enPanel) window.dispatchEvent(new CustomEvent(EVENTO_VISTA, { detail: v }));
+    else router.push(v === "mesas" ? "/?vista=mesas" : "/");
+  }
+  const enMas = [...informes, ...configuracion].some((it) => it.activo) || pathname.startsWith("/cambiar-password");
+
   return (
+    <>
+    {/* Celular (≤767 px): la barra lateral se esconde y queda esta barra
+        abajo (mockup capax-panel-celular-final). «Más» abre el resto. */}
+    <nav className="barra-celular" aria-label="Menú">
+      <button type="button" className={enPanel && vistaCel === "res" ? "activo" : ""} onClick={() => irAVista("res")}>
+        <Ico n="reservas" size={22} />
+        Reservas
+      </button>
+      <Link href="/reservas-web" className={pathname.startsWith("/reservas-web") ? "activo" : ""} title={n > 0 ? `Reservas web: ${detalleAvisos}` : undefined}>
+        <Ico n="web" size={22} />
+        Web
+        {n > 0 && <i className="bc-burbuja">{n > 99 ? "99+" : n}</i>}
+      </Link>
+      <button type="button" className={enPanel && vistaCel === "mesas" ? "activo" : ""} onClick={() => irAVista("mesas")}>
+        <Ico n="mesas" size={22} />
+        Mesas
+      </button>
+      <Link
+        href="/plano"
+        className={pathname.startsWith("/plano") ? "activo" : ""}
+        onClick={(e) => {
+          e.preventDefault();
+          router.push(contextoPlano());
+        }}
+      >
+        <Ico n="mapa" size={22} />
+        Mapa
+      </Link>
+      <button type="button" className={mas || enMas ? "activo" : ""} onClick={() => setMas((m) => !m)} aria-expanded={mas}>
+        <svg viewBox="0 0 24 24" width={22} height={22} fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="19" cy="12" r="2" />
+        </svg>
+        Más
+      </button>
+    </nav>
+    {mas && (
+      <>
+        <div className="bc-velo" onClick={() => setMas(false)} />
+        <div className="bc-hoja" role="dialog" aria-modal="true" aria-label="Más opciones">
+          <i className="bc-asa" />
+          <div className="bc-yo">
+            <span className="bl-avatar">{(nombre ?? "?").trim().charAt(0).toUpperCase()}</span>
+            <span>
+              <b>{nombre ?? "Usuario"}</b>
+              <small>{admin ? "Admin" : "Equipo"}</small>
+            </span>
+          </div>
+          {[...informes.filter((it) => it.icono !== "imprimir"), ...configuracion].map((it) => (
+            <Link key={it.texto} href={it.href!} className={it.activo ? "activo" : ""}>
+              <Ico n={it.icono} size={20} />
+              {it.texto}
+            </Link>
+          ))}
+          <button type="button" onClick={alternarTema}>
+            <IconoTema oscuro={tema === "dark"} />
+            {tema === "dark" ? "Modo claro" : "Modo oscuro"}
+          </button>
+          <Link href="/cambiar-password">
+            <Ico n="llave" size={20} />
+            Cambiar contraseña
+          </Link>
+          <button type="button" className="bl-salir" onClick={salir}>
+            <Ico n="salir" size={20} />
+            Salir
+          </button>
+        </div>
+      </>
+    )}
     <nav ref={raiz} className={clase} aria-label="Menú principal">
       <div className="bl-logo">
         <button
@@ -433,5 +524,6 @@ export default function BarraLateral() {
         </button>
       </div>
     </nav>
+    </>
   );
 }

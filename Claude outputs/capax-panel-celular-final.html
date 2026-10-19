@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>capax · Panel en el celular (final)</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 60px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+h1{font-size:25px;letter-spacing:-.01em}.intro{color:#5b6870;font-size:14.5px;line-height:1.5;max-width:92ch;margin-top:6px}
+.zona{display:grid;grid-template-columns:370px minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.zona{grid-template-columns:1fr}.tel{margin:0 auto}}
+.tabs{display:inline-flex;padding:4px;gap:3px;background:#fff;border:1px solid #cfd8de;border-radius:12px}
+.tabs button{border:0;background:none;padding:8px 14px;border-radius:9px;font:inherit;font-size:14px;font-weight:700;color:#5b6870;cursor:pointer}
+.tabs button[aria-pressed=true]{background:#13242e;color:#fff}
+.panel{display:grid;gap:14px}
+.card{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:16px 18px;display:grid;gap:10px}
+.card h2{font-size:16px}.card p{font-size:13.5px;color:#5b6870;line-height:1.5}
+.tareas{list-style:none;padding:0;display:grid;gap:8px}
+.tareas li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid #e1e7eb;font-size:14px;line-height:1.4}
+.tareas li.act{border-color:#32b49d;background:#eefaf6}
+.tareas li.hecha{color:#8a979e;text-decoration:line-through}
+.tareas .n{flex:none;width:24px;height:24px;border-radius:50%;background:#e6eaee;display:grid;place-items:center;font-size:12px;font-weight:800;color:#13242e;text-decoration:none}
+.tareas li.act .n{background:#32b49d;color:#04221c}.tareas li.hecha .n{background:#1d7a69;color:#fff}
+.tareas .tq{margin-left:auto;flex:none;font-size:12px;font-weight:700;color:#5b6870;text-decoration:none}
+table.res{width:100%;border-collapse:collapse;font-size:13.5px}
+table.res th,table.res td{text-align:left;padding:7px 8px;border-bottom:1px solid #e6eaee}
+table.res th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5b6870}
+table.res td.num{font-variant-numeric:tabular-nums;font-weight:700}
+table.res tr.tot td{font-weight:800;border-bottom:0}
+.gana{color:#1d7a69}
+.acciones{display:flex;gap:8px;flex-wrap:wrap}
+.acciones button{border:1px solid #cfd8de;background:#fff;border-radius:10px;padding:8px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.acciones button:hover{background:#f4f7f9}
+button:focus-visible{outline:2px solid #32b49d;outline-offset:2px}
+
+/* ---------- el celular (tokens del panel, oscuro) ---------- */
+.tel{width:370px;height:800px;border-radius:46px;padding:11px;background:#0b0d0e;box-shadow:0 26px 50px -26px rgba(0,0,0,.5)}
+.pant{position:relative;height:100%;border-radius:36px;overflow:hidden;background:#000;color:#f2f2f2;display:flex;flex-direction:column;font-size:14px;user-select:none;-webkit-user-select:none}
+.pant button{font:inherit;cursor:pointer}
+.cab{background:#0e0e0f;border-bottom:1px solid #242426;padding:28px 12px 10px;display:grid;gap:9px;flex:none}
+.fecha{display:flex;align-items:center;gap:6px}
+.ib{width:34px;height:34px;border-radius:10px;border:1px solid #242426;background:#0e0e0f;color:#f2f2f2;display:grid;place-items:center;flex:none}
+.ib.cal{color:#6fd3bf;margin-left:2px}
+.ft{flex:1;text-align:center;display:grid;gap:1px}.ft b{font-size:16px}.ft span{font-size:11.5px;color:#8c8c8c}
+.ft em{font-style:normal;font-size:10px;font-weight:800;text-transform:uppercase;background:#32b49d;color:#04221c;padding:1px 6px;border-radius:99px;margin-right:4px}
+.ft em.rel{background:#1c1c1f;color:#8c8c8c}
+.filtros{display:flex;gap:6px}
+.seg{display:flex;gap:2px;padding:3px;border-radius:11px;background:#1c1c1f;border:1px solid #242426}.seg.sal{flex:1;overflow:hidden}
+.seg button{position:relative;border:0;background:none;padding:6px 10px;border-radius:8px;font-size:12.5px;font-weight:600;color:#8c8c8c;white-space:nowrap}
+.seg button.on{background:#174a6e;color:#fff}
+.seg button.av::after{content:"";position:absolute;inset:0;border-radius:8px;box-shadow:inset 0 0 0 1.5px #e5484d}
+.cab3{padding-bottom:0}
+.sw{flex:none;display:flex;align-items:center;gap:6px;border:1px solid #2e2e31;background:#141416;border-radius:99px;padding:3px 10px 3px 3px;color:#f2f2f2}
+.sw-b{width:28px;height:28px;border-radius:50%;background:#2a3a5a;color:#cfe0ff;display:grid;place-items:center}.sw.dia .sw-b{background:#f2c94c;color:#3a2a00}.sw-t{font-size:12.5px;font-weight:700}
+.tabs3{display:flex;gap:4px;margin:0 -12px;padding:0 12px;border-top:1px solid #1c1c1f}
+.tab{flex:1;display:flex;justify-content:center;align-items:center;gap:6px;border:0;background:none;padding:12px 0 11px;font-size:13.5px;font-weight:600;color:#8c8c8c;border-bottom:2px solid transparent}
+.tab i{font-style:normal;font-size:11px;font-weight:800;background:#26262a;color:#d6d6d6;border-radius:99px;padding:1px 6px}.tab.on{color:#fff;border-bottom-color:#32b49d}.tab.on i{background:#32b49d;color:#04221c}
+.cuerpo{flex:1;overflow-y:auto;padding:10px 12px 96px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+.cuerpo::-webkit-scrollbar{display:none}.cuerpo>*{flex-shrink:0}
+.stats{display:flex;gap:6px}
+.stats span{flex:none;font-size:11.5px;color:#8c8c8c;background:#0e0e0f;border:1px solid #242426;border-radius:99px;padding:4px 8px}
+.stats b{color:#f2f2f2}.stats .sm{border-color:#4a3a14;color:#e0a942}.stats .sm b{color:#e0a942}
+.hora{display:flex;align-items:center;gap:8px;margin-top:4px}.hora b{font-size:12px;color:#8c8c8c;font-variant-numeric:tabular-nums}.hora i{flex:1;height:1px;background:#242426}
+.tj{display:flex;gap:10px;align-items:center;background:#0e0e0f;border:1px solid #242426;border-radius:14px;padding:10px 12px;border-left:3px solid #242426;cursor:pointer}
+.tj.tarde{border-left-color:#e0a942}.tj.llego{border-left-color:#32b49d;background:#0f1f1a}.tj.fue{opacity:.45}
+.tj-c{flex:1;min-width:0;display:grid;gap:4px}.tj-t{display:flex;gap:6px;align-items:center}.tj-t b{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;text-transform:uppercase;color:#6fd3bf;background:#102f29;padding:2px 6px;border-radius:99px;flex:none}
+.tag.tarde{color:#e0a942;background:#2a2210;text-transform:none;font-weight:700}
+.tj-d{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pax{font-size:12px;font-weight:700;color:#d6d6d6}
+.mesa{border:0;font-size:11.5px;font-weight:700;background:#174a6e;color:#fff;padding:3px 9px;border-radius:7px}
+.mesa.vacia{background:none;border:1px dashed #6b5320;color:#e0a942}
+.dato{display:flex;gap:5px;align-items:center;font-size:11.5px;color:#8c8c8c}.dato.com{font-style:italic}
+.chk{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid #36363a;background:none;display:grid;place-items:center;color:transparent}
+.chk.on{background:#32b49d;border-color:#32b49d;color:#04221c}
+.agregar{border:1px dashed #36363a;background:none;color:#8c8c8c;border-radius:12px;padding:10px;font-size:13px}
+.fab{position:absolute;right:16px;bottom:86px;width:54px;height:54px;border-radius:18px;border:0;background:#32b49d;color:#04221c;display:grid;place-items:center;box-shadow:0 10px 24px -8px rgba(50,180,157,.6);z-index:3}
+.nav{position:absolute;left:0;right:0;bottom:0;height:70px;padding:6px 6px 14px;background:#0e0e0f;border-top:1px solid #242426;display:grid;grid-template-columns:repeat(5,1fr);z-index:4}
+.ni{position:relative;border:0;background:none;display:grid;justify-items:center;align-content:center;gap:2px;color:#8c8c8c}
+.ni small{font-size:10.5px;font-weight:600}.ni.on{color:#6fd3bf}
+.ni b{position:absolute;top:0;left:calc(50% + 4px);min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#e5484d;color:#fff;font-size:10.5px;display:grid;place-items:center}
+.sub-t{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}.sub-t b{font-size:15px}.sub-t span{font-size:12px;color:#8c8c8c}
+.mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.m{border:0;height:60px;border-radius:12px;background:#1a1a1c;color:#f2f2f2;display:grid;place-items:center;align-content:center;font-weight:800;font-size:16px;line-height:1.1}
+.m small{font-size:10.5px;color:#8c8c8c;font-weight:600}
+.m.res{background:#c00000}.m.res small{color:#ffd6d6}.m.ok{background:#32b49d;color:#04221c}.m.ok small{color:#04221c}
+.m.walk{background:#8f5ad1}.m.walk small{color:#efe3ff}
+.m.elegible{box-shadow:0 0 0 2px #32b49d;animation:titila 1.2s ease-in-out infinite}
+@keyframes titila{50%{box-shadow:0 0 0 2px rgba(50,180,157,.25)}}
+.m:disabled{opacity:.35}
+.ley{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:#8c8c8c}.ley i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.sinmesa{background:#2a2210;border:1px solid #4a3a14;border-radius:14px;padding:10px 12px;display:grid;gap:7px;color:#e0a942}.sinmesa b{font-size:13px}.sinmesa small{font-size:11.5px}
+.fila-s{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:#f2d38e}
+.btn-v{border:0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;background:#32b49d;color:#04221c;flex:none}
+.espera{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#0e0e0f;border:1px solid #242426;border-radius:12px;padding:9px 12px;font-size:13px}
+.modo{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#102f29;color:#6fd3bf;border:1px solid #1d4a3c;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600}
+.modo button{border:0;background:none;color:#f2f2f2;font-size:12px;text-decoration:underline}
+.tabla{background:#0e0e0f;border:1px solid #242426;border-radius:14px;overflow:hidden}
+.thead,.fila{display:grid;grid-template-columns:48px 44px 34px 1fr 40px;align-items:center;gap:4px;padding:0 6px 0 10px}
+.thead{height:32px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#8c8c8c;font-weight:700;border-bottom:1px solid #242426}
+.fila{width:100%;border:0;background:none;color:#f2f2f2;text-align:left;height:48px;border-bottom:1px solid #1c1c1f;border-left:3px solid transparent;font-size:13.5px}
+.fila.tarde{border-left-color:#e0a942}.fila.llego{border-left-color:#32b49d;background:#0f1f1a}.fila.fue{opacity:.45}
+.h{font-variant-numeric:tabular-nums;color:#d6d6d6}.fm{font-weight:800}.fp{color:#d6d6d6}
+.fn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fn i{font-style:normal;font-size:9.5px;font-weight:800;text-transform:uppercase;color:#6fd3bf}
+.fchk{width:30px;height:30px;border-radius:8px;border:2px solid #36363a;background:none;display:grid;place-items:center;color:#04221c}
+.fchk.on{background:#32b49d;border-color:#32b49d}
+.fila.vacia{color:#8c8c8c}
+.velo{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:5}
+.hoja{position:absolute;left:0;right:0;bottom:0;max-height:88%;overflow-y:auto;background:#141416;border-radius:22px 22px 0 0;padding:10px 16px 26px;display:grid;gap:12px;border-top:1px solid #2e2e31;z-index:6;animation:sube .22s ease-out}
+@keyframes sube{from{transform:translateY(40px);opacity:.4}}
+.asa{justify-self:center;width:40px;height:5px;border-radius:99px;background:#36363a}
+.h-t{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.h-t b{font-size:18px}.h-x{width:100%;font-size:12.5px;color:#8c8c8c}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cmp{display:grid;gap:5px}.cmp>small{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#8c8c8c;font-weight:700}
+.cont{display:flex;align-items:center;justify-content:space-between;background:#1c1c1f;border-radius:12px;padding:4px}
+.cont button{width:38px;height:38px;border-radius:10px;border:0;background:#0e0e0f;color:#f2f2f2;font-size:18px}.cont b{font-size:18px}
+.sel{height:46px;border:0;border-radius:12px;background:#174a6e;color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:800;font-size:17px}
+.sel.vacia{background:#1c1c1f;color:#e0a942;font-size:14px}
+.sel span{font-size:11px;font-weight:600;opacity:.8}
+.inp{width:100%;background:#1c1c1f;border:1px solid #2e2e31;border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;color:#f2f2f2}
+.inp:focus{outline:2px solid #32b49d;outline-offset:0}
+.horas{display:flex;flex-wrap:wrap;gap:6px}.horas button{border:1px solid #2e2e31;background:none;color:#d6d6d6;border-radius:10px;padding:8px 11px;font-size:13px;font-weight:700}
+.horas button.on{background:#174a6e;border-color:#174a6e;color:#fff}
+.tog{display:flex;gap:6px}.t{flex:1;border:1px solid #2e2e31;background:none;color:#8c8c8c;text-align:center;padding:9px 0;border-radius:11px;font-size:12.5px;font-weight:700}
+.t.on{background:#32b49d;color:#04221c;border-color:transparent}
+.acc{display:flex;gap:6px}.acc button{flex:1;height:42px;border-radius:11px;border:1px solid #2e2e31;background:none;color:#f2f2f2;font-size:13px;font-weight:700}
+.acc .pri{background:#32b49d;border-color:#32b49d;color:#04221c}.acc .del{color:#ff8a8e}
+.toast{position:absolute;left:12px;right:12px;bottom:84px;z-index:7;background:#f2f2f2;color:#13242e;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;text-align:center;animation:sube .2s ease-out}
+.vacio{color:#8c8c8c;text-align:center;padding:30px 10px;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Panel en el celular: opción A con salón y turno 3</h1>
+    <p class="intro">Así quedaría todo junto: las tarjetas de la opción A y, arriba, los salones como pestañas con su número y el turno como interruptor sol/luna al lado de la fecha. Funciona igual que el prototipo anterior; podés repetir las tareas.</p>
+  </div>
+  <div class="zona">
+    <div class="tel"><div class="pant" id="pant"></div></div>
+    <div class="panel">
+      <div class="tabs" role="group" aria-label="Opción" hidden>
+        <button type="button" data-op="A" aria-pressed="true">A · Tarjetas</button>
+        <button type="button" data-op="B" aria-pressed="false">B · Tabla compacta</button>
+      </div>
+      <div class="card">
+        <h2 id="t-tareas">Tareas · opción A</h2>
+        <ol class="tareas" id="tareas"></ol>
+        <div class="acciones"><button type="button" id="reini">Empezar de nuevo esta opción</button></div>
+      </div>
+      <div class="card">
+        <h2>Toques por tarea</h2>
+        <table class="res"><thead><tr><th>Tarea</th><th>A · Tarjetas</th><th>B · Tabla</th></tr></thead><tbody id="res"></tbody></table>
+        <p>Menos toques = más rápido. Lo que se escribe con el teclado no cuenta.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- iconos ----------
+  const ic = (p, s = 20, sw = 2) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const I = {
+    izq: ic('<path d="M15 6l-6 6 6 6"/>', 18), der: ic('<path d="M9 6l6 6-6 6"/>', 18),
+    cal: ic('<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>', 18),
+    ojo: ic('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', 22),
+    web: ic('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>', 22),
+    mapa: ic('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>', 22),
+    mesa: ic('<circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>', 22),
+    mas: ic('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', 22),
+    tel: ic('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>', 13),
+    com: ic('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', 13),
+    reloj: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 13),
+    ok: ic('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 18, 3), okc: ic('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 15, 3),
+    plus: ic('<path d="M12 5v14M5 12h14"/>', 24, 2.6),
+    sol: ic('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', 16),
+    luna: ic('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>', 16),
+  };
+
+  // ---------- datos de ejemplo ----------
+  const SALONES = [
+    { id: "rest", nombre: "Restaurant", mesas: [["1",2],["2",2],["3",4],["4",4],["5",2],["6",4],["7",6],["8",4],["9",4],["10",2],["11",2],["12",2],["14",6]] },
+    { id: "bar", nombre: "Bar", mesas: [["20",2],["21",2],["22",2],["23",4],["24",4],["25",2],["26",2]] },
+    { id: "ter", nombre: "Terraza", mesas: [["30",4],["31",4],["32",4],["33",2],["34",2],["35",2],["36",6],["37",4]] },
+  ];
+  const HORAS = { almuerzo: ["12:30","13:00","13:30","14:00"], cena: ["20:30","21:00","21:30","22:00","22:30"] };
+  let uid = 1;
+  const r = (h, m, pax, n, t, c = "", web = false, extra = {}) => ({ id: uid++, h, m, pax, n, t, c, web, asis: false, fue: false, tarde: false, ...extra });
+  function datosIniciales() {
+    uid = 1;
+    const d = {};
+    d["0|rest|cena"] = { res: [
+      r("20:30","1",2,"Castro","Hab 108","",false,{tarde:true}), r("20:30","3",4,"Fernández","11 4012-3344","",false,{tarde:true}),
+      r("21:00","12",2,"Laura Gómez","11 5555-0142","Aniversario",true), r("21:00","7",6,"Familia Ruiz","11 4420-7781","",false,{asis:true}),
+      r("21:30","8",4,"Sosa","11 6021-3390"), r("21:30",null,2,"Ana Torres","11 4444-1111","Ventana",true),
+      r("22:00","10",2,"Benítez","Hab 214"),
+    ], walk: [], espera: [{ id: 900, n: "Grupo Díaz", pax: 3, h: "21:20" }] };
+    d["0|bar|cena"] = { res: [ r("21:00","20",2,"Paz","11 4455-1290"), r("21:00","23",4,"Molina","11 6630-1145"), r("22:00",null,2,"Ortega","Hab 305","",true) ], walk: [], espera: [] };
+    d["0|ter|cena"] = { res: [ r("20:30","30",4,"Acosta","11 4789-2210"), r("21:00","36",6,"Cumple Lucía","11 6677-8899","Torta",true) ], walk: [], espera: [] };
+    d["0|rest|almuerzo"] = { res: [ r("12:30","2",2,"Rossi","11 5050-2020"), r("13:00","6",4,"Vera","11 3344-5566") ], walk: [], espera: [] };
+    return d;
+  }
+  const NOMBRES = ["Gil","Luna","Ríos","Medina","Herrera","Cabrera","Suárez","Molina"];
+  function turnoData(k) {
+    if (!S.d[k]) {
+      const [off, sal] = k.split("|");
+      const n = Math.abs(+off) % 3 + 1;
+      const salon = SALONES.find(s => s.id === sal);
+      const hs = HORAS[k.split("|")[2]];
+      S.d[k] = { res: Array.from({ length: n }, (_, i) => r(hs[i % hs.length], salon.mesas[i * 2]?.[0] ?? null, 2 + (i % 3) * 2, NOMBRES[(i + Math.abs(+off)) % NOMBRES.length], "11 4" + (100 + i) + "-2" + (300 + i))), walk: [], espera: [] };
+    }
+    return S.d[k];
+  }
+
+  // ---------- estado ----------
+  const S = { op: "A", off: 0, salon: "rest", turno: "cena", tab: "res", hoja: null, modo: null, toast: null, d: datosIniciales(), borrador: null };
+  const TAREAS = [
+    { t: "Llegó <b>Castro</b>: marcá que asistió.", ok: () => rp("Castro")?.asis },
+    { t: "<b>Ana Torres</b> (reserva web) no tiene mesa: dale una mesa libre de 2.", ok: () => !!rp("Ana Torres")?.m },
+    { t: "<b>Laura Gómez</b> avisó que vienen 3: cambiale los pax a 3.", ok: () => rp("Laura Gómez")?.pax === 3 },
+    { t: "Cargá una reserva nueva: <b>Pérez, 4 pax, 22:00</b>.", ok: () => S.d["0|rest|cena"].res.some(x => /p[eé]rez/i.test(x.n) && x.pax === 4 && x.h === "22:00") },
+    { t: "Sentá al <b>Grupo Díaz</b> (lista de espera) en una mesa libre.", ok: () => !S.d["0|rest|cena"].espera.length },
+    { t: "<b>Fernández</b> ya se fue: liberá su mesa (Se fue).", ok: () => rp("Fernández")?.fue },
+  ];
+  const toques = { A: TAREAS.map(() => null), B: TAREAS.map(() => null) };
+  let cuenta = 0;
+  function rp(n) { return S.d["0|rest|cena"].res.find(x => x.n === n); }
+  function activa() { return TAREAS.findIndex((t, i) => toques[S.op][i] === null); }
+
+  const clave = () => `${S.off}|${S.salon}|${S.turno}`;
+  const salon = () => SALONES.find(s => s.id === S.salon);
+  const td = () => turnoData(clave());
+  function ocupadas(k = clave()) { const t = turnoData(k); return new Set([...t.res.filter(x => x.m && !x.fue).map(x => x.m), ...t.walk]); }
+  function avisoSalon(sid) { const k = `${S.off}|${sid}|${S.turno}`; return sid !== S.salon && turnoData(k).res.length > 0; }
+
+  const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  function fechaTxt() { const d = new Date(2026, 9, 17 + S.off); return `${DIAS[d.getDay()]} ${d.getDate()} oct`; }
+  function rel() { return S.off === 0 ? '<em>Hoy</em>' : `<em class="rel">${S.off === 1 ? "Mañana" : S.off === -1 ? "Ayer" : (S.off > 0 ? "En " + S.off + " días" : "Hace " + (-S.off) + " días")}</em>`; }
+
+  // ---------- partes de la pantalla ----------
+  function cab() {
+    const cuenta = (sid) => turnoData(`${S.off}|${sid}|${S.turno}`).res.length;
+    const tabs = SALONES.map(s => `<button data-a="salon" data-v="${s.id}" class="tab ${s.id === S.salon ? "on" : ""}">${s.nombre}<i>${cuenta(s.id)}</i></button>`).join("");
+    const dia = S.turno === "almuerzo";
+    return `<header class="cab cab3"><div class="fecha"><button class="ib" data-a="dia" data-v="-1" aria-label="Día anterior">${I.izq}</button>
+      <div class="ft"><b>${fechaTxt()}</b><span>${rel()}</span></div>
+      <button class="ib" data-a="dia" data-v="1" aria-label="Día siguiente">${I.der}</button>
+      <button class="sw ${dia ? "dia" : ""}" data-a="turno" data-v="${dia ? "cena" : "almuerzo"}" aria-label="Cambiar a ${dia ? "cena" : "almuerzo"}"><span class="sw-b">${dia ? I.sol : I.luna}</span><span class="sw-t">${dia ? "Almuerzo" : "Cena"}</span></button></div>
+      <div class="tabs3">${tabs}</div></header>`;
+  }
+  function stats() {
+    const t = td(), act = t.res.filter(x => !x.fue);
+    const libres = salon().mesas.length - ocupadas().size;
+    const sin = act.filter(x => !x.m).length;
+    return `<div class="stats"><span><b>${t.res.length}</b> ${t.res.length === 1 ? "reserva" : "reservas"}</span><span><b>${act.reduce((a, x) => a + x.pax, 0)}</b> pax</span><span><b>${libres}</b> libres</span>${sin ? `<span class="sm"><b>${sin}</b> sin mesa</span>` : ""}</div>`;
+  }
+  const ordenadas = () => [...td().res].sort((a, b) => a.h.localeCompare(b.h) || a.id - b.id);
+  const estado = (x) => x.fue ? "fue" : x.asis ? "llego" : x.tarde ? "tarde" : "";
+
+  function listaA() {
+    const rs = ordenadas();
+    if (!rs.length) return `<div class="vacio">Sin reservas para este turno.</div><button class="agregar" data-a="nueva">+ Agregar reserva</button>`;
+    let out = "", prev = null;
+    for (const x of rs) {
+      if (x.h !== prev) { out += `<div class="hora"><b>${x.h}</b><i></i></div>`; prev = x.h; }
+      out += `<article class="tj ${estado(x)}" data-a="detalle" data-v="${x.id}">
+        <div class="tj-c"><div class="tj-t"><b>${x.n}</b>${x.web ? '<span class="tag">web</span>' : ""}${x.fue ? '<span class="tag tarde">se fue</span>' : ""}</div>
+        <div class="tj-d"><span class="pax">${x.pax} pax</span>${x.m ? `<button class="mesa" data-a="elegirMesa" data-v="${x.id}">Mesa ${x.m}</button>` : `<button class="mesa vacia" data-a="elegirMesa" data-v="${x.id}">+ Mesa</button>`}${x.tarde && !x.asis && !x.fue ? `<span class="tag tarde">${I.reloj} 15 min tarde</span>` : ""}</div>
+        <span class="dato">${I.tel}${x.t}</span>${x.c ? `<span class="dato com">${I.com}${x.c}</span>` : ""}</div>
+        <button class="chk ${x.asis ? "on" : ""}" data-a="asis" data-v="${x.id}" aria-label="Asistió ${x.n}">${I.ok}</button></article>`;
+    }
+    return out + `<button class="agregar" data-a="nueva">+ Agregar reserva</button>`;
+  }
+  function tablaB() {
+    const filas = ordenadas().map(x => `<div class="fila ${estado(x)}" role="button" data-a="detalle" data-v="${x.id}"><span class="h">${x.h}</span><span class="fm">${x.m ?? "—"}</span><span class="fp">${x.pax}</span><span class="fn">${x.n}${x.web ? " <i>web</i>" : ""}</span>
+      <button class="fchk ${x.asis ? "on" : ""}" data-a="asis" data-v="${x.id}" aria-label="Asistió ${x.n}">${x.asis ? I.okc : ""}</button></div>`).join("");
+    return `<div class="tabla"><div class="thead"><span>Hora</span><span>Mesa</span><span>Pax</span><span>Nombre</span><span>✓</span></div>${filas || '<div class="vacio">Sin reservas para este turno.</div>'}
+      <button class="fila vacia" data-a="nueva"><span class="h"></span><span style="grid-column:2/-1">+ agregar reserva</span></button></div>`;
+  }
+  function mesasTab() {
+    const t = td(), occ = ocupadas();
+    const sentados = new Set(t.res.filter(x => x.m && x.asis && !x.fue).map(x => x.m));
+    const elegir = !!S.modo;
+    const grid = salon().mesas.map(([c, p]) => {
+      const walk = t.walk.includes(c), res = occ.has(c) && !walk;
+      const cls = walk ? "walk" : sentados.has(c) ? "ok" : res ? "res" : "";
+      const libre = !occ.has(c);
+      return `<button class="m ${cls} ${elegir && libre ? "elegible" : ""}" data-a="mesaTap" data-v="${c}" ${elegir && !libre ? "disabled" : ""}>${c}<small>${p}p</small></button>`;
+    }).join("");
+    const sin = t.res.filter(x => !x.m && !x.fue);
+    const libres = salon().mesas.filter(([c]) => !occ.has(c));
+    let s = "";
+    if (S.modo) s += `<div class="modo"><span>Tocá una mesa libre para <b>${S.modo.nombre}</b></span><button data-a="cancelarModo">Cancelar</button></div>`;
+    s += `<div class="sub-t"><b>Mesas · ${S.turno === "cena" ? "Cena" : "Almuerzo"}</b><span>${libres.length} libres de ${salon().mesas.length} · ${libres.reduce((a, [, p]) => a + p, 0)} lugares</span></div>
+      <div class="mgrid">${grid}</div><div class="ley"><span><i style="background:#1a1a1c;border:1px solid #36363a"></i>Libre</span><span><i style="background:#c00000"></i>Reservada</span><span><i style="background:#32b49d"></i>Sentados</span><span><i style="background:#8f5ad1"></i>Walk-in</span></div>`;
+    if (sin.length) s += `<div class="sinmesa"><b>${sin.length === 1 ? "1 reserva sin mesa" : sin.length + " reservas sin mesa"}</b>${sin.map(x => `<div class="fila-s"><span>${x.h} · ${x.n} · ${x.pax} pax</span><button class="btn-v" data-a="modoRes" data-v="${x.id}">Asignar</button></div>`).join("")}<small>Tocá «Asignar» y después una mesa libre.</small></div>`;
+    s += `<div class="sub-t"><b>Lista de espera</b><span>${t.espera.length}</span></div>`;
+    s += t.espera.length ? t.espera.map(e => `<div class="espera"><span>${e.n} · ${e.pax} pax · ${e.h}</span><button class="btn-v" data-a="modoEsp" data-v="${e.id}">Sentar</button></div>`).join("") : '<div class="vacio" style="padding:10px">No hay nadie esperando.</div>';
+    return s;
+  }
+  function nav() {
+    const it = (k, svg, t, b = "") => `<button class="ni ${S.tab === k ? "on" : ""}" data-a="tab" data-v="${k}">${svg}${b ? `<b>${b}</b>` : ""}<small>${t}</small></button>`;
+    return `<nav class="nav">${it("res", I.ojo, "Reservas")}${it("web", I.web, "Web", "3")}${it("mesas", I.mesa, "Mesas")}${it("mapa", I.mapa, "Mapa")}${it("mas", I.mas, "Más")}</nav>`;
+  }
+  function hoja() {
+    const h = S.hoja; if (!h) return "";
+    let c = "";
+    if (h.tipo === "detalle") {
+      const x = td().res.find(z => z.id === h.id); if (!x) return "";
+      const p = salon().mesas.find(([cc]) => cc === x.m)?.[1];
+      c = `<div class="h-t"><b>${x.n}</b>${x.web ? '<span class="tag">web</span>' : ""}<span class="h-x">${x.h} · ${salon().nombre}</span></div>
+        <div class="campos"><div class="cmp"><small>Pax</small><div class="cont"><button data-a="pax" data-v="-1">−</button><b>${x.pax}</b><button data-a="pax" data-v="1">+</button></div></div>
+        <div class="cmp"><small>Mesa</small><button class="sel ${x.m ? "" : "vacia"}" data-a="elegirMesa" data-v="${x.id}">${x.m ? `${x.m} <span>${p}p</span>` : "Elegir mesa"}</button></div></div>
+        <div class="cmp"><small>Hab / Tel</small><input class="inp" data-campo="t" value="${x.t}"></div>
+        <div class="cmp"><small>Comentarios</small><input class="inp" data-campo="c" value="${x.c}" placeholder="—"></div>
+        <div class="tog"><button class="t ${x.asis ? "on" : ""}" data-a="asis" data-v="${x.id}">✓ Asistió</button><button class="t ${x.fue ? "on" : ""}" data-a="fue" data-v="${x.id}">Se fue</button></div>
+        <div class="acc"><button class="del" data-a="borrar" data-v="${x.id}">Borrar</button><button class="pri" data-a="cerrar">Listo</button></div>`;
+    } else if (h.tipo === "mesa") {
+      const x = td().res.find(z => z.id === h.id); const occ = ocupadas();
+      const grid = salon().mesas.map(([cc, p]) => { const mia = cc === x.m; const libre = !occ.has(cc) || mia; return `<button class="m ${mia ? "res" : ""}" data-a="ponerMesa" data-v="${cc}" ${libre ? "" : "disabled"}>${cc}<small>${p}p</small></button>`; }).join("");
+      c = `<div class="h-t"><b>Mesa para ${x.n}</b><span class="h-x">${x.pax} pax · ${x.h} · las ocupadas no se pueden elegir</span></div><div class="mgrid">${grid}</div>
+        <div class="acc">${x.m ? '<button data-a="ponerMesa" data-v="">Quitar mesa</button>' : ""}<button data-a="${h.volver ? "volverDetalle" : "cerrar"}">${h.volver ? "Volver" : "Cancelar"}</button></div>`;
+    } else if (h.tipo === "nueva") {
+      const b = S.borrador;
+      c = `<div class="h-t"><b>Nueva reserva</b><span class="h-x">${fechaTxt()} · ${S.turno === "cena" ? "Cena" : "Almuerzo"} · ${salon().nombre}</span></div>
+        <div class="cmp"><small>Hora</small><div class="horas">${HORAS[S.turno].map(hh => `<button class="${b.h === hh ? "on" : ""}" data-a="bh" data-v="${hh}">${hh}</button>`).join("")}</div></div>
+        <div class="campos"><div class="cmp"><small>Pax</small><div class="cont"><button data-a="bpax" data-v="-1">−</button><b>${b.pax}</b><button data-a="bpax" data-v="1">+</button></div></div>
+        <div class="cmp"><small>Nombre</small><input class="inp" data-borr="n" value="${b.n}" placeholder="Apellido"></div></div>
+        <div class="cmp"><small>Hab / Tel (opcional)</small><input class="inp" data-borr="t" value="${b.t}"></div>
+        <div class="acc"><button data-a="cerrar">Cancelar</button><button class="pri" data-a="guardar">Guardar</button></div>`;
+    } else if (h.tipo === "mesaLibre") {
+      c = `<div class="h-t"><b>Mesa ${h.c}</b><span class="h-x">Libre</span></div>
+        <div class="acc"><button data-a="walkin" data-v="${h.c}">Marcar walk-in</button><button data-a="cerrar">Cerrar</button></div>`;
+    }
+    return `<div class="velo" data-a="cerrar"></div><div class="hoja" role="dialog"><i class="asa"></i>${c}</div>`;
+  }
+
+  function pintar() {
+    const p = document.getElementById("pant");
+    const sc = p.querySelector(".cuerpo")?.scrollTop ?? 0;
+    let cuerpo = "";
+    if (S.tab === "mesas") cuerpo = stats() + mesasTab();
+    else cuerpo = stats() + (S.op === "A" ? listaA() : tablaB());
+    p.innerHTML = cab() + `<div class="cuerpo">${cuerpo}</div>` + (S.tab === "res" && S.op === "A" ? `<button class="fab" data-a="nueva" aria-label="Nueva reserva">${I.plus}</button>` : "") + nav() + hoja() + (S.toast ? `<div class="toast">${S.toast}</div>` : "");
+    const cu = p.querySelector(".cuerpo"); if (cu) cu.scrollTop = sc;
+    pintarPanel();
+  }
+  function pintarPanel() {
+    document.getElementById("t-tareas").textContent = `Tareas · opción ${S.op}`;
+    document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.op === S.op));
+    const a = activa();
+    document.getElementById("tareas").innerHTML = TAREAS.map((t, i) => {
+      const n = toques[S.op][i];
+      return `<li class="${n !== null ? "hecha" : i === a ? "act" : ""}"><span class="n">${i + 1}</span><span>${t.t}</span><span class="tq">${n !== null ? n + " toques" : i === a ? cuenta + " toques" : ""}</span></li>`;
+    }).join("") + (a === -1 ? '<li class="act"><span class="n">✓</span><span>¡Listo! Probá la otra opción y compará abajo.</span></li>' : "");
+    let tA = 0, tB = 0, compA = true, compB = true;
+    const filas = TAREAS.map((t, i) => {
+      const a1 = toques.A[i], b1 = toques.B[i];
+      if (a1 === null) compA = false; else tA += a1;
+      if (b1 === null) compB = false; else tB += b1;
+      const g = a1 !== null && b1 !== null ? (a1 < b1 ? "A" : b1 < a1 ? "B" : "") : "";
+      return `<tr><td>${i + 1}</td><td class="num ${g === "A" ? "gana" : ""}">${a1 ?? "—"}</td><td class="num ${g === "B" ? "gana" : ""}">${b1 ?? "—"}</td></tr>`;
+    }).join("");
+    document.getElementById("res").innerHTML = filas + `<tr class="tot"><td>Total</td><td class="num">${compA ? tA : "—"}</td><td class="num">${compB ? tB : "—"}</td></tr>`;
+  }
+  let tt;
+  function aviso(m) { S.toast = m; clearTimeout(tt); tt = setTimeout(() => { S.toast = null; pintar(); }, 1800); }
+
+  function revisarTareas() {
+    let a = activa();
+    while (a !== -1 && TAREAS[a].ok()) { toques[S.op][a] = cuenta; cuenta = 0; a = activa(); }
+  }
+
+  // ---------- acciones ----------
+  const pant = document.getElementById("pant");
+  pant.addEventListener("pointerdown", (e) => { if (e.target.closest("button, [data-a], input")) cuenta++; });
+  pant.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-a]"); if (!el || el.disabled) return;
+    const a = el.dataset.a, v = el.dataset.v;
+    if (["asis","elegirMesa","fue","pax","bpax","bh"].includes(a)) e.stopPropagation();
+    const t = td();
+    const x = () => t.res.find(z => z.id === +(v ?? S.hoja?.id));
+    switch (a) {
+      case "dia": S.off += +v; S.modo = null; break;
+      case "salon": S.salon = v; S.modo = null; break;
+      case "turno": S.turno = v; S.modo = null; break;
+      case "tab": if (v === "res" || v === "mesas") { S.tab = v; S.modo = null; } else aviso("No se incluye en esta prueba"); break;
+      case "nada": aviso("El calendario no se incluye en esta prueba"); break;
+      case "asis": { const r1 = x(); r1.asis = !r1.asis; if (!r1.asis) r1.fue = false; break; }
+      case "fue": { const r1 = x(); r1.fue = !r1.fue; if (r1.fue) r1.asis = true; break; }
+      case "detalle": if (e.target.closest(".chk, .fchk, .mesa")) return; S.hoja = { tipo: "detalle", id: +v }; break;
+      case "elegirMesa": S.hoja = { tipo: "mesa", id: +v, volver: S.hoja?.tipo === "detalle" }; break;
+      case "ponerMesa": { const r1 = t.res.find(z => z.id === S.hoja.id); r1.m = v || null; S.hoja = S.hoja.volver ? { tipo: "detalle", id: r1.id } : null; if (v) aviso(`Mesa ${v} para ${r1.n}`); break; }
+      case "volverDetalle": S.hoja = { tipo: "detalle", id: S.hoja.id }; break;
+      case "pax": { const r1 = t.res.find(z => z.id === S.hoja.id); r1.pax = Math.max(1, Math.min(20, r1.pax + +v)); break; }
+      case "borrar": t.res = t.res.filter(z => z.id !== +v); S.hoja = null; aviso("Reserva borrada"); break;
+      case "cerrar": S.hoja = null; break;
+      case "nueva": S.borrador = { h: HORAS[S.turno].at(-2), pax: 2, n: "", t: "" }; S.hoja = { tipo: "nueva" }; break;
+      case "bh": S.borrador.h = v; break;
+      case "bpax": S.borrador.pax = Math.max(1, Math.min(20, S.borrador.pax + +v)); break;
+      case "guardar": {
+        const b = S.borrador; if (!b.n.trim()) { aviso("Falta el nombre"); return; }
+        t.res.push(r(b.h, null, b.pax, b.n.trim(), b.t.trim() || "—")); S.hoja = null; aviso(`Reserva de ${b.n.trim()} a las ${b.h}, sin mesa`); break;
+      }
+      case "modoRes": { const r1 = x(); S.modo = { tipo: "res", id: r1.id, nombre: r1.n }; break; }
+      case "modoEsp": { const es = t.espera.find(z => z.id === +v); S.modo = { tipo: "esp", id: es.id, nombre: es.n }; break; }
+      case "cancelarModo": S.modo = null; break;
+      case "mesaTap": {
+        const occ = ocupadas();
+        if (S.modo) {
+          if (occ.has(v)) return;
+          if (S.modo.tipo === "res") { const r1 = t.res.find(z => z.id === S.modo.id); r1.m = v; aviso(`Mesa ${v} para ${r1.n}`); }
+          else { const es = t.espera.find(z => z.id === S.modo.id); t.espera = t.espera.filter(z => z.id !== es.id); t.res.push(r(new Date(2026,9,17,21,20).toTimeString().slice(0,5), v, es.pax, es.n, "Walk-in", "", false, { asis: true })); aviso(`${es.n} sentado en la mesa ${v}`); }
+          S.modo = null;
+        } else if (t.walk.includes(v)) { t.walk = t.walk.filter(z => z !== v); aviso(`Mesa ${v} libre`); }
+        else if (occ.has(v)) { const r1 = t.res.find(z => z.m === v && !z.fue); if (r1) S.hoja = { tipo: "detalle", id: r1.id }; }
+        else S.hoja = { tipo: "mesaLibre", c: v };
+        break;
+      }
+      case "walkin": t.walk.push(v); S.hoja = null; aviso(`Mesa ${v}: walk-in`); break;
+    }
+    revisarTareas(); pintar();
+  });
+  pant.addEventListener("input", (e) => {
+    const el = e.target;
+    if (el.dataset.campo) { const r1 = td().res.find(z => z.id === S.hoja?.id); if (r1) r1[el.dataset.campo] = el.value; }
+    if (el.dataset.borr) S.borrador[el.dataset.borr] = el.value;
+  });
+
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-op]"); if (!b || b.dataset.op === S.op) return;
+    S.op = b.dataset.op; reiniciar(false);
+  });
+  function reiniciar(borrarToques = true) {
+    S.d = datosIniciales(); S.off = 0; S.salon = "rest"; S.turno = "cena"; S.tab = "res"; S.hoja = null; S.modo = null; S.toast = null; cuenta = 0;
+    if (borrarToques) toques[S.op] = TAREAS.map(() => null);
+    else if (toques[S.op].every(n => n !== null)) toques[S.op] = TAREAS.map(() => null);
+    pintar();
+  }
+  document.getElementById("reini").addEventListener("click", () => reiniciar(true));
+  pintar();
+})();
+</script>
+</body>
+</html>
