@@ -12,13 +12,19 @@ public record PublicoSalonDto(int Id, string Nombre, bool PermiteMerienda, bool 
 
 // Horarios: "almuerzo"/"merienda"/"cena" -> horarios ofrecidos (los de la
 // planilla, ver HorariosDefault). Hoy: fecha local del restaurante.
+// Ubicacion: lo que cargo el Admin en /admin/restaurante (null si todavia no
+// cargo nada; el link usa entonces las variables de entorno).
 public record PublicoConfigDto(
     List<PublicoSalonDto> Salones,
     Dictionary<string, List<string>> Horarios,
     int LimitePaxConfirmaSola,
     int PaxMaximo,
     int DiasAdelante,
-    DateOnly Hoy);
+    DateOnly Hoy,
+    PublicoUbicacionDto? Ubicacion = null);
+
+// "Cómo llegar": direccion y links opcionales de cada app de mapas.
+public record PublicoUbicacionDto(string? Direccion, string? GoogleMapsUrl, string? AppleMapsUrl, string? WazeUrl);
 
 // Estado: "ok" | "pocos" | "lleno" | "bloqueado" (sin reservas online ese
 // dia: el link muestra Motivo/Mensaje y el boton de WhatsApp) | "servicio"

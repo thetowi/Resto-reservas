@@ -6,8 +6,8 @@ import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
 import ThemeToggle from "@/components/ThemeToggle";
 import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
-import { DIRECCION_CLIENTE, LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
-import { opcionesMapa, type AppMapa } from "@/lib/mapas";
+import { LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
+import { direccionMapa, opcionesMapa, type AppMapa } from "@/lib/mapas";
 import {
   ErrorReserva,
   crearReservaPublica,
@@ -19,6 +19,7 @@ import {
   type DisponibilidadPublica,
   type ReservaCreada,
   type SalonDisponible,
+  type UbicacionPublica,
   type TurnoPublico,
 } from "@/lib/reservaPublica";
 
@@ -377,7 +378,7 @@ export default function ReservarPage() {
   if (resultado) {
     return (
       <Marco>
-        <Confirmacion r={resultado} nombre={nombre} comentarios={comentarios} tituloRef={tituloRef} onOtra={reiniciar} />
+        <Confirmacion r={resultado} nombre={nombre} comentarios={comentarios} tituloRef={tituloRef} onOtra={reiniciar} ubicacion={config?.ubicacion} />
       </Marco>
     );
   }
@@ -667,6 +668,7 @@ export default function ReservarPage() {
                 const otro = dispSalon.turnos.find((x) => x.turno !== t.turno && !x.enServicio && x.horarios.some((h) => h.estado !== "sin_lugar"));
                 return (
                   <EnServicio
+                    ubicacion={config?.ubicacion}
                     turno={t.turno}
                     fin={t.finServicio}
                     otroTurno={otro?.turno ?? null}
@@ -1113,12 +1115,14 @@ function LogoBarra() {
 // turno ya empezado, las mesas son por orden de llegada. La tapa del plato
 // sube, se abre hacia arriba y sale vapor (ver .rv-cloche en globals.css).
 function EnServicio({
+  ubicacion,
   turno,
   fin,
   otroTurno,
   onOtroTurno,
   onOtroDia,
 }: {
+  ubicacion?: UbicacionPublica | null;
   turno: TurnoPublico;
   fin?: string | null;
   otroTurno: TurnoPublico | null;
@@ -1151,7 +1155,7 @@ function EnServicio({
         </div>
       )}
       <div className="rv-servicio-acc">
-        <ComoLlegar className="rv-servicio-pri" />
+        <ComoLlegar className="rv-servicio-pri" ubicacion={ubicacion} />
         {otroTurno ? (
           <button type="button" className="rv-servicio-sec" onClick={onOtroTurno}>
             Reservar para {EL_TURNO[otroTurno]}
@@ -1189,12 +1193,13 @@ function IconoPin({ size = 17 }: { size?: number }) {
 // sube desde abajo. Sin direccion ni links, no se muestra (ver lib/mapas.ts).
 const COLOR_APP: Record<AppMapa, string> = { google: "#1a73e8", apple: "#8e8e93", waze: "#33ccff" };
 
-function ComoLlegar({ className }: { className: string }) {
+function ComoLlegar({ className, ubicacion }: { className: string; ubicacion?: UbicacionPublica | null }) {
   // La hoja va en un portal al contenedor .rv (fuera de tarjetas con
   // animaciones de transform, que romperian el position: fixed).
   const [abierta, setAbierta] = useState<HTMLElement | null>(null);
   const [copiada, setCopiada] = useState(false);
-  const opciones = opcionesMapa();
+  const opciones = opcionesMapa(ubicacion);
+  const direccion = direccionMapa(ubicacion);
 
   useEffect(() => {
     if (!abierta) return;
@@ -1215,7 +1220,7 @@ function ComoLlegar({ className }: { className: string }) {
 
   async function copiar() {
     try {
-      await navigator.clipboard.writeText(`${NOMBRE_PUBLICO}, ${DIRECCION_CLIENTE}`);
+      await navigator.clipboard.writeText(`${NOMBRE_PUBLICO}, ${direccion}`);
       setCopiada(true);
       setTimeout(() => setCopiada(false), 2000);
     } catch {
@@ -1235,10 +1240,10 @@ function ComoLlegar({ className }: { className: string }) {
             <div className="rv-hoja" role="dialog" aria-modal="true" aria-labelledby="rv-hoja-t">
               <i className="rv-hoja-asa" aria-hidden="true" />
               <h2 id="rv-hoja-t">Cómo llegar</h2>
-              {DIRECCION_CLIENTE && (
+              {direccion && (
                 <div className="rv-hoja-dir">
                   <IconoPin size={16} />
-                  <span>{DIRECCION_CLIENTE}</span>
+                  <span>{direccion}</span>
                   <button type="button" onClick={copiar}>
                     {copiada ? "Copiada" : "Copiar"}
                   </button>
@@ -1326,12 +1331,14 @@ function Confirmacion({
   comentarios,
   tituloRef,
   onOtra,
+  ubicacion,
 }: {
   r: ReservaCreada;
   nombre: string;
   comentarios: string;
   tituloRef: React.RefObject<HTMLHeadingElement | null>;
   onOtra: () => void;
+  ubicacion?: UbicacionPublica | null;
 }) {
   const ok = r.estado === "confirmada";
   const primerNombre = nombre.trim().split(" ")[0];
@@ -1389,7 +1396,7 @@ function Confirmacion({
           {ok && (
             <AgregarCalendario r={r} />
           )}
-          <ComoLlegar className="rv-sec" />
+          <ComoLlegar className="rv-sec" ubicacion={ubicacion} />
           {WHATSAPP_CLIENTE && (
             <a
               className="rv-sec"

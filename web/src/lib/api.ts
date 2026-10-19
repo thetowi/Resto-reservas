@@ -1,5 +1,6 @@
 import { getToken, cerrarSesion } from "./auth";
 import type {
+  DatosRestaurante,
   Dia,
   ElementoPlano,
   FechaCerradaWeb,
@@ -454,4 +455,14 @@ export function actualizarFechaCerradaWeb(id: number, payload: Omit<CerrarFechas
 
 export function abrirFechaWeb(id: number) {
   return request<void>(`/api/fechas-bloqueadas-bot/${id}`, { method: "DELETE" });
+}
+
+// ---- Datos del restaurante (/admin/restaurante) ----
+
+export function getDatosRestaurante() {
+  return request<DatosRestaurante>("/api/datos-restaurante");
+}
+
+export function guardarDatosRestaurante(datos: Pick<DatosRestaurante, "direccion" | "googleMapsUrl" | "appleMapsUrl" | "wazeUrl">) {
+  return request<DatosRestaurante>("/api/datos-restaurante", { method: "PUT", body: JSON.stringify(datos) });
 }

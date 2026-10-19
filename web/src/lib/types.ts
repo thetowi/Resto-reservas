@@ -259,6 +259,17 @@ export interface ReservaWeb {
 // solo ese turno, si turno no es null) el link no toma reservas y le muestra
 // al cliente mensajeCliente con el boton de WhatsApp. incluyeBot: el bot de
 // WhatsApp tampoco reserva solo. El equipo sigue cargando reservas a mano.
+// Datos del restaurante para el link (/admin/restaurante, solo Admin): la
+// ubicacion de "Cómo llegar". Ver DatosRestauranteController en la API.
+export interface DatosRestaurante {
+  direccion: string | null;
+  googleMapsUrl: string | null;
+  appleMapsUrl: string | null;
+  wazeUrl: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
 export interface FechaCerradaWeb {
   id: number;
   fecha: string;

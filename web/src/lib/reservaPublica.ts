@@ -26,6 +26,16 @@ export interface ConfigPublica {
   paxMaximo: number;
   diasAdelante: number;
   hoy: string;
+  // "Cómo llegar" cargado por el Admin en /admin/restaurante (null si no
+  // cargo nada todavia: se usan las variables de entorno, ver lib/mapas.ts).
+  ubicacion?: UbicacionPublica | null;
+}
+
+export interface UbicacionPublica {
+  direccion: string | null;
+  googleMapsUrl: string | null;
+  appleMapsUrl: string | null;
+  wazeUrl: string | null;
 }
 
 export interface DiaPublico {

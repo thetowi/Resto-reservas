@@ -23,6 +23,7 @@ public class BarrancasDbContext : DbContext
     public DbSet<FechaBloqueadaBot> FechasBloqueadasBot => Set<FechaBloqueadaBot>();
     public DbSet<ConversacionBot> ConversacionesBot => Set<ConversacionBot>();
     public DbSet<ReservaWeb> ReservasWeb => Set<ReservaWeb>();
+    public DbSet<DatosRestaurante> DatosRestaurante => Set<DatosRestaurante>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

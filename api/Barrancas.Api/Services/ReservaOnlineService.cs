@@ -234,13 +234,18 @@ public class ReservaOnlineService
             ["merienda"] = HorariosDe(Turno.Merienda),
             ["cena"] = HorariosDe(Turno.Cena),
         };
+        var datos = await _db.DatosRestaurante.AsNoTracking().OrderBy(d => d.Id).FirstOrDefaultAsync();
+        var ubicacion = datos is null || (datos.Direccion is null && datos.GoogleMapsUrl is null && datos.AppleMapsUrl is null && datos.WazeUrl is null)
+            ? null
+            : new PublicoUbicacionDto(datos.Direccion, datos.GoogleMapsUrl, datos.AppleMapsUrl, datos.WazeUrl);
         return new PublicoConfigDto(
             salones.Select(s => new PublicoSalonDto(s.Id, s.Nombre, s.PermiteMerienda, ConfirmaSola(s))).ToList(),
             horarios,
             LimitePaxConfirmaSola,
             PaxMaximo,
             DiasAdelante,
-            HoyLocal());
+            HoyLocal(),
+            ubicacion);
     }
 
     private static int PaxValido(int pax) => Math.Clamp(pax, 1, PaxMaximo);

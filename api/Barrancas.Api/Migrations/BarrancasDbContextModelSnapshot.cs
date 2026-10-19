@@ -82,6 +82,37 @@ namespace Barrancas.Api.Migrations
                     b.ToTable("ConversacionesBot");
                 });
 
+            modelBuilder.Entity("Barrancas.Api.Models.DatosRestaurante", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AppleMapsUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Direccion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GoogleMapsUrl")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("WazeUrl")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DatosRestaurante");
+                });
+
             modelBuilder.Entity("Barrancas.Api.Models.DivisionMesaDefault", b =>
                 {
                     b.Property<int>("Id")

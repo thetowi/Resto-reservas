@@ -572,6 +572,13 @@ export default function HomePage() {
                   Fechas web
                 </Link>
                 <Link
+                  href="/admin/restaurante"
+                  title="Datos que ve el cliente en el link de reservas (ubicación, Cómo llegar)"
+                  className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
+                >
+                  Restaurante
+                </Link>
+                <Link
                   href="/reportes"
                   className="rounded-lg border border-borde px-3 py-1.5 hover:bg-arena-suave"
                 >
