@@ -447,9 +447,20 @@ export default function BarraLateral() {
         <button
           type="button"
           className={`bl-simbolo ${animar ? "capax-intro" : ""}`}
-          onClick={() => setTocada((t) => !t)}
-          aria-expanded={tocada || fija}
-          aria-label={tocada ? "Cerrar el menú" : "Abrir el menú"}
+          // Desde cualquier pantalla, el logo lleva a Reservas. Ya en
+          // Reservas, abre y cierra la barra (en la tablet, sin mouse, es la
+          // forma de verla abierta).
+          onClick={() => {
+            if (enPanel) {
+              setTocada((t) => !t);
+            } else {
+              setTocada(false);
+              router.push("/");
+            }
+          }}
+          aria-expanded={enPanel ? tocada || fija : undefined}
+          aria-label={enPanel ? (tocada ? "Cerrar el menú" : "Abrir el menú") : "Ir a Reservas"}
+          title={enPanel ? undefined : "Ir a Reservas"}
         >
           <SimboloCapax size={38} className="text-[#f2f2f2]!" />
         </button>
