@@ -13,8 +13,9 @@ namespace Barrancas.Api.Tests;
 
 /// <summary>
 /// Horarios por salón (/api/horarios): sin configurar se usan los de siempre;
-/// lo que guarda el Admin se usa al abrir un día nuevo y en el link, y nunca
-/// toca los días ya abiertos.
+/// lo que guarda el Admin se aplica de hoy en adelante (días nuevos, link y
+/// las filas vacías de los días ya abiertos), sin mover reservas cargadas ni
+/// tocar días anteriores a hoy.
 /// </summary>
 public class HorariosTests : IClassFixture<BarrancasWebApplicationFactory>
 {
@@ -78,25 +79,48 @@ public class HorariosTests : IClassFixture<BarrancasWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Lo_guardado_se_usa_en_los_dias_nuevos_y_no_toca_los_ya_abiertos()
+    public async Task Lo_guardado_se_aplica_de_hoy_en_adelante_sin_mover_reservas()
     {
         var admin = await ClienteAsync("admin");
         var salonId = await RestaurantIdAsync();
         var hoy = ReservaOnlineService.HoyLocal();
+        var pasado = hoy.AddDays(-3);
         var yaAbierto = hoy.AddDays(20);
         var nuevo = hoy.AddDays(21);
 
-        // Un día que ya tenía la planilla abierta con los horarios de siempre.
-        var antes = await FilasDelDiaAsync(yaAbierto, Turno.Cena, salonId);
-        Assert.Equal(HorariosDefault.Cena.Length, antes.Count);
+        // Un día anterior y uno futuro que ya tenían la planilla abierta con
+        // los horarios de siempre; en el futuro hay una reserva a las 20:30.
+        Assert.Equal(HorariosDefault.Cena.Length, (await FilasDelDiaAsync(pasado, Turno.Cena, salonId)).Count);
+        await FilasDelDiaAsync(yaAbierto, Turno.Cena, salonId);
+        int reservaId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<BarrancasDbContext>();
+            var fila = await db.Reservas.FirstAsync(r => r.Fecha == yaAbierto && r.Turno == Turno.Cena && r.SalonId == salonId && r.Hora == "20:30");
+            fila.Pax = 2;
+            fila.Nombre = "Gómez";
+            await db.SaveChangesAsync();
+            reservaId = fila.Id;
+        }
 
         var res = await admin.PutAsJsonAsync($"/api/horarios/{salonId}/cena", new GuardarHorariosRequest(CenaNueva));
         res.EnsureSuccessStatusCode();
         var guardado = await res.Content.ReadFromJsonAsync<HorariosSalonDto>();
         Assert.True(guardado!.Turnos.Single(t => t.Turno == "cena").Personalizado);
+        Assert.True(guardado.DiasActualizados >= 1);
 
+        // Día ya abierto: horarios nuevos y la reserva de las 20:30 intacta.
+        Assert.Equal(new[] { "20:00", "20:00", "20:30", "21:00", "21:00", "21:00", "22:30" }, await FilasDelDiaAsync(yaAbierto, Turno.Cena, salonId));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<BarrancasDbContext>();
+            var fila = await db.Reservas.SingleAsync(r => r.Id == reservaId);
+            Assert.Equal("Gómez", fila.Nombre);
+            Assert.Equal("20:30", fila.Hora);
+        }
+        // Día nuevo: con los horarios nuevos. Día anterior: como estaba.
         Assert.Equal(new[] { "20:00", "20:00", "21:00", "21:00", "21:00", "22:30" }, await FilasDelDiaAsync(nuevo, Turno.Cena, salonId));
-        Assert.Equal(antes, await FilasDelDiaAsync(yaAbierto, Turno.Cena, salonId));
+        Assert.Equal(HorariosDefault.Cena.Length, (await FilasDelDiaAsync(pasado, Turno.Cena, salonId)).Count);
 
         // El link ofrece los horarios nuevos en ese salón.
         var disp = await _factory.CreateClient().GetFromJsonAsync<PublicoDisponibilidadDto>(
@@ -104,11 +128,12 @@ public class HorariosTests : IClassFixture<BarrancasWebApplicationFactory>
         var cena = disp!.Salones.Single(s => s.SalonId == salonId).Turnos.Single(t => t.Turno == "cena");
         Assert.Equal(new[] { "20:00", "21:00", "22:30" }, cena.Horarios.Select(h => h.Hora).ToList());
 
-        // Restaurar: vuelve a los de siempre.
+        // Restaurar: vuelve a los de siempre, también en los días ya abiertos.
         var restaurar = await admin.DeleteAsync($"/api/horarios/{salonId}/cena");
         restaurar.EnsureSuccessStatusCode();
         var final = await restaurar.Content.ReadFromJsonAsync<HorariosSalonDto>();
         Assert.False(final!.Turnos.Single(t => t.Turno == "cena").Personalizado);
+        Assert.Equal(HorariosDefault.Cena.Length, (await FilasDelDiaAsync(nuevo, Turno.Cena, salonId)).Count);
     }
 
     [Theory]

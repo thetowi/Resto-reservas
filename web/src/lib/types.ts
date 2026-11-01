@@ -337,4 +337,7 @@ export interface HorariosTurno {
 export interface HorariosSalon {
   salonId: number;
   turnos: HorariosTurno[];
+  // Al guardar o restaurar: cuántos días ya abiertos (de hoy en adelante)
+  // se rearmaron con los horarios nuevos.
+  diasActualizados?: number;
 }

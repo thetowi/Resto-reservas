@@ -12,9 +12,11 @@ import SalonSelector from "@/components/SalonSelector";
 // Horarios de cada turno por salón (ver api/Models/HorarioTurno.cs): qué
 // horarios tiene la planilla y cuántas filas trae cada uno. Solo Admin. Un
 // salón que nunca se configuró usa los de siempre (los de la planilla
-// original). Lo que se guarda vale para los días que se abran después: los
-// días que ya tienen la planilla abierta no cambian. En el link de reservas,
-// el cupo de cada horario es su cantidad de filas.
+// original). Lo que se guarda se aplica de hoy en adelante: los días nuevos
+// se arman con estos horarios y en los que ya tienen la planilla abierta se
+// rearman solo las filas vacías (las reservas cargadas no se mueven). Los
+// días anteriores a hoy no cambian. En el link de reservas, el cupo de cada
+// horario es su cantidad de filas.
 
 const NOMBRE: Record<Turno, string> = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
 const MAX_HORARIOS = 40;
@@ -24,6 +26,11 @@ function sumarMinutos(hora: string, min: number) {
   const [h, m] = hora.split(":").map(Number);
   const total = Math.min(23 * 60 + 45, h * 60 + m + min);
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function textoAplicado(dias: number | undefined) {
+  if (!dias) return "Se aplica desde hoy.";
+  return `Se aplicó desde hoy, también en ${dias === 1 ? "1 día que ya estaba abierto" : `${dias} días que ya estaban abiertos`}. Las reservas cargadas no se movieron.`;
 }
 
 function iguales(a: FranjaHoraria[], b: FranjaHoraria[]) {
@@ -80,9 +87,9 @@ export default function AdminHorariosPage() {
         </Link>
         <h1 className="mt-1 text-lg font-bold">Horarios</h1>
         <p className="mt-1 max-w-[70ch] text-sm leading-relaxed text-tinta-suave">
-          Los horarios de cada turno y cuántas filas trae la planilla en cada uno. Los cambios se usan desde el próximo
-          día que se abra: los días que ya tienen la planilla abierta quedan como están. En el link de reservas, cada
-          horario acepta tantas reservas como filas tiene.
+          Los horarios de cada turno y cuántas filas trae la planilla en cada uno. Los cambios se aplican de hoy en
+          adelante, también en los días que ya tienen la planilla abierta: ahí se rearman solo las filas vacías y las
+          reservas cargadas no se mueven. En el link de reservas, cada horario acepta tantas reservas como filas tiene.
         </p>
       </div>
 
@@ -152,7 +159,7 @@ function EditorTurno({
       const r = await guardarHorarios(salonId, datos.turno, ordenada);
       setLista(r.turnos.find((t) => t.turno === datos.turno)?.horarios ?? ordenada);
       onGuardado(r.turnos);
-      setAviso("Guardado. Se usa desde el próximo día que se abra.");
+      setAviso(`Guardado. ${textoAplicado(r.diasActualizados)}`);
     } catch (e) {
       onError(e instanceof ApiError ? e.message : "No se pudieron guardar los horarios");
     } finally {
@@ -168,7 +175,7 @@ function EditorTurno({
       const r = await restaurarHorarios(salonId, datos.turno);
       setLista(r.turnos.find((t) => t.turno === datos.turno)?.horarios ?? lista);
       onGuardado(r.turnos);
-      setAviso("Volvió a los horarios de siempre.");
+      setAviso(`Volvió a los horarios de siempre. ${textoAplicado(r.diasActualizados)}`);
     } catch (e) {
       onError(e instanceof ApiError ? e.message : "No se pudieron restaurar los horarios");
     } finally {

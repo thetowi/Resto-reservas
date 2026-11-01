@@ -1,10 +1,12 @@
 using System.Globalization;
 using Barrancas.Api.Data;
 using Barrancas.Api.Dtos;
+using Barrancas.Api.Hubs;
 using Barrancas.Api.Models;
 using Barrancas.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Barrancas.Api.Controllers;
@@ -13,7 +15,10 @@ namespace Barrancas.Api.Controllers;
 /// Horarios de cada turno por salón y cuántas filas tiene cada uno (ver
 /// Models/HorarioTurno.cs). Solo Admin. Guardar reemplaza la lista entera de
 /// ese salón y turno; «Restaurar» la borra y el salón vuelve a usar los de
-/// siempre. Ningún cambio toca los días que ya tienen la planilla abierta.
+/// siempre. En los dos casos se aplica de hoy en adelante, también a los días
+/// que ya tenían la planilla abierta (solo sus filas vacías, ver
+/// HorariosTurnoService.AplicarADiasAbiertosAsync); los días anteriores a hoy
+/// no se tocan.
 /// </summary>
 [ApiController]
 [Authorize(Roles = "Admin")]
@@ -21,10 +26,14 @@ namespace Barrancas.Api.Controllers;
 public class HorariosController : ControllerBase
 {
     private readonly BarrancasDbContext _db;
+    private readonly DiaService _dias;
+    private readonly IHubContext<ReservasHub> _hub;
 
-    public HorariosController(BarrancasDbContext db)
+    public HorariosController(BarrancasDbContext db, DiaService dias, IHubContext<ReservasHub> hub)
     {
         _db = db;
+        _dias = dias;
+        _hub = hub;
     }
 
     [HttpGet]
@@ -68,8 +77,8 @@ public class HorariosController : ControllerBase
         _db.HorariosTurno.RemoveRange(anteriores);
         _db.HorariosTurno.AddRange(limpios);
         await _db.SaveChangesAsync();
-        ReservaOnlineService.InvalidarCache();
-        return Ok(await ArmarAsync(salon));
+        var dias = await AplicarAsync(salonId, t);
+        return Ok(await ArmarAsync(salon, dias));
     }
 
     // Vuelve a los horarios de siempre para ese salón y turno.
@@ -83,11 +92,26 @@ public class HorariosController : ControllerBase
         var anteriores = await _db.HorariosTurno.Where(h => h.SalonId == salonId && h.Turno == t).ToListAsync();
         _db.HorariosTurno.RemoveRange(anteriores);
         await _db.SaveChangesAsync();
-        ReservaOnlineService.InvalidarCache();
-        return Ok(await ArmarAsync(salon));
+        var dias = await AplicarAsync(salonId, t);
+        return Ok(await ArmarAsync(salon, dias));
     }
 
-    private async Task<HorariosSalonDto> ArmarAsync(Salon salon)
+    // De hoy en adelante, a los días que ya tienen la planilla abierta, y
+    // aviso en vivo a quien tenga abierto alguno de esos días en el panel.
+    private async Task<int> AplicarAsync(int salonId, Turno turno)
+    {
+        ReservaOnlineService.InvalidarCache();
+        var dias = await HorariosTurnoService.AplicarADiasAbiertosAsync(_db, salonId, turno, ReservaOnlineService.HoyLocal());
+        foreach (var fecha in dias)
+        {
+            var data = await _dias.GetTurnoAsync(fecha, turno, salonId, sembrar: false);
+            var grupo = ReservasHub.GrupoDe(fecha.ToString("yyyy-MM-dd"), turno.ToString().ToLowerInvariant(), salonId);
+            await _hub.Clients.Group(grupo).SendAsync("TurnoActualizado", data);
+        }
+        return dias.Count;
+    }
+
+    private async Task<HorariosSalonDto> ArmarAsync(Salon salon, int diasActualizados = 0)
     {
         var turnos = new List<HorariosTurnoDto>();
         foreach (var t in new[] { Turno.Almuerzo, Turno.Merienda, Turno.Cena })
@@ -100,7 +124,7 @@ public class HorariosController : ControllerBase
                 personalizado,
                 franjas.Select(f => new FranjaHorariaDto(f.Hora, f.Filas)).ToList()));
         }
-        return new HorariosSalonDto(salon.Id, turnos);
+        return new HorariosSalonDto(salon.Id, turnos, diasActualizados);
     }
 
     private static bool TryParseTurno(string? texto, out Turno turno)
