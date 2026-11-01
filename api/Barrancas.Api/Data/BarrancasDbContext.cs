@@ -27,6 +27,7 @@ public class BarrancasDbContext : DbContext
     public DbSet<SesionRecordada> SesionesRecordadas => Set<SesionRecordada>();
     public DbSet<SuscripcionPush> SuscripcionesPush => Set<SuscripcionPush>();
     public DbSet<ConfigPush> ConfigPush => Set<ConfigPush>();
+    public DbSet<HorarioTurno> HorariosTurno => Set<HorarioTurno>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -266,6 +267,17 @@ public class BarrancasDbContext : DbContext
             e.HasOne(x => x.Usuario)
                 .WithMany()
                 .HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Horarios de cada turno por salón (ver Models/HorarioTurno.cs): una
+        // sola fila por salón + turno + hora. Si se borra el salón, se van.
+        modelBuilder.Entity<HorarioTurno>(e =>
+        {
+            e.HasIndex(x => new { x.SalonId, x.Turno, x.Hora }).IsUnique();
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -54,9 +54,15 @@ function contextoPlano() {
 }
 const STORAGE_TEMA = "barrancas-theme";
 
-type Icono = "campana" | "reservas" | "web" | "mapa" | "reportes" | "imprimir" | "mesas" | "salones" | "fechas" | "restaurante" | "usuarios" | "chinche" | "llave" | "luna" | "sol" | "salir";
+type Icono = "campana" | "reloj" | "reservas" | "web" | "mapa" | "reportes" | "imprimir" | "mesas" | "salones" | "fechas" | "restaurante" | "usuarios" | "chinche" | "llave" | "luna" | "sol" | "salir";
 
 const TRAZOS: Record<Icono, React.ReactNode> = {
+  reloj: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
   campana: (
     <>
       <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
@@ -345,6 +351,7 @@ export default function BarraLateral() {
         [
           { icono: "mesas", texto: "Mesas", href: "/admin/mesas" },
           { icono: "salones", texto: "Salones", href: "/admin/salones" },
+          { icono: "reloj", texto: "Horarios", href: "/admin/horarios", titulo: "Horarios de cada turno y filas por horario" },
           { icono: "fechas", texto: "Fechas web", href: "/admin/fechas-web", titulo: "Días en que el link no toma reservas" },
           { icono: "restaurante", texto: "Restaurante", href: "/admin/restaurante", titulo: "Ubicación y Cómo llegar del link" },
           { icono: "usuarios", texto: "Usuarios", href: "/admin/usuarios" },

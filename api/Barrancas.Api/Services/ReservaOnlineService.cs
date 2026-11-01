@@ -23,9 +23,10 @@ public class ReservaOnlineException : Exception
 /// Reglas (las mismas del bot de WhatsApp, ver ReservaBotService y
 /// claude/whatsapp-bot-reservas.md):
 /// - Solo se ofrecen los salones ACTIVOS; Merienda solo donde esta habilitada.
-/// - Horarios: los de la planilla (HorariosDefault, cada 15 min). Cada horario
-///   tiene un cupo = cuantas filas trae la planilla para esa hora (ej. 12:30
-///   tiene 4); cuando se llena, ese horario deja de ofrecerse.
+/// - Horarios: los de cada salon y turno (los que carga el Admin en
+///   /admin/horarios o, si no cargo ninguno, los de la planilla original, ver
+///   HorariosTurnoService). Cada horario tiene un cupo = cuantas filas tiene
+///   (ej. 12:30 con 4); cuando se llena, ese horario deja de ofrecerse.
 /// - Hay lugar si queda una mesa libre (no ocupada, sin walk-in, no reducida)
 ///   con capacidad para esa cantidad de personas. Para grupos grandes alcanza
 ///   con que la suma de mesas libres llegue (lo arma el staff).
@@ -128,18 +129,28 @@ public class ReservaOnlineService
     public static string FinServicio(Turno turno) =>
         FinDeServicio.TryGetValue(turno, out var fin) ? fin.ToString("HH:mm", CultureInfo.InvariantCulture) : string.Empty;
 
-    public static bool EstaEnServicio(DateTime ahoraLocal, DateOnly fecha, Turno turno)
+    // Con los horarios de siempre (los de la planilla original).
+    public static bool EstaEnServicio(DateTime ahoraLocal, DateOnly fecha, Turno turno) =>
+        EstaEnServicio(ahoraLocal, fecha, turno, HorariosTurnoService.PorDefecto(turno).FirstOrDefault()?.Hora);
+
+    // primerHorario: el primer horario del turno en ese salon (desde ahi
+    // empieza el servicio).
+    public static bool EstaEnServicio(DateTime ahoraLocal, DateOnly fecha, Turno turno, string? primerHorario)
     {
         if (fecha != DateOnly.FromDateTime(ahoraLocal)) return false;
-        var horarios = HorariosDe(turno);
-        if (horarios.Count == 0 || !FinDeServicio.TryGetValue(turno, out var finHora)) return false;
-        if (!TimeOnly.TryParseExact(horarios[0], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var inicio)) return false;
+        if (primerHorario is null || !FinDeServicio.TryGetValue(turno, out var finHora)) return false;
+        if (!TimeOnly.TryParseExact(primerHorario, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var inicio)) return false;
         var fin = finHora == TimeOnly.MinValue ? TimeSpan.FromHours(24) : finHora.ToTimeSpan();
         var ahora = ahoraLocal.TimeOfDay;
         return ahora >= inicio.ToTimeSpan() && ahora < fin;
     }
 
-    private static bool EnServicio(DateOnly fecha, Turno turno) => EstaEnServicio(AhoraLocal(), fecha, turno);
+    private async Task<bool> EnServicioAsync(DateOnly fecha, Turno turno, int salonId)
+    {
+        if (fecha != HoyLocal()) return false;
+        var horarios = await HorariosDeAsync(salonId, turno);
+        return EstaEnServicio(AhoraLocal(), fecha, turno, horarios.FirstOrDefault());
+    }
 
     // ---------------------------------------------------------------- turnos y horarios
 
@@ -152,11 +163,25 @@ public class ReservaOnlineService
 
     private static string Nombre(Turno turno) => turno.ToString().ToLowerInvariant();
 
-    private static List<string> HorariosDe(Turno turno) =>
-        HorariosDefault.Para(turno).Distinct().OrderBy(h => h, StringComparer.Ordinal).ToList();
+    // Horarios de un salon y turno, leidos una vez por pedido (ver
+    // HorariosTurnoService: los que cargo el Admin o los de siempre).
+    private readonly Dictionary<(int, Turno), List<HorariosTurnoService.Franja>> _franjas = new();
 
-    private static int CupoDe(Turno turno, string hora) =>
-        HorariosDefault.Para(turno).Count(h => h == hora);
+    private async Task<List<HorariosTurnoService.Franja>> FranjasAsync(int salonId, Turno turno)
+    {
+        if (!_franjas.TryGetValue((salonId, turno), out var franjas))
+        {
+            franjas = await HorariosTurnoService.ObtenerAsync(_db, salonId, turno);
+            _franjas[(salonId, turno)] = franjas;
+        }
+        return franjas;
+    }
+
+    private async Task<List<string>> HorariosDeAsync(int salonId, Turno turno) =>
+        (await FranjasAsync(salonId, turno)).Select(f => f.Hora).ToList();
+
+    private async Task<int> CupoDeAsync(int salonId, Turno turno, string hora) =>
+        (await FranjasAsync(salonId, turno)).FirstOrDefault(f => f.Hora == hora)?.Filas ?? 0;
 
     private static bool TryParseTurno(string? texto, out Turno turno)
     {
@@ -213,7 +238,8 @@ public class ReservaOnlineService
     private async Task<EvaluacionTurno> EvaluarTurnoAsync(DateOnly fecha, Turno turno, int salonId, int pax, bool sembrar)
     {
         var data = await _diaService.GetTurnoAsync(fecha, turno, salonId, sembrar);
-        var horarios = HorariosDe(turno);
+        var franjas = await FranjasAsync(salonId, turno);
+        var horarios = franjas.Select(f => f.Hora).ToList();
 
         if (data.EstaCerrado)
         {
@@ -250,7 +276,7 @@ public class ReservaOnlineService
         var estados = horarios.Select(h =>
         {
             var usados = data.Reservas.Count(r => r.Pax is not null && r.Hora == h);
-            var cupo = CupoDe(turno, h);
+            var cupo = franjas.First(f => f.Hora == h).Filas;
             string estado;
             if (!hayLugar || usados >= cupo || HoraYaPaso(fecha, h)) estado = SinLugar;
             else if (mesasAptas <= 2 || cupo - usados == 1) estado = Pocas;
@@ -266,12 +292,17 @@ public class ReservaOnlineService
     public async Task<PublicoConfigDto> ConfigAsync()
     {
         var salones = await SalonesActivosAsync();
-        var horarios = new Dictionary<string, List<string>>
+        // Todos los horarios de cada turno, sumando los de cada salon activo.
+        var horarios = new Dictionary<string, List<string>>();
+        foreach (var turno in new[] { Turno.Almuerzo, Turno.Merienda, Turno.Cena })
         {
-            ["almuerzo"] = HorariosDe(Turno.Almuerzo),
-            ["merienda"] = HorariosDe(Turno.Merienda),
-            ["cena"] = HorariosDe(Turno.Cena),
-        };
+            var todos = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var salon in salones.Where(s => turno != Turno.Merienda || s.PermiteMerienda))
+            {
+                todos.UnionWith(await HorariosDeAsync(salon.Id, turno));
+            }
+            horarios[Nombre(turno)] = todos.ToList();
+        }
         var datos = await _db.DatosRestaurante.AsNoTracking().OrderBy(d => d.Id).FirstOrDefaultAsync();
         var ubicacion = datos is null || (datos.Direccion is null && datos.GoogleMapsUrl is null && datos.AppleMapsUrl is null && datos.WazeUrl is null)
             ? null
@@ -327,7 +358,7 @@ public class ReservaOnlineService
                     // Turno cerrado para la web (el resto del dia sigue abierto).
                     if (cierre is not null && cierre.Cierra(turno)) continue;
                     // Turno de hoy ya en servicio: por orden de llegada.
-                    if (EnServicio(fecha, turno))
+                    if (await EnServicioAsync(fecha, turno, salon.Id))
                     {
                         enServicio = true;
                         continue;
@@ -370,16 +401,16 @@ public class ReservaOnlineService
                     // PorWhatsApp: cerrado para la web por una fecha especial
                     // (el link muestra el mensaje y el boton de WhatsApp).
                     turnos.Add(new PublicoTurnoDto(Nombre(turno), true,
-                        HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
+                        (await HorariosDeAsync(salon.Id, turno)).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
                         PorWhatsApp: !fueraDeRango && cierre is not null));
                     continue;
                 }
-                if (EnServicio(fecha, turno))
+                if (await EnServicioAsync(fecha, turno, salon.Id))
                 {
                     // Hoy, con el turno ya empezado: el link muestra "Estamos
                     // en servicio" (por orden de llegada) hasta FinServicio.
                     turnos.Add(new PublicoTurnoDto(Nombre(turno), false,
-                        HorariosDe(turno).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
+                        (await HorariosDeAsync(salon.Id, turno)).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList(),
                         EnServicio: true, FinServicio: FinServicio(turno)));
                     continue;
                 }
@@ -452,7 +483,7 @@ public class ReservaOnlineService
             throw new ReservaOnlineException("Ese turno no está disponible en ese salón.");
         }
         var hora = req.Hora?.Trim() ?? string.Empty;
-        if (!HorariosDe(turno).Contains(hora))
+        if (!(await HorariosDeAsync(salon.Id, turno)).Contains(hora))
         {
             throw new ReservaOnlineException("Ese horario no está disponible.");
         }
@@ -462,7 +493,7 @@ public class ReservaOnlineService
             throw new ReservaOnlineException(cierre.MensajeCliente ?? "Ese día no tomamos reservas online. Escribinos por WhatsApp y lo vemos.");
         }
 
-        if (EnServicio(req.Fecha, turno))
+        if (await EnServicioAsync(req.Fecha, turno, salon.Id))
         {
             throw new ReservaOnlineException($"Estamos en servicio: hasta las {FinServicio(turno)} las mesas son por orden de llegada.");
         }
@@ -620,7 +651,7 @@ public class ReservaOnlineService
         var libres = MesasLibresEfectivas(data, w.ReservaId).OrderBy(m => m.Orden).ToList();
         var lugares = libres.Sum(m => m.Capacidad);
         var aLaHora = data.Reservas.Count(r => r.Pax is not null && r.Hora == w.Hora && r.Id != w.ReservaId);
-        var cupo = CupoDe(w.Turno, w.Hora);
+        var cupo = await CupoDeAsync(w.SalonId, w.Turno, w.Hora);
         var sugeridas = SugerirMesas(libres, w.Pax);
 
         string estado;

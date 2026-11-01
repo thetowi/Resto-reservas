@@ -7,6 +7,8 @@ import type {
   Dia,
   ElementoPlano,
   FechaCerradaWeb,
+  FranjaHoraria,
+  HorariosSalon,
   Espera,
   LoginResponse,
   Mesa,
@@ -576,6 +578,22 @@ export function patchSalon(
 
 export function borrarSalon(id: number) {
   return request<Salon[]>(`/api/salones/${id}`, { method: "DELETE" });
+}
+
+// ---- Horarios por salón (/admin/horarios, solo Admin)
+export function getHorarios(salonId: number) {
+  return request<HorariosSalon>(`/api/horarios?salonId=${salonId}`);
+}
+
+export function guardarHorarios(salonId: number, turno: Turno, horarios: FranjaHoraria[]) {
+  return request<HorariosSalon>(`/api/horarios/${salonId}/${turno}`, {
+    method: "PUT",
+    body: JSON.stringify({ horarios }),
+  });
+}
+
+export function restaurarHorarios(salonId: number, turno: Turno) {
+  return request<HorariosSalon>(`/api/horarios/${salonId}/${turno}`, { method: "DELETE" });
 }
 
 export { API_URL };

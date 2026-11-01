@@ -319,3 +319,22 @@ export interface FechaCerradaWeb {
   incluyeBot: boolean;
   createdAt: string;
 }
+
+// Horarios de cada turno por salón (/admin/horarios): cada horario con
+// cuántas filas trae la planilla. personalizado = false → el salón usa los
+// horarios de siempre para ese turno.
+export interface FranjaHoraria {
+  hora: string;
+  filas: number;
+}
+
+export interface HorariosTurno {
+  turno: Turno;
+  personalizado: boolean;
+  horarios: FranjaHoraria[];
+}
+
+export interface HorariosSalon {
+  salonId: number;
+  turnos: HorariosTurno[];
+}

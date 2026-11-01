@@ -1,0 +1,259 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Clientes</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 70px}
+button,input{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:30px}
+h1{font-size:25px} h2{font-size:18px;display:flex;align-items:center;gap:9px}
+h2 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:13px;flex:none}
+.intro{color:#5b6870;font-size:14.5px;line-height:1.5;max-width:92ch;margin-top:6px}
+.sec{display:grid;gap:12px}.sec>p{color:#5b6870;font-size:14px;line-height:1.5;max-width:92ch}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52;max-width:92ch}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:4px;margin-top:4px}
+
+/* opciones de alta */
+.ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.op{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:16px;display:grid;gap:10px;align-content:start;position:relative}
+.op.rec{border:2px solid #32b49d}
+.op .badge{position:absolute;top:-11px;right:14px;background:#32b49d;color:#04221c;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;letter-spacing:.02em}
+.op h3{font-size:16px;display:flex;gap:8px;align-items:center}.op h3 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:12px}
+.op>p{font-size:13.5px;color:#3d4a52;line-height:1.5}
+.flujo{display:grid;gap:6px;background:#f0f3f6;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#3d4a52}
+.flujo div{display:flex;gap:8px;align-items:flex-start}.flujo b{flex:none;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid #c8d2da;display:grid;place-items:center;font-size:11px}
+.pc{display:grid;gap:4px;font-size:12.5px;line-height:1.4}.pc span{display:flex;gap:6px}.pc .s{color:#1d7a69}.pc .n{color:#a33}
+
+/* grilla del panel (compu) */
+.panel{background:#fff;border:1px solid #c8d2da;border-radius:16px;position:relative}
+@media (max-width:980px){.panel{overflow-x:auto}}
+.panel.con-pop{margin-bottom:170px}
+#panel3.con-pop{margin-bottom:430px}
+table{border-collapse:collapse;width:100%;min-width:900px;font-size:13.5px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5d6970;text-align:left;font-weight:700;padding:10px 8px;border-bottom:1px solid #e3e8eb;white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid #eef1f3;vertical-align:middle}
+tr:nth-child(even) td{background:#f6f8fa}
+td.c{text-align:center}.hora{font-variant-numeric:tabular-nums;color:#3d4a52}
+.mesa{display:inline-block;min-width:36px;text-align:center;border:1px solid #c8d2da;border-radius:7px;padding:3px 8px;font-weight:700;font-size:12.5px}
+.chk{width:16px;height:16px;border:1.5px solid #9aa6ae;border-radius:4px;display:inline-block;vertical-align:middle}
+.chk.on{background:#32b49d;border-color:#32b49d}
+.nombre{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.campo{position:relative}
+.inp{width:100%;min-width:170px;border:1px solid transparent;border-radius:7px;padding:5px 7px;background:transparent}
+.inp:focus{outline:none;border-color:#32b49d;background:#fff;box-shadow:0 0 0 3px rgba(50,180,157,.18)}
+.inp.editando{border-color:#32b49d;background:#fff;box-shadow:0 0 0 3px rgba(50,180,157,.18)}
+
+/* avisos en la fila */
+.av{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;cursor:pointer;border:0;line-height:1.5}
+.av svg{flex:none}
+.av.vip{background:#fbf0d9;color:#8a5a00}
+.av.alergia{background:#fdeaea;color:#b3261e}
+.av.falto{background:#fdeaea;color:#b3261e}
+.av.visita{background:#e0f4f0;color:#1d7a69}
+.av.cumple{background:#eee6f8;color:#6b3fb0}
+.av.huesped{background:#e3e8eb;color:#3d4a52}
+.av.nuevo{background:#e3e8eb;color:#5b6870}
+
+/* autocompletar */
+.sug{position:absolute;left:0;top:calc(100% + 4px);z-index:10;width:390px;background:#fff;border:1px solid #c8d2da;border-radius:12px;box-shadow:0 18px 40px -14px rgba(12,38,55,.35);padding:5px;display:none}
+.sug.ver{display:grid}
+.sug .t{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5d6970;font-weight:700;padding:6px 9px 4px}
+.it{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;text-align:left;border:0;background:none;border-radius:9px;padding:8px 9px;cursor:pointer;width:100%}
+.it:hover,.it.sel{background:#f0f3f6}
+.it .ini{grid-row:span 2;width:32px;height:32px;border-radius:50%;background:#e0f4f0;color:#1d7a69;display:grid;place-items:center;font-weight:800;font-size:13px}
+.it b{font-size:13.5px;display:block}.it b .av{margin-left:6px;vertical-align:1px}
+.it small{font-size:12px;color:#5d6970}
+.it mark{background:none;color:#13242e;text-decoration:underline;text-decoration-color:#32b49d;text-decoration-thickness:2px}
+.sug .nuevo{display:flex;gap:8px;align-items:center;border-top:1px solid #eef1f3;margin-top:4px;padding:9px;font-size:12.5px;color:#5b6870}
+
+/* ficha chica */
+.ficha{position:absolute;z-index:12;width:340px;background:#fff;border:1px solid #c8d2da;border-radius:14px;box-shadow:0 22px 50px -16px rgba(12,38,55,.45);padding:14px;display:none;gap:11px}
+.ficha.ver{display:grid}
+.f-cab{display:flex;gap:10px;align-items:center}.f-cab .ini{width:40px;height:40px;border-radius:50%;background:#e0f4f0;color:#1d7a69;display:grid;place-items:center;font-weight:800}
+.f-cab b{font-size:15.5px;display:block}.f-cab small{font-size:12px;color:#5d6970}
+.f-x{margin-left:auto;border:0;background:none;color:#5d6970;cursor:pointer;font-size:18px;line-height:1}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stats div{background:#f0f3f6;border-radius:10px;padding:7px 8px;display:grid;gap:1px}
+.stats b{font-size:17px;font-variant-numeric:tabular-nums}.stats small{font-size:11px;color:#5d6970}
+.stats .mal b{color:#b3261e}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5d6970;font-weight:700}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{border:1px solid #c8d2da;background:#fff;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer;color:#5b6870}
+.tag.on{border-color:transparent}
+.tag.on.vip{background:#fbf0d9;color:#8a5a00}.tag.on.hab{background:#e0f4f0;color:#1d7a69}.tag.on.hue{background:#e3e8eb;color:#13242e}
+.tag.auto{cursor:default;background:#fdeaea;color:#b3261e;border-color:transparent}
+.ta{width:100%;border:1px solid #c8d2da;border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.4;resize:none;font-family:inherit}
+.fila2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fila2 input{width:100%;border:1px solid #c8d2da;border-radius:9px;padding:6px 9px;font-size:13px}
+.hist{display:grid;gap:3px;font-size:12px}
+.hist div{display:flex;justify-content:space-between;gap:8px;color:#3d4a52;padding:4px 0;border-bottom:1px solid #f0f3f6}
+.hist .no{color:#b3261e}.hist .si{color:#1d7a69}
+
+/* celu */
+.fila{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.tel{width:340px;max-width:100%;height:600px;border-radius:44px;padding:11px;background:#0b0d0e;box-shadow:0 26px 50px -26px rgba(0,0,0,.5);flex:none}
+.pant{position:relative;height:100%;border-radius:34px;overflow:hidden;background:#f0f3f6;font-size:14px}
+.cab{background:#fff;border-bottom:1px solid #c8d2da;padding:30px 14px 10px;text-align:center;font-weight:700}
+.cuerpo{padding:10px 12px;display:grid;gap:8px}
+.hh{display:flex;gap:10px;align-items:center;font-size:13px;font-weight:700;margin-top:4px}.hh i{flex:1;height:1px;background:#c8d2da}
+.tj{display:flex;gap:10px;align-items:center;padding:11px 12px;background:#fff;border:1px solid #c8d2da;border-radius:16px}
+.tj .c{flex:1;min-width:0;display:grid;gap:5px}.tj b{font-size:15px}
+.tj .d{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.tj .cb{flex:none;width:44px;height:44px;border-radius:13px;border:2px solid #b7c2c9}
+.chip{border:1px solid #c8d2da;background:#e3e8eb;border-radius:8px;padding:3px 9px;font-weight:700;font-size:12px}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:8px 14px 16px;display:grid;gap:10px;box-shadow:0 -20px 50px -20px rgba(0,0,0,.4)}
+.asa{justify-self:center;width:40px;height:4px;border-radius:99px;background:#c8d2da}
+.velo{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.paso{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #d3dbe1;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.paso b{font-variant-numeric:tabular-nums}
+.import{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.import .k{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:12px 14px;display:grid;gap:3px}
+.import .k b{font-size:24px;font-variant-numeric:tabular-nums}.import .k small{font-size:12.5px;color:#5b6870;line-height:1.4}
+</style></head><body><div class="wrap">
+
+<div><h1>Clientes: guardar y reconocer a quien reserva</h1>
+<p class="intro">Cómo quedaría en capax con lo que elegiste: historial y asistencia, notas y alergias, etiquetas y cumpleaños; usado para <b>autocompletar</b> al cargar una reserva y como <b>aviso en la fila</b>. Primero, las opciones para cómo se guarda un cliente. Todo se puede tocar.</p></div>
+
+<!-- 1 -->
+<section class="sec"><h2><i>1</i>¿Cómo se guarda un cliente?</h2>
+<p>El dato que identifica a un cliente es el <b>celular</b>: es lo único que no se repite entre personas (dos «Gómez» son dos clientes distintos; el mismo celular es la misma persona aunque una vez anoten «Laura Gómez» y otra «Gomez L.»).</p>
+<div class="ops">
+ <div class="op"><h3><i>A</i>Automático por teléfono</h3>
+  <p>Cada reserva que tiene un celular crea la ficha del cliente, o le suma la visita si ya existía. Nadie tiene que tocar nada.</p>
+  <div class="flujo"><div><b>1</b>Se carga «Gómez · 11 5555-0142»</div><div><b>2</b>No existe ese celular → se crea la ficha</div><div><b>3</b>Próxima reserva con ese celular → suma la visita</div></div>
+  <div class="pc"><span class="s">✓ La base se arma sola, también con las del link</span><span class="n">✗ Los huéspedes que solo dejan «Hab 108» no quedan guardados</span><span class="n">✗ Un celular mal tipeado crea una ficha de más</span></div></div>
+ <div class="op"><h3><i>B</i>A mano</h3>
+  <p>Se guarda solo cuando alguien toca «Guardar cliente» en una reserva.</p>
+  <div class="flujo"><div><b>1</b>Se carga la reserva</div><div><b>2</b>El equipo toca «Guardar cliente»</div><div><b>3</b>Se crea la ficha</div></div>
+  <div class="pc"><span class="s">✓ Solo entra quien el equipo decide</span><span class="n">✗ En pleno servicio nadie lo toca: la base queda incompleta</span><span class="n">✗ El historial y los «faltó» no sirven si faltan visitas</span></div></div>
+ <div class="op rec"><span class="badge">RECOMENDADA</span><h3><i>C</i>Automático + elegir de la lista</h3>
+  <p>Igual que la A, y además el autocompletar: al escribir el apellido aparece el cliente y se elige de la lista. Así una reserva de un huésped sin celular («Hab 108») igual queda en su ficha, y no se crean fichas repetidas por un error de tipeo.</p>
+  <div class="flujo"><div><b>1</b>Escribís «Gom» → aparece «Laura Gómez»</div><div><b>2</b>La elegís → se completan nombre y celular y la reserva queda en su ficha</div><div><b>3</b>Si no está en la lista, se carga normal y con el celular se crea sola</div></div>
+  <div class="pc"><span class="s">✓ La base se arma sola y queda más prolija</span><span class="s">✓ Sirve también para huéspedes sin celular</span><span class="s">✓ Cargar es más rápido (no hay que tipear el celular)</span></div></div>
+</div></section>
+
+<!-- 2 -->
+<section class="sec"><h2><i>2</i>Autocompletar al cargar una reserva</h2>
+<p>En la columna «Apellido / Nombre» (y también en «Hab / Tel» escribiendo números). Probá escribir en la fila de las 21:30: <b>gom</b>, <b>rui</b> o <b>5555</b>. Con ↑ ↓ y Enter se elige sin mouse.</p>
+<div class="panel con-pop"><table>
+ <thead><tr><th>Hora</th><th>Mesa</th><th>Pidió</th><th>Pax</th><th>Apellido / Nombre</th><th>Hab / Tel</th><th>Comentarios</th><th>Asistió</th></tr></thead>
+ <tbody>
+  <tr><td class="hora">21:00</td><td><span class="mesa">7</span></td><td class="c"><span class="chk"></span></td><td class="c">6</td>
+   <td><div class="nombre">Familia Ruiz <button class="av vip" data-ficha="ruiz">★ VIP</button><button class="av visita" data-ficha="ruiz">9.ª visita</button></div></td><td>11 4420-7781</td><td>Mesa de siempre</td><td class="c"><span class="chk"></span></td></tr>
+  <tr><td class="hora">21:30</td><td><span class="mesa">—</span></td><td class="c"><span class="chk"></span></td><td class="c" id="pax">2</td>
+   <td><div class="campo"><input class="inp editando" id="inpNombre" placeholder="Escribí el apellido…" autocomplete="off" value="gom"><div class="sug ver" id="sug"></div></div><div class="nombre" id="avisosNuevos" style="margin-top:4px"></div></td>
+   <td><input class="inp" id="inpTel" placeholder="Hab / Tel" autocomplete="off"></td><td><input class="inp" id="inpCom" placeholder="—"></td><td class="c"><span class="chk"></span></td></tr>
+  <tr><td class="hora">22:00</td><td><span class="mesa">10</span></td><td class="c"><span class="chk"></span></td><td class="c">2</td><td></td><td></td><td></td><td class="c"><span class="chk"></span></td></tr>
+ </tbody></table></div>
+<div class="nota">Si no aparece nadie, se carga como siempre. Al guardar con un celular, se crea la ficha sola (opción C). Elegir de la lista <b>no pisa</b> lo que ya escribiste en Comentarios.</div>
+</section>
+
+<!-- 3 -->
+<section class="sec"><h2><i>3</i>Aviso en la reserva</h2>
+<p>Marcas chicas al lado del nombre, solo cuando hay algo que saber. Tocando una se abre la <b>ficha chica</b> del cliente, para ver el historial y editar notas, etiquetas y cumpleaños (ahí se cargan esos datos, sin pantalla aparte).</p>
+<div class="panel con-pop" id="panel3"><table>
+ <thead><tr><th>Hora</th><th>Mesa</th><th>Pax</th><th>Apellido / Nombre</th><th>Hab / Tel</th><th>Comentarios</th><th>Asistió</th></tr></thead>
+ <tbody>
+  <tr><td class="hora">20:30</td><td><span class="mesa">1</span></td><td class="c">2</td><td><div class="nombre">Castro <button class="av huesped" data-ficha="castro">Huésped</button><button class="av visita" data-ficha="castro">3.ª visita</button></div></td><td>Hab 108</td><td></td><td class="c"><span class="chk on"></span></td></tr>
+  <tr><td class="hora">20:30</td><td><span class="mesa">3</span></td><td class="c">4</td><td><div class="nombre">Fernández <button class="av falto" data-ficha="fernandez">Faltó 2 veces</button></div></td><td>11 4012-3344</td><td></td><td class="c"><span class="chk"></span></td></tr>
+  <tr><td class="hora">21:00</td><td><span class="mesa">12</span></td><td class="c">2</td><td><div class="nombre">Laura Gómez <button class="av alergia" data-ficha="gomez"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>Celíaca</button><button class="av cumple" data-ficha="gomez">Cumple el sáb</button><button class="av visita" data-ficha="gomez">6.ª visita</button></div></td><td>11 5555-0142</td><td>Aniversario</td><td class="c"><span class="chk"></span></td></tr>
+  <tr><td class="hora">21:00</td><td><span class="mesa">7</span></td><td class="c">6</td><td><div class="nombre">Familia Ruiz <button class="av vip" data-ficha="ruiz">★ VIP</button><button class="av visita" data-ficha="ruiz">9.ª visita</button></div></td><td>11 4420-7781</td><td>Mesa de siempre</td><td class="c"><span class="chk"></span></td></tr>
+  <tr><td class="hora">21:30</td><td><span class="mesa">8</span></td><td class="c">4</td><td><div class="nombre">Sosa <button class="av nuevo" data-ficha="sosa">Primera vez</button></div></td><td>11 6021-3390</td><td></td><td class="c"><span class="chk"></span></td></tr>
+ </tbody></table>
+ <div class="ficha" id="ficha"></div></div>
+<div class="nota"><b>Qué marcas aparecen</b> (de más importante a menos; como mucho tres por fila):
+<ul><li><b>Alergia</b> (roja): lo que se anote en «Alergias» de la ficha.</li>
+<li><b>Faltó N veces</b> (roja, automática): reservas pasadas con ese cliente que no tuvieron «Asistió».</li>
+<li><b>VIP / Habitué / Huésped</b>: etiquetas que pone el equipo. «Habitué» también se puede poner sola a partir de 5 visitas.</li>
+<li><b>Cumple</b>: si la reserva cae dentro de la semana de su cumpleaños.</li>
+<li><b>N.ª visita</b> o <b>Primera vez</b>: cuenta las veces que vino (solo las que tienen «Asistió»).</li></ul></div>
+</section>
+
+<!-- 4 -->
+<section class="sec"><h2><i>4</i>En el celular</h2>
+<p>Las mismas marcas en las tarjetas del panel del celular; al cargar una reserva nueva, el campo Nombre sugiere clientes igual que en la compu.</p>
+<div class="fila">
+ <div class="tel"><div class="pant"><div class="cab">Sáb 17 oct · Cena</div><div class="cuerpo">
+  <div class="hh">21:00<i></i></div>
+  <div class="tj"><div class="c"><b>Laura Gómez</b><div class="d"><span><b style="font-size:13px">2</b> pax</span><span class="chip">Mesa 12</span></div><div class="d"><span class="av alergia">Celíaca</span><span class="av cumple">Cumple el sáb</span><span class="av visita">6.ª visita</span></div></div><span class="cb"></span></div>
+  <div class="tj"><div class="c"><b>Familia Ruiz</b><div class="d"><span><b style="font-size:13px">6</b> pax</span><span class="chip">Mesa 7</span></div><div class="d"><span class="av vip">★ VIP</span><span class="av visita">9.ª visita</span></div></div><span class="cb"></span></div>
+  <div class="hh">21:30<i></i></div>
+  <div class="tj"><div class="c"><b>Fernández</b><div class="d"><span><b style="font-size:13px">4</b> pax</span><span class="chip">Mesa 3</span></div><div class="d"><span class="av falto">Faltó 2 veces</span></div></div><span class="cb"></span></div>
+ </div></div></div>
+ <div class="tel"><div class="pant"><div class="cab">Sáb 17 oct · Cena</div><div class="cuerpo"><div class="tj"><div class="c"><b>Familia Ruiz</b></div><span class="cb"></span></div></div>
+  <div class="velo"></div><div class="hoja"><i class="asa"></i><b style="font-size:17px">Nueva reserva</b>
+   <div style="display:grid;gap:5px"><span class="lbl">Nombre</span><div style="border:1.5px solid #32b49d;border-radius:12px;padding:10px 12px;font-size:16px;box-shadow:0 0 0 3px rgba(50,180,157,.18)">gom|</div></div>
+   <div style="border:1px solid #c8d2da;border-radius:12px;padding:4px;display:grid">
+    <div class="it sel"><span class="ini">LG</span><b>Laura <mark>Góm</mark>ez <span class="av alergia">Celíaca</span></b><small>11 5555-0142 · 6 visitas</small></div>
+    <div class="it"><span class="ini">MG</span><b>Martín <mark>Góm</mark>ez</b><small>Hab 214 · 1 visita</small></div></div>
+   <div style="display:grid;gap:5px"><span class="lbl">Hab / Tel</span><div style="border:1px solid #c8d2da;border-radius:12px;padding:10px 12px;color:#5d6970">Se completa al elegir</div></div>
+  </div></div></div>
+</div></section>
+
+<!-- 5 -->
+<section class="sec"><h2><i>5</i>Las reservas que ya están cargadas</h2>
+<p>Al instalar esta versión se arma la base una sola vez con todo lo cargado hasta hoy: cada celular distinto pasa a ser un cliente con sus visitas, faltas, último salón y mesa. Los números son de ejemplo.</p>
+<div class="import">
+ <div class="k"><b>1.240</b><small>reservas pasadas con un celular escrito en «Hab / Tel»</small></div>
+ <div class="k"><b>860</b><small>clientes distintos (mismo celular = mismo cliente, aunque el nombre esté escrito distinto)</small></div>
+ <div class="k"><b>412</b><small>reservas solo con habitación: quedan sin cliente, y se pueden vincular eligiendo de la lista la próxima vez</small></div>
+</div>
+<div class="nota"><b>Cómo se reconoce el celular</b> en lo que ya está cargado: se toman los números de «Hab / Tel» y de las reservas del link; si hay 10 dígitos o más (con o sin 11, 15, +54) es un celular, y se guarda siempre igual para que «11 5555-0142» y «+54 9 11 5555 0142» sean el mismo cliente. Lo que no llegue a 10 dígitos («Hab 108», «214») se toma como habitación.<br><br>
+<b>Datos personales</b>: la base guarda nombres, celulares, alergias y cumpleaños; conviene que la política de privacidad del link lo mencione (Ley 25.326).</div>
+</section>
+
+</div>
+<script>
+const clientes=[
+ {id:'gomez',ini:'LG',nombre:'Laura Gómez',tel:'11 5555-0142',visitas:6,faltas:0,ult:'12 sep · Restaurant · mesa 12',av:[['alergia','Celíaca']],notas:'Prefiere ventana. Siempre pide agua sin gas.',alergias:'Celíaca',cumple:'24/10',tags:['hab'],hist:[['12 sep','Cena · Restaurant · 2 pax','si'],['20 ago','Cena · Restaurant · 2 pax','si'],['2 ago','Almuerzo · Terraza · 4 pax','si'],['14 jul','Cena · Restaurant · 2 pax','si']]},
+ {id:'gomez2',ini:'MG',nombre:'Martín Gómez',tel:'Hab 214',visitas:1,faltas:0,ult:'3 oct · Bar',av:[],notas:'',alergias:'',cumple:'',tags:['hue'],hist:[['3 oct','Cena · Bar · 2 pax','si']]},
+ {id:'ruiz',ini:'FR',nombre:'Familia Ruiz',tel:'11 4420-7781',visitas:9,faltas:0,ult:'26 sep · Restaurant · mesa 7',av:[['vip','★ VIP']],notas:'Mesa 7 siempre que se pueda. Traen torta propia en cumpleaños.',alergias:'',cumple:'',tags:['vip','hab'],hist:[['26 sep','Cena · Restaurant · 6 pax','si'],['5 sep','Cena · Restaurant · 5 pax','si'],['16 ago','Cena · Restaurant · 6 pax','si']]},
+ {id:'fernandez',ini:'F',nombre:'Fernández',tel:'11 4012-3344',visitas:1,faltas:2,ult:'30 ago · Restaurant',av:[['falto','Faltó 2 veces']],notas:'',alergias:'',cumple:'',tags:[],hist:[['30 ago','Cena · Restaurant · 4 pax','no'],['9 ago','Cena · Restaurant · 4 pax','no'],['18 jul','Cena · Restaurant · 2 pax','si']]},
+ {id:'castro',ini:'C',nombre:'Castro',tel:'Hab 108',visitas:2,faltas:0,ult:'ayer · Restaurant',av:[['huesped','Huésped']],notas:'',alergias:'',cumple:'',tags:['hue'],hist:[['ayer','Almuerzo · Restaurant · 2 pax','si'],['anteayer','Cena · Restaurant · 2 pax','si']]},
+ {id:'sosa',ini:'S',nombre:'Sosa',tel:'11 6021-3390',visitas:0,faltas:0,ult:'—',av:[],notas:'',alergias:'',cumple:'',tags:[],hist:[]},
+ {id:'ruizj',ini:'JR',nombre:'Julieta Ruiz Díaz',tel:'11 3344-1290',visitas:2,faltas:1,ult:'1 oct · Terraza',av:[['falto','Faltó 1 vez']],notas:'',alergias:'Frutos secos',cumple:'',tags:[],hist:[['1 oct','Almuerzo · Terraza · 3 pax','si'],['10 sep','Cena · Restaurant · 2 pax','no']]},
+];
+const sinTilde=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const dig=s=>s.replace(/\D/g,'');
+const inp=document.getElementById('inpNombre'),sug=document.getElementById('sug'),tel=document.getElementById('inpTel');
+let sel=0,lista=[];
+function marcar(txt,q){if(!q)return txt;const i=sinTilde(txt).indexOf(sinTilde(q));if(i<0)return txt;return txt.slice(0,i)+'<mark>'+txt.slice(i,i+q.length)+'</mark>'+txt.slice(i+q.length);}
+function avisos(c){return c.av.map(([k,t])=>`<span class="av ${k}">${t}</span>`).join('')}
+function pintar(q,porTel){
+ q=q.trim(); if(q.length<2){sug.classList.remove('ver');return;}
+ lista=clientes.filter(c=>porTel?dig(c.tel).includes(dig(q)):sinTilde(c.nombre).split(/\s+/).some(p=>p.startsWith(sinTilde(q)))||sinTilde(c.nombre).includes(sinTilde(q))).slice(0,4);
+ sel=0;
+ sug.innerHTML=`<span class="t">${lista.length?'Clientes':'Sin coincidencias'}</span>`+lista.map((c,i)=>`<button class="it ${i===sel?'sel':''}" data-i="${i}"><span class="ini">${c.ini}</span><b>${porTel?c.nombre:marcar(c.nombre,q)} ${avisos(c)}</b><small>${porTel?marcar(c.tel,q):c.tel} · ${c.visitas===0?'nunca vino':c.visitas+(c.visitas===1?' visita':' visitas')}${c.faltas?` · faltó ${c.faltas}`:''}</small></button>`).join('')+`<div class="nuevo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Si no está, seguí escribiendo y cargalo normal</div>`;
+ sug.classList.add('ver');
+ sug.querySelectorAll('.it').forEach(b=>b.onmousedown=e=>{e.preventDefault();elegir(lista[+b.dataset.i]);});
+}
+function elegir(c){inp.value=c.nombre;tel.value=c.tel;sug.classList.remove('ver');inp.classList.remove('editando');
+ const vis=c.visitas===0?'<span class="av nuevo">Primera vez</span>':`<span class="av visita">${c.visitas+1}.ª visita</span>`;
+ document.getElementById('avisosNuevos').innerHTML=avisos(c)+vis;}
+inp.addEventListener('input',()=>{document.getElementById('avisosNuevos').innerHTML='';pintar(inp.value,false)});
+tel.addEventListener('input',()=>{const d=dig(tel.value);if(d.length>=3){const c=tel;inp.parentElement.appendChild(sug);pintar(tel.value,true);}else sug.classList.remove('ver')});
+[inp,tel].forEach(el=>el.addEventListener('keydown',e=>{if(!sug.classList.contains('ver'))return;
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sel=(sel+(e.key==='ArrowDown'?1:-1)+lista.length)%lista.length;sug.querySelectorAll('.it').forEach((b,i)=>b.classList.toggle('sel',i===sel));}
+ if(e.key==='Enter'&&lista[sel]){e.preventDefault();elegir(lista[sel]);}
+ if(e.key==='Escape')sug.classList.remove('ver');}));
+inp.addEventListener('blur',()=>setTimeout(()=>sug.classList.remove('ver'),120));
+pintar(inp.value,false);
+
+// ficha chica
+const ficha=document.getElementById('ficha'),panel3=document.getElementById('panel3');
+function verFicha(c,ancla){
+ const tg=(k,t)=>`<button class="tag ${k} ${c.tags.includes(k)?'on':''}" data-t="${k}">${t}</button>`;
+ ficha.innerHTML=`<div class="f-cab"><span class="ini">${c.ini}</span><span><b>${c.nombre}</b><small>${c.tel}</small></span><button class="f-x" aria-label="Cerrar">×</button></div>
+ <div class="stats"><div><b>${c.visitas}</b><small>visitas</small></div><div class="${c.faltas?'mal':''}"><b>${c.faltas}</b><small>faltó</small></div><div><b style="font-size:12.5px;line-height:1.3">${c.ult}</b><small>última</small></div></div>
+ <div style="display:grid;gap:5px"><span class="lbl">Etiquetas</span><div class="tags">${tg('vip','★ VIP')}${tg('hab','Habitué')}${tg('hue','Huésped')}${c.faltas?`<span class="tag auto">Faltó ${c.faltas} ${c.faltas===1?'vez':'veces'} · automática</span>`:''}</div></div>
+ <div class="fila2"><label style="display:grid;gap:4px"><span class="lbl">Alergias</span><input value="${c.alergias}" placeholder="Ninguna"></label><label style="display:grid;gap:4px"><span class="lbl">Cumpleaños (día/mes)</span><input value="${c.cumple}" placeholder="dd/mm"></label></div>
+ <label style="display:grid;gap:4px"><span class="lbl">Notas</span><textarea class="ta" rows="2" placeholder="Preferencias, mesa de siempre…">${c.notas}</textarea></label>
+ ${c.hist.length?`<div style="display:grid;gap:4px"><span class="lbl">Últimas visitas</span><div class="hist">${c.hist.map(([f,d,s])=>`<div><span>${f} · ${d}</span><span class="${s}">${s==='si'?'Vino':'No vino'}</span></div>`).join('')}</div></div>`:'<small style="color:#5d6970">Es la primera reserva de este cliente.</small>'}`;
+ const r=ancla.getBoundingClientRect(),p=panel3.getBoundingClientRect();
+ ficha.style.left=Math.min(r.left-p.left,p.width-350)+'px';ficha.style.top=(r.bottom-p.top+6)+'px';ficha.classList.add('ver');
+ ficha.querySelector('.f-x').onclick=()=>ficha.classList.remove('ver');
+ ficha.querySelectorAll('.tag[data-t]').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
+}
+document.querySelectorAll('[data-ficha]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const c=clientes.find(x=>x.id===b.dataset.ficha);if(b.closest('#panel3'))verFicha(c,b);}));
+document.addEventListener('click',e=>{if(!ficha.contains(e.target))ficha.classList.remove('ver')});
+// abrir una de entrada para que se vea
+verFicha(clientes[0],document.querySelector('#panel3 [data-ficha="gomez"]'));
+</script></body></html>

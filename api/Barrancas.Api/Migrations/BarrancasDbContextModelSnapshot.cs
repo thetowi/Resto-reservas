@@ -346,6 +346,35 @@ namespace Barrancas.Api.Migrations
                     b.ToTable("FechasBloqueadasBot");
                 });
 
+            modelBuilder.Entity("Barrancas.Api.Models.HorarioTurno", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Filas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Hora")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SalonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Turno")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalonId", "Turno", "Hora")
+                        .IsUnique();
+
+                    b.ToTable("HorariosTurno");
+                });
+
             modelBuilder.Entity("Barrancas.Api.Models.Mesa", b =>
                 {
                     b.Property<int>("Id")
@@ -896,6 +925,17 @@ namespace Barrancas.Api.Migrations
                         .WithMany()
                         .HasForeignKey("SalonId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.HorarioTurno", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Salon");

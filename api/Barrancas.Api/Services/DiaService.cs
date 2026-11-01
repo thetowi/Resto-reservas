@@ -28,7 +28,10 @@ public class DiaService
         var yaExiste = await _db.Reservas.AnyAsync(r => r.Fecha == fecha && r.Turno == turno && r.SalonId == salonId);
         if (yaExiste) return;
 
-        var horarios = HorariosDefault.Para(turno);
+        // Los horarios que configuró el Admin para este salón y turno (o los
+        // de siempre, ver HorariosTurnoService): una fila vacía por cada fila
+        // de cada horario.
+        var horarios = HorariosTurnoService.Filas(await HorariosTurnoService.ObtenerAsync(_db, salonId, turno));
         var nuevas = horarios.Select((hora, i) => new Reserva
         {
             Fecha = fecha,
