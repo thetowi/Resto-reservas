@@ -209,8 +209,10 @@ export function getMeta() {
   return request<Meta>("/api/meta");
 }
 
-export function getDia(fecha: string, salonId: number) {
-  return request<Dia>(`/api/dias/${fecha}?salonId=${salonId}`);
+// sembrar=false: solo mirar, sin abrir la planilla del día (ver el resumen
+// de salones en app/page.tsx).
+export function getDia(fecha: string, salonId: number, sembrar = true) {
+  return request<Dia>(`/api/dias/${fecha}?salonId=${salonId}${sembrar ? "" : "&sembrar=false"}`);
 }
 
 export function crearReserva(fecha: string, turno: Turno, salonId: number, hora?: string) {

@@ -22,7 +22,8 @@ public class DiasController : ControllerBase
     }
 
     [HttpGet("{fecha}")]
-    public async Task<ActionResult<DiaDto>> GetDia(string fecha, [FromQuery] int salonId)
+    // sembrar=false: solo mirar, sin abrir la planilla del día si estaba vacía.
+    public async Task<ActionResult<DiaDto>> GetDia(string fecha, [FromQuery] int salonId, [FromQuery] bool sembrar = true)
     {
         if (!DateOnly.TryParse(fecha, out var fechaParseada))
         {
@@ -33,7 +34,7 @@ public class DiasController : ControllerBase
             return BadRequest(new { error = "el salon indicado no existe" });
         }
 
-        var dia = await _diaService.GetDiaAsync(fechaParseada, salonId);
+        var dia = await _diaService.GetDiaAsync(fechaParseada, salonId, sembrar);
         return Ok(dia);
     }
 }

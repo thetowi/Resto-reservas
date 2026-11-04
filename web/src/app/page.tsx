@@ -188,7 +188,9 @@ export default function HomePage() {
     function cargarResumen() {
       Promise.all(
         salones.map((s) =>
-          getDia(fecha, s.id)
+          // Solo para contar: no abre la planilla de los otros salones (y no
+          // compite con el pedido del salón elegido abriendo el mismo día).
+          getDia(fecha, s.id, false)
             .then((data): [number, { almuerzo: number; cena: number; merienda: number }] => [
               s.id,
               {

@@ -136,6 +136,39 @@ public class HorariosTests : IClassFixture<BarrancasWebApplicationFactory>
         Assert.Equal(HorariosDefault.Cena.Length, (await FilasDelDiaAsync(nuevo, Turno.Cena, salonId)).Count);
     }
 
+    [Fact]
+    public async Task Abrir_el_mismo_dia_varias_veces_a_la_vez_no_duplica_filas()
+    {
+        var salonId = await RestaurantIdAsync();
+        var fecha = ReservaOnlineService.HoyLocal().AddDays(40);
+
+        await Task.WhenAll(Enumerable.Range(0, 5).Select(async _ =>
+        {
+            using var scope = _factory.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<DiaService>().SeedTurnoSiVacioAsync(fecha, Turno.Cena, salonId);
+        }));
+
+        using var verificar = _factory.Services.CreateScope();
+        var db = verificar.ServiceProvider.GetRequiredService<BarrancasDbContext>();
+        Assert.Equal(HorariosDefault.Cena.Length,
+            await db.Reservas.CountAsync(r => r.Fecha == fecha && r.Turno == Turno.Cena && r.SalonId == salonId));
+    }
+
+    [Fact]
+    public async Task Mirar_un_dia_sin_sembrar_no_abre_la_planilla()
+    {
+        var admin = await ClienteAsync("admin");
+        var salonId = await RestaurantIdAsync();
+        var fecha = ReservaOnlineService.HoyLocal().AddDays(41);
+
+        var res = await admin.GetAsync($"/api/dias/{fecha:yyyy-MM-dd}?salonId={salonId}&sembrar=false");
+
+        res.EnsureSuccessStatusCode();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<BarrancasDbContext>();
+        Assert.False(await db.Reservas.AnyAsync(r => r.Fecha == fecha && r.SalonId == salonId));
+    }
+
     [Theory]
     [InlineData("25:00", 2)]
     [InlineData("21:00", 0)]

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Barrancas.Api.Data;
 using Barrancas.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,17 @@ namespace Barrancas.Api.Services;
 public static class HorariosTurnoService
 {
     public record Franja(string Hora, int Filas);
+
+    // Un candado por salón + turno: abrir un día (DiaService.SeedTurnoSiVacioAsync)
+    // y rearmar los días abiertos (AplicarADiasAbiertosAsync) no pueden correr
+    // a la vez para el mismo turno. Sin esto, si el mismo día se pedía dos o
+    // tres veces al mismo tiempo (el panel lo pide para el salón elegido y para
+    // el resumen de salones, otra tablet, el link…), cada pedido lo veía vacío
+    // y creaba sus filas: el día quedaba con las filas duplicadas o triplicadas.
+    private static readonly ConcurrentDictionary<(int, Turno), SemaphoreSlim> Candados = new();
+
+    public static SemaphoreSlim Candado(int salonId, Turno turno) =>
+        Candados.GetOrAdd((salonId, turno), _ => new SemaphoreSlim(1, 1));
 
     public const int MaxHorarios = 40;
     public const int MaxFilasPorHorario = 30;
@@ -68,19 +80,28 @@ public static class HorariosTurnoService
     /// </summary>
     public static async Task<List<DateOnly>> AplicarADiasAbiertosAsync(BarrancasDbContext db, int salonId, Turno turno, DateOnly desde)
     {
-        var franjas = await ObtenerAsync(db, salonId, turno);
-        var filas = await db.Reservas
-            .Include(r => r.ReservaMesas)
-            .Where(r => r.SalonId == salonId && r.Turno == turno && r.Fecha >= desde)
-            .ToListAsync();
-
-        var cambiados = new List<DateOnly>();
-        foreach (var dia in filas.GroupBy(r => r.Fecha))
+        var candado = Candado(salonId, turno);
+        await candado.WaitAsync();
+        try
         {
-            if (RearmarDia(db, dia.Key, salonId, turno, dia.ToList(), franjas)) cambiados.Add(dia.Key);
+            var franjas = await ObtenerAsync(db, salonId, turno);
+            var filas = await db.Reservas
+                .Include(r => r.ReservaMesas)
+                .Where(r => r.SalonId == salonId && r.Turno == turno && r.Fecha >= desde)
+                .ToListAsync();
+
+            var cambiados = new List<DateOnly>();
+            foreach (var dia in filas.GroupBy(r => r.Fecha))
+            {
+                if (RearmarDia(db, dia.Key, salonId, turno, dia.ToList(), franjas)) cambiados.Add(dia.Key);
+            }
+            if (cambiados.Count > 0) await db.SaveChangesAsync();
+            return cambiados.OrderBy(f => f).ToList();
         }
-        if (cambiados.Count > 0) await db.SaveChangesAsync();
-        return cambiados.OrderBy(f => f).ToList();
+        finally
+        {
+            candado.Release();
+        }
     }
 
     private static bool RearmarDia(BarrancasDbContext db, DateOnly fecha, int salonId, Turno turno, List<Reserva> filas, List<Franja> franjas)

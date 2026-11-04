@@ -25,9 +25,31 @@ public class DiaService
 
     public async Task SeedTurnoSiVacioAsync(DateOnly fecha, Turno turno, int salonId)
     {
-        var yaExiste = await _db.Reservas.AnyAsync(r => r.Fecha == fecha && r.Turno == turno && r.SalonId == salonId);
-        if (yaExiste) return;
+        if (await TieneFilasAsync(fecha, turno, salonId)) return;
 
+        // El mismo día se puede pedir varias veces a la vez (el panel lo pide
+        // para el salón elegido y para el resumen de salones, otra tablet, el
+        // link…): con el candado lo abre uno solo; los demás esperan y, al
+        // volver a mirar, ya lo encuentran abierto. Sin esto el día quedaba
+        // con las filas duplicadas o triplicadas.
+        var candado = HorariosTurnoService.Candado(salonId, turno);
+        await candado.WaitAsync();
+        try
+        {
+            if (await TieneFilasAsync(fecha, turno, salonId)) return;
+            await CrearFilasAsync(fecha, turno, salonId);
+        }
+        finally
+        {
+            candado.Release();
+        }
+    }
+
+    private Task<bool> TieneFilasAsync(DateOnly fecha, Turno turno, int salonId) =>
+        _db.Reservas.AnyAsync(r => r.Fecha == fecha && r.Turno == turno && r.SalonId == salonId);
+
+    private async Task CrearFilasAsync(DateOnly fecha, Turno turno, int salonId)
+    {
         // Los horarios que configuró el Admin para este salón y turno (o los
         // de siempre, ver HorariosTurnoService): una fila vacía por cada fila
         // de cada horario.
@@ -159,10 +181,13 @@ public class DiaService
             cierre is not null, cierre?.Motivo, mesas);
     }
 
-    public async Task<DiaDto> GetDiaAsync(DateOnly fecha, int salonId)
+    // sembrar=false: solo mirar (lo usa el resumen de salones del panel, que
+    // pide el día de TODOS los salones solo para contar reservas: no tiene
+    // por qué abrirle la planilla a cada uno).
+    public async Task<DiaDto> GetDiaAsync(DateOnly fecha, int salonId, bool sembrar = true)
     {
-        var almuerzo = await GetTurnoAsync(fecha, Turno.Almuerzo, salonId);
-        var cena = await GetTurnoAsync(fecha, Turno.Cena, salonId);
+        var almuerzo = await GetTurnoAsync(fecha, Turno.Almuerzo, salonId, sembrar);
+        var cena = await GetTurnoAsync(fecha, Turno.Cena, salonId, sembrar);
 
         // Merienda solo se calcula (y solo se siembran sus filas default) si
         // ESTE salon la tiene habilitada (ver Salon.PermiteMerienda) — un
@@ -172,7 +197,7 @@ public class DiaService
             .Where(s => s.Id == salonId)
             .Select(s => s.PermiteMerienda)
             .FirstOrDefaultAsync();
-        var merienda = permiteMerienda ? await GetTurnoAsync(fecha, Turno.Merienda, salonId) : null;
+        var merienda = permiteMerienda ? await GetTurnoAsync(fecha, Turno.Merienda, salonId, sembrar) : null;
 
         return new DiaDto(fecha, almuerzo, cena, merienda);
     }
