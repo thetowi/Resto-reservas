@@ -1,0 +1,324 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Sectores del salón</title>
+<style>
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 70px}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:32px}
+.wrap>*,.dos>*,.sec>*{min-width:0}
+h1{font-size:25px} h2{font-size:18px;display:flex;align-items:center;gap:9px}
+h2 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:13px;flex:none}
+.intro{color:#4f5c64;font-size:14.5px;line-height:1.55;max-width:94ch;margin-top:6px}
+.sec{display:grid;gap:12px}.sec>p{color:#4f5c64;font-size:14px;line-height:1.5;max-width:94ch}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52;max-width:94ch}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:5px;margin-top:4px}
+.card{background:#fff;border:1px solid #c8d2da;border-radius:16px;padding:16px 18px}
+.dos{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:920px){.dos{grid-template-columns:1fr}}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56636b;font-weight:700}
+:focus-visible{outline:3px solid #32b49d;outline-offset:2px}
+
+/* colores de sector */
+:root{--bod:#8a5a2b;--bod-s:#f5ebe0;--ter:#2f7d6d;--ter-s:#e0f2ee;--sin:#7a868d;--sin-s:#eef1f3;--grupo:#6b3fb0;--grupo-s:#eee6f8}
+
+/* plano */
+.plano{position:relative;height:330px;background:#f6f8fa;border:1px solid #d3dbe1;border-radius:12px;overflow:hidden}
+.zona{position:absolute;border:2px dashed;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:6px 9px}
+.zona.bod{border-color:#d9c0a3;color:var(--bod);background:rgba(245,235,224,.45)}
+.zona.ter{border-color:#a9d6cc;color:var(--ter);background:rgba(224,242,238,.45)}
+.mesa{position:absolute;width:42px;height:42px;border-radius:9px;border:2px solid;display:grid;place-items:center;font-weight:800;font-size:12.5px;cursor:pointer;background:#fff;line-height:1.05;text-align:center}
+.mesa small{display:block;font-size:9.5px;font-weight:600;opacity:.75}
+.mesa.r{border-radius:50%}
+.mesa.bod{border-color:var(--bod);background:var(--bod-s);color:var(--bod)}
+.mesa.ter{border-color:var(--ter);background:var(--ter-s);color:var(--ter)}
+.mesa.sin{border-color:#b7c2c9;color:#56636b}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1.5px solid #c8d2da;background:#fff;border-radius:99px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip .pt{width:10px;height:10px;border-radius:50%}
+.chip.on{border-color:#13242e;box-shadow:0 0 0 1px #13242e}
+.chip.add{border-style:dashed;color:#56636b;font-weight:600}
+.resumen-sec{display:grid;gap:8px}
+.rs{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13.5px}
+.rs b{font-variant-numeric:tabular-nums}
+.rs.bod{background:var(--bod-s);color:var(--bod)}.rs.ter{background:var(--ter-s);color:var(--ter)}.rs.sin{background:var(--sin-s);color:#3d4a52}
+
+/* modal */
+.modal{background:#fff;border:1px solid #c8d2da;border-radius:18px;box-shadow:0 26px 60px -24px rgba(12,38,55,.45);padding:18px;display:grid;gap:14px;max-width:560px}
+.modal h3{font-size:16.5px}
+.modal .sub{font-size:13px;color:#56636b;margin-top:-8px}
+.sector{border:1px solid #d3dbe1;border-radius:14px;padding:12px;display:grid;gap:10px}
+.sector-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sector-cab b{font-size:15px;display:flex;gap:8px;align-items:center}
+.sector-cab b .pt{width:12px;height:12px;border-radius:50%}
+.sector-cab small{font-size:12.5px;color:#56636b;font-weight:500}
+.seg{display:inline-flex;background:#eef1f3;border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:700;color:#4f5c64;cursor:pointer}
+.seg button.on{background:#fff;color:#13242e;box-shadow:0 1px 3px rgba(12,38,55,.18)}
+.seg button.on.c{background:#3d4a52;color:#fff}
+.seg button.on.g{background:var(--grupo);color:#fff}
+.grupo{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--grupo-s);border-radius:11px;padding:10px}
+.grupo label{display:grid;gap:3px;font-size:11.5px;font-weight:700;color:var(--grupo)}
+.grupo input,.grupo select{border:1px solid #d6c8ec;border-radius:8px;padding:6px 8px;font-size:13px;background:#fff;color:#13242e;font-weight:500;width:100%}
+.grupo .full{grid-column:1/-1}
+.grupo p{grid-column:1/-1;font-size:12px;color:#4b2e80;line-height:1.4}
+.aviso{background:#fdf3e1;color:#8a5a00;border-radius:9px;padding:8px 10px;font-size:12.5px;line-height:1.4}
+.motivo{display:flex;gap:6px;flex-wrap:wrap;font-size:12px}
+.motivo button{border:1px solid #c8d2da;background:#fff;border-radius:99px;padding:3px 10px;cursor:pointer}
+.motivo button.on{background:#3d4a52;color:#fff;border-color:#3d4a52}
+.pie{display:grid;gap:8px;background:#f6f8fa;border-radius:12px;padding:11px 13px;font-size:13px}
+.pie div{display:flex;justify-content:space-between;gap:10px}
+.pie b{font-variant-numeric:tabular-nums}
+.botones{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+.btn.prim{background:#13242e;color:#fff}.btn.sec{background:none;color:#4f5c64}
+.link{background:none;border:0;color:#2f6f9f;font-size:12.5px;text-decoration:underline;cursor:pointer;padding:0}
+
+/* opciones */
+.ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.op{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:15px 16px;display:grid;gap:8px;align-content:start;text-align:left;cursor:pointer;position:relative}
+.op:hover{border-color:#9fb0bb}
+.op.sel{border:2px solid #13242e;padding:14px 15px}
+.op .badge{position:absolute;top:-11px;right:14px;background:#32b49d;color:#04221c;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px}
+.op h3{font-size:15px;display:flex;gap:8px;align-items:center}.op h3 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:12px;flex:none}
+.op p{font-size:13.5px;color:#3d4a52;line-height:1.5}
+.pc{display:grid;gap:3px;font-size:12.5px;line-height:1.4}.pc .s{color:#1d7a69}.pc .no{color:#a33}
+
+/* filas */
+.filas{display:grid;gap:6px}
+.fh{display:grid;grid-template-columns:52px 1fr 70px;gap:10px;align-items:center;font-size:13px}
+.fh b{font-variant-numeric:tabular-nums}
+.barras{display:flex;gap:4px;flex-wrap:wrap}
+.barras span{width:30px;height:16px;border-radius:5px;background:#dfe5ea}
+.barras span.on{background:#13242e}
+.barras span.res{background:#32b49d}
+.barras span.g{background:var(--grupo)}
+.fh small{font-size:12px;color:#56636b;text-align:right;font-variant-numeric:tabular-nums}
+.ley{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#56636b}
+.ley span{display:inline-flex;gap:6px;align-items:center}.ley i{width:16px;height:10px;border-radius:3px;display:inline-block}
+.ajuste{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+.ajuste button{width:28px;height:28px;border-radius:8px;border:1px solid #c8d2da;background:#fff;font-weight:800;cursor:pointer}
+.ajuste output{min-width:22px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+
+/* planilla */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56636b;text-align:left;font-weight:700;padding:9px 7px;border-bottom:2px solid #e3e8eb;white-space:nowrap}
+td{padding:7px;border-bottom:1px solid #eef1f3;vertical-align:middle;height:40px}
+tbody tr:nth-child(even) td{background:#f6f8fa}
+tr.vacia td{color:#a3aeb5}
+tr.grp td{background:var(--grupo-s)!important}
+.mt{display:inline-block;min-width:30px;text-align:center;border:1px solid #c8d2da;border-radius:7px;padding:2px 7px;font-weight:700;font-size:12.5px;background:#fff}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:1px}
+.tag.g{background:var(--grupo);color:#fff}
+.franja{border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:10px;display:flex;gap:8px;align-items:center;background:#eef1f3;color:#3d4a52;flex-wrap:wrap}
+.franja b{color:#13242e}
+.panel-mesas{display:grid;gap:10px}
+.gm{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px}
+.gm span{border-radius:9px;padding:7px 0;text-align:center;font-weight:800;font-size:12.5px;line-height:1.1}
+.gm span small{display:block;font-size:9.5px;font-weight:600;opacity:.8}
+.gm .libre{background:#eef1f3;color:#3d4a52}
+.gm .ocup{background:#d92d2d;color:#fff}
+.gm .grp{background:var(--grupo);color:#fff}
+.gm .cerr{background:repeating-linear-gradient(45deg,#f1f3f5 0 6px,#e3e8eb 6px 12px);color:#8a959c}
+.gm-tit{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;display:flex;gap:7px;align-items:center}
+.gm-tit .pt{width:10px;height:10px;border-radius:50%}
+.gm-tit em{font-style:normal;font-weight:600;letter-spacing:0;text-transform:none;color:#56636b}
+</style></head><body><div class="wrap">
+
+<div><h1>Sectores del salón: cerrar una parte o dársela a un grupo</h1>
+<p class="intro">El salón Restaurant se divide en <b>sectores</b> (Bodega y Terraza). En cada turno, cada sector puede quedar <b>abierto</b>, <b>cerrado</b> (por poco personal, por ejemplo) o <b>ocupado por un grupo</b> grande que se queda con todo el sector. Al cerrar un sector o dárselo a un grupo, la planilla <b>se achica sola</b>: quedan menos filas vacías y el link ofrece menos lugares. Todo se puede tocar.</p></div>
+
+<!-- 1 -->
+<section class="sec"><h2><i>1</i>Armar los sectores (una sola vez, en Administrar mesas)</h2>
+<p>En el plano del salón: elegís un sector y tocás las mesas que van en él. Una mesa está en un solo sector. Las divisiones (11b, 12b…) van con su mesa.</p>
+<div class="dos">
+ <div class="card" style="display:grid;gap:12px">
+  <div class="chips" id="chipsSector">
+   <span class="lbl" style="margin-right:4px">Pintar:</span>
+   <button class="chip on" data-s="bod"><span class="pt" style="background:var(--bod)"></span>Bodega</button>
+   <button class="chip" data-s="ter"><span class="pt" style="background:var(--ter)"></span>Terraza</button>
+   <button class="chip" data-s="sin"><span class="pt" style="background:#b7c2c9"></span>Sin sector</button>
+   <button class="chip add" type="button">+ Nuevo sector</button>
+  </div>
+  <div class="plano" id="plano">
+   <div class="zona bod" style="left:12px;top:12px;width:44%;height:306px">Bodega</div>
+   <div class="zona ter" style="right:12px;top:12px;width:50%;height:306px">Terraza</div>
+  </div>
+ </div>
+ <div class="card resumen-sec"><span class="lbl">Sectores de Restaurant</span><div id="resSec" class="resumen-sec"></div>
+  <p style="font-size:12.5px;color:#56636b;line-height:1.45">Los carteles del plano (Bodega, Terraza) siguen siendo solo una referencia; lo que cuenta es de qué sector es cada mesa.</p></div>
+</div>
+</section>
+
+<!-- 2 -->
+<section class="sec"><h2><i>2</i>En el turno: «Reducir salón» pasa a ser «Sectores»</h2>
+<p>El botón de la cena abre esto. Probá cerrar la Terraza, o dársela a un grupo. Abajo (paso 3 y 4) se ve cómo queda la planilla.</p>
+<div class="dos">
+ <div class="modal" role="dialog" aria-label="Sectores de esta cena">
+  <h3>Sectores · Cena del sáb 21/11</h3>
+  <p class="sub">Solo para este turno. El próximo vuelve a estar todo abierto.</p>
+  <div id="sectores"></div>
+  <div class="pie" id="pie"></div>
+  <div class="botones"><button class="link" type="button">Ajustar mesas una por una</button><span style="display:flex;gap:6px"><button class="btn sec" type="button">Cancelar</button><button class="btn prim" type="button">Confirmar</button></span></div>
+ </div>
+ <div class="nota"><ul>
+  <li><b>Cerrado:</b> sus mesas libres salen de «Mesas disponibles», del plano y del link (como «Reducir salón» hoy). Se elige un motivo opcional.</li>
+  <li><b>Grupo:</b> se carga una sola reserva (nombre, pax, hora, teléfono) que ocupa <b>todas las mesas del sector</b>. Cuenta en el total de pax y en asistencia, como cualquier reserva.</li>
+  <li>No se puede cerrar ni dar a un grupo un sector que ya tiene reservas con mesa asignada: capax avisa cuáles hay que mover antes.</li>
+  <li>«Ajustar mesas una por una» abre la grilla de mesas de siempre, para casos sueltos.</li>
+ </ul></div>
+</div>
+</section>
+
+<!-- 3 -->
+<section class="sec"><h2><i>3</i>Las filas de la planilla se achican: ¿cómo?</h2>
+<p>Hoy la cena tiene 26 filas (4 o 3 por horario). Elegí cómo se calcula cuántas quedan cuando se cierra un sector.</p>
+<div class="ops" role="radiogroup" aria-label="Cómo se achican las filas">
+ <button class="op sel" data-f="A" role="radio" aria-checked="true"><span class="badge">RECOMENDADA</span><h3><i>A</i>Automático, según lo que queda abierto</h3>
+  <p>Si queda abierto el 46% de los lugares, queda el 46% de las filas en cada horario (redondeando para arriba, mínimo 1).</p>
+  <div class="pc"><span class="s">✓ No hay que configurar nada</span><span class="s">✓ Sirve igual con mesas sueltas reducidas</span><span class="no">✗ Es una cuenta: puede quedar una fila de más o de menos</span></div></button>
+ <button class="op" data-f="B" role="radio" aria-checked="false"><h3><i>B</i>Filas fijas por sector</h3>
+  <p>En «Horarios» se carga cuántas filas por horario tiene cada sector (Bodega 2, Terraza 2). Al cerrar uno, se sacan las suyas.</p>
+  <div class="pc"><span class="s">✓ Exacto, lo decide el admin</span><span class="no">✗ Hay que cargar y mantener un número más por sector</span></div></button>
+ <button class="op" data-f="C" role="radio" aria-checked="false"><h3><i>C</i>A mano, al confirmar</h3>
+  <p>El modal propone un número de filas por horario y se ajusta con − / + antes de confirmar.</p>
+  <div class="pc"><span class="s">✓ Control total cada vez</span><span class="no">✗ Un paso más cada vez que se reduce</span></div></button>
+</div>
+<div class="dos">
+ <div class="card filas"><div class="ley"><span><i style="background:#13242e"></i>Fila vacía</span><span><i style="background:#32b49d"></i>Reserva cargada</span><span><i style="background:var(--grupo)"></i>Grupo</span><span><i style="background:#dfe5ea"></i>Fila que se saca</span></div><div id="filas" class="filas"></div><div class="ajuste" id="ajuste" hidden>Filas por horario: <button type="button" id="menos" aria-label="Menos filas">−</button><output id="nAj">2</output><button type="button" id="mas" aria-label="Más filas">+</button><span style="color:#56636b">(sugerido: <span id="sug">2</span>)</span></div></div>
+ <div class="nota"><ul>
+  <li><b>Nunca se borra una reserva:</b> si a las 21:00 ya hay 3 reservas y quedan 2 filas, quedan las 3.</li>
+  <li>Al volver a abrir el sector, vuelven las filas que faltan.</li>
+  <li>El link usa las filas como cupo por horario, así que también ofrece menos lugares (y nada en el sector cerrado).</li>
+  <li>Se puede seguir sumando una fila con «+ Agregar reserva» como siempre.</li>
+ </ul></div>
+</div>
+</section>
+
+<!-- 4 -->
+<section class="sec"><h2><i>4</i>Cómo queda la cena</h2>
+<div class="dos">
+ <div class="card"><div class="franja" id="franja"></div><div class="tablewrap"><table><thead><tr><th>Hora</th><th>Mesa</th><th>Pax</th><th>Apellido / Nombre</th><th>Hab / Tel</th><th>Comentarios</th></tr></thead><tbody id="tbody"></tbody></table></div></div>
+ <div class="card panel-mesas" id="pmesas"></div>
+</div>
+</section>
+
+<section class="sec"><h2><i>5</i>Por detrás</h2>
+<div class="nota"><ul>
+ <li><b>Sector</b> nuevo por salón (nombre, color, orden) y cada mesa con su sector (opcional).</li>
+ <li><b>Sector cerrado</b> en un turno = las mesas reducidas de siempre (MesasReducidas) más un registro con el motivo, para mostrar «Terraza cerrada: poco personal».</li>
+ <li><b>Grupo</b> = una reserva normal con todas las mesas del sector y la marca del sector, así sale en la planilla, en el plano, en reportes y en asistencia.</li>
+ <li>Las filas se rearman con la misma lógica que ya usa «Horarios» (solo las vacías).</li>
+ <li>Funciona también con días que todavía no se abrieron (se elige la fecha y se configura antes).</li>
+</ul></div>
+</section>
+
+</div>
+<script>
+const $=id=>document.getElementById(id);
+// mesas de Restaurant (ejemplo)
+const mesas=[
+ ['11',4,'bod',30,60],['12',4,'bod',90,60],['13',4,'bod',150,60],['14',4,'bod',210,60],
+ ['15',4,'bod',30,130],['16',6,'bod',90,130,1],['17',4,'bod',150,130],['18',4,'bod',210,130],
+ ['19',4,'bod',30,200],['20',4,'bod',90,200],['21',6,'bod',150,200,1],['22',4,'bod',210,200],
+ ['30',4,'ter',0,60],['31',4,'ter',60,60],['32',4,'ter',120,60],['33',4,'ter',180,60],['34',4,'ter',240,60],
+ ['40',4,'ter',0,130],['41',4,'ter',60,130],['42',6,'ter',120,130,1],['43',4,'ter',180,130],['44',4,'ter',240,130],
+ ['50',4,'ter',0,200],['51',4,'ter',60,200],['52',4,'ter',120,200],['60',2,'sin',240,260,1],
+].map(([c,p,s,x,y,r])=>({c,p,s,x,y,r:!!r}));
+const nombres={bod:'Bodega',ter:'Terraza',sin:'Sin sector'};
+let pintar='bod';
+function plano(){
+ const pl=$('plano');pl.querySelectorAll('.mesa').forEach(e=>e.remove());
+ const w=pl.clientWidth||600;
+ mesas.forEach(m=>{const b=document.createElement('button');b.type='button';b.className='mesa '+m.s+(m.r?' r':'');
+  const left=m.s==='bod'||(m.s==='sin'&&m.x<200)?24+m.x*(w*0.44-60)/240:w*0.5+m.x*(w*0.5-70)/240;
+  b.style.left=Math.round(left)+'px';b.style.top=m.y+'px';b.innerHTML=`${m.c}<small>${m.p}p</small>`;
+  b.setAttribute('aria-label',`Mesa ${m.c}, ${nombres[m.s]}`);
+  b.onclick=()=>{m.s=pintar;plano();resSec();todo()};pl.appendChild(b)});
+}
+function resSec(){
+ $('resSec').innerHTML=['bod','ter','sin'].map(s=>{const ms=mesas.filter(m=>m.s===s);return `<div class="rs ${s}"><span>${nombres[s]}</span><span><b>${ms.length}</b> mesas · <b>${ms.reduce((a,m)=>a+m.p,0)}</b> pax</span></div>`}).join('');
+}
+$('chipsSector').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;pintar=b.dataset.s;[...$('chipsSector').querySelectorAll('[data-s]')].forEach(x=>x.classList.toggle('on',x===b))});
+
+// estado del turno
+const est={bod:'abierto',ter:'abierto'};
+const grupo={nombre:'Cumpleaños Fernández',pax:40,hora:'21:00',tel:'11 4012-3344'};
+let motivo={bod:'Poco personal',ter:'Poco personal'};
+function conReserva(s){const set=new Set(mesas.filter(m=>m.s===s).map(m=>m.c));return cargadas.filter(c=>set.has(c[1])).map(c=>'mesa '+c[1])}
+function sectoresModal(){
+ $('sectores').innerHTML=['bod','ter'].map(s=>{const ms=mesas.filter(m=>m.s===s);const e=est[s];
+  return `<div class="sector"><div class="sector-cab"><b><span class="pt" style="background:var(--${s})"></span>${nombres[s]} <small>${ms.length} mesas · ${ms.reduce((a,m)=>a+m.p,0)} pax</small></b>
+  <div class="seg" role="group" aria-label="Estado de ${nombres[s]}">${[['abierto','Abierto',''],['cerrado','Cerrado','c'],['grupo','Grupo','g']].map(([v,t,k])=>`<button type="button" data-sec="${s}" data-v="${v}" class="${e===v?'on '+k:''}" aria-pressed="${e===v}">${t}</button>`).join('')}</div></div>
+  ${e!=='abierto'&&conReserva(s).length?`<div class="aviso">⚠ ${nombres[s]} tiene reservas con mesa (${conReserva(s).join(', ')}). Pasalas a otra mesa antes de ${e==='cerrado'?'cerrarla':'dársela al grupo'}.</div>`:''}
+  ${e==='cerrado'?`<div class="motivo" data-sec="${s}">${['Poco personal','Mantenimiento','Clima','Otro'].map(t=>`<button type="button" data-m="${t}" class="${motivo[s]===t?'on':''}">${t}</button>`).join('')}</div>`:''}
+  ${e==='grupo'?`<div class="grupo"><label class="full">Nombre del grupo<input id="g-nombre-${s}" value="${grupo.nombre}"></label><label>Pax<input id="g-pax-${s}" type="number" value="${grupo.pax}"></label><label>Hora<select id="g-hora-${s}">${['20:30','20:45','21:00','21:15','21:30'].map(h=>`<option ${h===grupo.hora?'selected':''}>${h}</option>`).join('')}</select></label><label class="full">WhatsApp / Hab<input id="g-tel-${s}" value="${grupo.tel}"></label><p>Se carga como una reserva con las ${ms.length} mesas de ${nombres[s]}. ${grupo.pax>ms.reduce((a,m)=>a+m.p,0)?'⚠ Son más pax que lugares del sector.':''}</p></div>`:''}
+  </div>`}).join('');
+}
+$('sectores').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b){const s=b.dataset.sec;est[s]=b.dataset.v;if(est.bod!=='abierto'&&est.ter!=='abierto'&&b.dataset.v==='cerrado'){/* permitido */}todo();return}
+ const m=e.target.closest('[data-m]');if(m){motivo[m.parentElement.dataset.sec]=m.dataset.m;sectoresModal()}});
+$('sectores').addEventListener('input',e=>{if(e.target.id.startsWith('g-nombre'))grupo.nombre=e.target.value;if(e.target.id.startsWith('g-pax'))grupo.pax=+e.target.value||0;if(e.target.id.startsWith('g-tel'))grupo.tel=e.target.value;cuerpoPlanilla();panelMesas();pie()});
+$('sectores').addEventListener('change',e=>{if(e.target.id.startsWith('g-hora')){grupo.hora=e.target.value;todo()}});
+
+// filas
+const franjas=[['20:30',4],['20:45',3],['21:00',4],['21:15',3],['21:30',4],['21:45',4],['22:00',4]];
+const reservasCargadas={'20:30':1,'21:00':3,'21:30':1};
+let modoF='A',ajusteManual=null;
+const capTotal=()=>mesas.reduce((a,m)=>a+m.p,0);
+const capAbierta=()=>mesas.filter(m=>m.s==='sin'||est[m.s]==='abierto').reduce((a,m)=>a+m.p,0);
+const sectorGrupo=()=>['bod','ter'].find(s=>est[s]==='grupo');
+function filasPor(h,n){
+ const frac=capAbierta()/capTotal();
+ if(frac>=0.999) return n;
+ if(modoF==='A') return Math.max(1,Math.ceil(n*frac));
+ if(modoF==='B'){const fijas={bod:2,ter:2,sin:0};let t=0;['bod','ter'].forEach(s=>{if(est[s]==='abierto')t+=fijas[s]});return Math.max(1,Math.min(n,t))}
+ return ajusteManual??Math.max(1,Math.ceil(n*frac));
+}
+function sugerido(){return Math.max(1,Math.ceil(4*capAbierta()/capTotal()))}
+function dibujarFilas(){
+ const g=sectorGrupo();let total=0,base=0;
+ $('filas').innerHTML=franjas.map(([h,n])=>{const q=filasPor(h,n);const res=reservasCargadas[h]||0;const conGrupo=g&&grupo.hora===h?1:0;
+  const quedan=Math.max(q,res)+conGrupo;total+=quedan;base+=n;
+  let cel='';for(let i=0;i<Math.max(n,quedan);i++){let k='';if(i<conGrupo)k='g';else if(i<conGrupo+res)k='res';else if(i<quedan)k='on';cel+=`<span class="${k}"></span>`}
+  return `<div class="fh"><b>${h}</b><div class="barras">${cel}</div><small>${quedan} de ${n}</small></div>`}).join('')+`<div class="fh" style="border-top:1px solid #e3e8eb;padding-top:6px"><b>Total</b><span></span><small><b>${total}</b> de ${base}</small></div>`;
+ $('ajuste').hidden=!(modoF==='C'&&capAbierta()<capTotal());
+ $('sug').textContent=sugerido();$('nAj').textContent=ajusteManual??sugerido();
+}
+document.querySelectorAll('.op').forEach(b=>b.addEventListener('click',()=>{modoF=b.dataset.f;ajusteManual=null;document.querySelectorAll('.op').forEach(x=>{x.classList.toggle('sel',x===b);x.setAttribute('aria-checked',x===b)});todo()}));
+$('menos').onclick=()=>{ajusteManual=Math.max(1,(ajusteManual??sugerido())-1);todo()};
+$('mas').onclick=()=>{ajusteManual=Math.min(4,(ajusteManual??sugerido())+1);todo()};
+
+function pie(){
+ const ab=mesas.filter(m=>m.s==='sin'||est[m.s]==='abierto');const g=sectorGrupo();
+ let filas=0;franjas.forEach(([h,n])=>{filas+=Math.max(filasPor(h,n),reservasCargadas[h]||0)+(g&&grupo.hora===h?1:0)});
+ $('pie').innerHTML=`<div><span>Mesas disponibles para reservas</span><b>${ab.length} · ${ab.reduce((a,m)=>a+m.p,0)} pax</b></div><div><span>Filas de la planilla</span><b>${filas} de 26</b></div>${g?`<div><span>Reserva de grupo</span><b>${grupo.nombre} · ${grupo.pax} pax · ${grupo.hora}</b></div>`:''}`;
+}
+
+// planilla
+const cargadas=[['20:30','12',2,'Gómez Laura','11 5555-0142',''],['21:00','14',4,'Paz','3435 11-2233','Ventana'],['21:00','16',6,'Familia Ruiz','11 4420-7781',''],['21:00','60',2,'Sosa','Hab 210',''],['21:30','20',3,'Álvarez','11 3021-8890','Celíaca']];
+function cuerpoPlanilla(){
+ const g=sectorGrupo();const rows=[];
+ franjas.forEach(([h,n])=>{const q=filasPor(h,n);const res=cargadas.filter(c=>c[0]===h);
+  if(g&&grupo.hora===h){const ms=mesas.filter(m=>m.s===g).map(m=>m.c);rows.push(`<tr class="grp"><td>${h}</td><td><span class="mt">${ms[0]}–${ms[ms.length-1]}</span></td><td>${grupo.pax}</td><td><b>${grupo.nombre}</b><span class="tag g">${nombres[g]} completa</span></td><td>${grupo.tel}</td><td>${ms.length} mesas</td></tr>`)}
+  res.forEach(c=>rows.push(`<tr><td>${c[0]}</td><td><span class="mt">${c[1]}</span></td><td>${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td><td>${c[5]}</td></tr>`));
+  for(let i=res.length;i<Math.max(q,res.length);i++)rows.push(`<tr class="vacia"><td>${h}</td><td>—</td><td></td><td></td><td></td><td></td></tr>`)});
+ $('tbody').innerHTML=rows.join('');
+ const cerr=['bod','ter'].filter(s=>est[s]==='cerrado');
+ const partes=[];cerr.forEach(s=>partes.push(`<b>${nombres[s]} cerrada</b> (${motivo[s].toLowerCase()})`));if(g)partes.push(`<b>${nombres[g]}</b> para ${grupo.nombre}`);
+ $('franja').hidden=partes.length===0;$('franja').innerHTML=partes.length?`Cena de hoy: ${partes.join(' · ')} · <span>${$('pie').querySelector('div:nth-child(2) b').textContent} filas</span>`:'';
+}
+function panelMesas(){
+ const g=sectorGrupo();
+ const ocupadasRes=new Set(cargadas.map(c=>c[1]));
+ $('pmesas').innerHTML=`<span class="lbl">Mesas disponibles</span>`+['bod','ter','sin'].map(s=>{const ms=mesas.filter(m=>m.s===s);if(!ms.length)return'';const e=s==='sin'?'abierto':est[s];
+  return `<div class="gm-tit"><span class="pt" style="background:${s==='sin'?'#b7c2c9':'var(--'+s+')'}"></span>${nombres[s]} <em>${e==='cerrado'?'· cerrada':e==='grupo'?'· '+grupo.nombre:''}</em></div><div class="gm">${ms.map(m=>{const k=e==='grupo'?'grp':e==='cerrado'?'cerr':ocupadasRes.has(m.c)?'ocup':'libre';return `<span class="${k}">${m.c}<small>${m.p}p</small></span>`}).join('')}</div>`}).join('');
+}
+function todo(){
+ // una mesa con reserva no deja cerrar su sector (en el ejemplo, Bodega tiene reservas)
+ sectoresModal();pie();dibujarFilas();cuerpoPlanilla();panelMesas();
+}
+// para el ejemplo, las reservas cargadas están en Bodega; la Terraza está libre
+plano();resSec();todo();
+window.addEventListener('resize',plano);
+</script>
+</body></html>

@@ -10,6 +10,8 @@ import ReservaRow from "./ReservaRow";
 import { useArrastreReservas } from "./ArrastreReservas";
 import { useConfirm } from "./ConfirmProvider";
 import { BotonCierreWeb, FranjaCierreWeb } from "./CierreWeb";
+import { numerosDeLlegada } from "@/lib/llegada";
+import SectoresTurnoModal from "./SectoresTurno";
 
 interface Props {
   titulo: string;
@@ -57,6 +59,15 @@ export default function ShiftSection({
   const [enviandoReduccion, setEnviandoReduccion] = useState(false);
   const [errorReduccion, setErrorReduccion] = useState<string | null>(null);
   const mesasReducidasActuales = mesas.filter((m) => m.reducida);
+
+  // Sectores del salón (Bodega, Terraza...): si tiene, «Reducir salón» pasa a
+  // ser «Sectores» (ver components/SectoresTurno.tsx); las mesas sueltas se
+  // siguen pudiendo reducir desde ahí («Ajustar mesas una por una»).
+  const sectores = data.sectores ?? [];
+  const [viendoSectores, setViendoSectores] = useState(false);
+  const sectoresNoAbiertos = sectores.filter((s) => s.estado !== "abierto");
+  const mesasDeSectoresCerrados = new Set(sectores.filter((s) => s.estado === "cerrado").flatMap((s) => s.mesaIds));
+  const reducidasSueltas = mesasReducidasActuales.filter((m) => !mesasDeSectoresCerrados.has(m.id));
   // Candidatas para el modal: cualquier mesa de este turno que no esté
   // ocupada por una reserva real ni por un walk-in — da igual si ya está
   // reducida (hay que poder destildarla para devolverla a circulación), lo
@@ -78,6 +89,9 @@ export default function ShiftSection({
 
   // Arrastrar una reserva a otra fila vacia (cambio de horario).
   const { arrastre, capas: capasArrastre } = useArrastreReservas(reservas);
+
+  // Número de llegada de cada reserva (columna «Recibida», ver lib/llegada.ts).
+  const numeros = numerosDeLlegada(reservas);
 
   // Aviso de sobreventa: cuando el pax reservado de este turno llega al 80%
   // de la capacidad total del salon (todas las mesas, bases y divisiones),
@@ -186,34 +200,70 @@ export default function ShiftSection({
         <div className="rounded-2xl border border-borde bg-superficie p-4.5 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2 border-l-4 border-arena pl-2.5">
             <h2 className="text-base tracking-wide uppercase">{titulo}</h2>
-            {admin && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <BotonCierreWeb fecha={fecha} turno={turno} tituloTurno={titulo} cierre={cierreWeb} onCambio={onCierreWebCambio} />
-                <button
-                  onClick={onAbrirReducir}
-                  className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-arena hover:text-tinta"
-                >
-                  {mesasReducidasActuales.length > 0
-                    ? `Reducir salón (${mesasReducidasActuales.length})`
-                    : "Reducir salón"}
-                </button>
-                <button
-                  onClick={onCerrar}
-                  disabled={enviandoCierre}
-                  className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-ocupada hover:text-ocupada disabled:opacity-50"
-                >
-                  Cerrar turno
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {admin && (
+                <>
+                  <BotonCierreWeb fecha={fecha} turno={turno} tituloTurno={titulo} cierre={cierreWeb} onCambio={onCierreWebCambio} />
+                  {sectores.length > 0 ? (
+                    <button
+                      onClick={() => setViendoSectores(true)}
+                      className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-arena hover:text-tinta"
+                    >
+                      {sectoresNoAbiertos.length > 0 ? `Sectores (${sectoresNoAbiertos.length})` : "Sectores"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={onAbrirReducir}
+                      className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-arena hover:text-tinta"
+                    >
+                      {mesasReducidasActuales.length > 0
+                        ? `Reducir salón (${mesasReducidasActuales.length})`
+                        : "Reducir salón"}
+                    </button>
+                  )}
+                  <button
+                    onClick={onCerrar}
+                    disabled={enviandoCierre}
+                    className="rounded-lg border border-borde px-2.5 py-1 text-xs text-tinta-suave hover:border-ocupada hover:text-ocupada disabled:opacity-50"
+                  >
+                    Cerrar turno
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <FranjaCierreWeb turno={turno} cierre={cierreWeb} admin={admin} onCambio={onCierreWebCambio} />
 
-          {mesasReducidasActuales.length > 0 && (
+          {sectoresNoAbiertos.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg bg-arena-suave px-3 py-2 text-xs text-tinta-suave">
+              {sectoresNoAbiertos.map((s) => {
+                const g = s.estado === "grupo" ? reservas.find((r) => r.id === s.reservaId) : undefined;
+                return (
+                  <span key={s.sectorId} className="inline-flex items-center gap-1.5">
+                    <i className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
+                    {s.estado === "cerrado" ? (
+                      <>
+                        Cerrado: <strong className="text-tinta">{s.nombre}</strong>
+                        {s.motivo && ` · ${s.motivo.toLowerCase()}`}
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-tinta">{s.nombre}</strong> para {g?.nombre ?? "un grupo"}
+                        {g && ` · ${g.pax ?? "?"} pax · ${g.hora ?? ""}`}
+                      </>
+                    )}
+                  </span>
+                );
+              })}
+              <span>La planilla quedó más corta.</span>
+            </div>
+          )}
+
+          {reducidasSueltas.length > 0 && (
             <div className="mb-3 rounded-lg bg-arena-suave px-3 py-2 text-xs text-tinta-suave">
-              Salón reducido para este turno: {mesasReducidasActuales.length === 1 ? "mesa" : "mesas"}{" "}
-              {mesasReducidasActuales.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
+              Salón reducido para este turno: {reducidasSueltas.length === 1 ? "mesa" : "mesas"}{" "}
+              {reducidasSueltas.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
             </div>
           )}
 
@@ -234,7 +284,7 @@ export default function ShiftSection({
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
               <thead>
                 <tr className="border-b-2 border-borde text-[11px] tracking-wide text-tinta-suave uppercase">
                   <th className="w-5" aria-label="Mover" />
@@ -254,6 +304,9 @@ export default function ShiftSection({
                   >
                     Se fue
                   </th>
+                  <th className="px-1.5 py-1.5 text-left" title="Orden de llegada: cuándo entró cada reserva y quién la cargó">
+                    Recibida
+                  </th>
                   <th />
                 </tr>
               </thead>
@@ -268,6 +321,8 @@ export default function ShiftSection({
                     impar={i % 2 === 1}
                     ahora={ahora}
                     arrastre={arrastre}
+                    numeroLlegada={numeros.get(r.id)}
+                    sectorDelGrupo={r.sectorId ? sectores.find((s) => s.sectorId === r.sectorId) : undefined}
                   />
                 ))}
               </tbody>
@@ -293,6 +348,7 @@ export default function ShiftSection({
         </div>
         <div className="sticky top-24 flex h-fit flex-col gap-5 self-start">
           <MesasPanel
+            sectores={sectores}
             mesas={mesas}
             mesasOcupadas={mesasOcupadas}
             mesasPedidas={data.mesasPedidas}
@@ -310,6 +366,24 @@ export default function ShiftSection({
           />
         </div>
       </div>
+
+      {viendoSectores && (
+        <SectoresTurnoModal
+          titulo={titulo}
+          fecha={fecha}
+          turno={turno}
+          salonId={salonId}
+          sectores={sectores}
+          mesas={mesas}
+          reservas={reservas}
+          mesasWalkIn={data.mesasWalkIn}
+          onCerrar={() => setViendoSectores(false)}
+          onAjustarMesas={() => {
+            setViendoSectores(false);
+            onAbrirReducir();
+          }}
+        />
+      )}
 
       {reduciendoSalon && (
         <>

@@ -27,7 +27,7 @@ public class MetaController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada, m.Rotacion))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada, m.Rotacion, null, false, m.SectorId))
             .ToListAsync();
 
         // Solo los salones ACTIVOS (ver Models/Salon.cs): este endpoint
@@ -42,6 +42,13 @@ public class MetaController : ControllerBase
             .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo))
             .ToListAsync();
 
-        return Ok(new MetaDto(mesas, salones));
+        var idsSalones = salones.Select(s => s.Id).ToList();
+        var sectores = await _db.Sectores
+            .Where(s => idsSalones.Contains(s.SalonId))
+            .OrderBy(s => s.SalonId).ThenBy(s => s.Orden).ThenBy(s => s.Nombre)
+            .Select(s => new SectorDto(s.Id, s.SalonId, s.Nombre, s.Color, s.Orden))
+            .ToListAsync();
+
+        return Ok(new MetaDto(mesas, salones, sectores));
     }
 }

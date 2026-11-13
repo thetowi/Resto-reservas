@@ -30,7 +30,15 @@ public record ReservaDto(
     // reserva cargada por el staff (el caso de siempre) estos vienen en sus
     // defaults — Staff / Confirmada — y no significan nada especial.
     OrigenReserva Origen,
-    EstadoReserva Estado
+    EstadoReserva Estado,
+    // Orden de llegada (ver Models/Reserva.cs): cuándo entró (UTC) y quién
+    // la cargó. Null en las filas vacías y en las cargadas a mano antes de
+    // que existiera este dato.
+    DateTime? RecibidaEn = null,
+    string? RecibidaPor = null,
+    // Reserva de un grupo que ocupa un sector completo (ver
+    // Models/SectorTurno.cs): el sector. Null en las comunes.
+    int? SectorId = null
 );
 
 // después
@@ -46,7 +54,10 @@ public record TurnoDataDto(
     List<int> MesasWalkIn,
     bool EstaCerrado,
     string? MotivoCierre,
-    List<MesaDto> Mesas
+    List<MesaDto> Mesas,
+    // Sectores del salón y su estado en este turno (vacío si el salón no
+    // tiene sectores). Ver Models/SectorTurno.cs.
+    List<SectorTurnoDto>? Sectores = null
 );
 
 // Merienda viene null para los salones que no la ofrecen (ver
@@ -64,14 +75,16 @@ public record DiaDto(DateOnly Fecha, TurnoDataDto Almuerzo, TurnoDataDto Cena, T
 // deshabilitada con "Reducir salón" para ESE turno puntual (ver DiaService /
 // MesaReducida): el frontend la saca de "Mesas disponibles" sin tocar el
 // resto (sigue en Meta.mesas y en el plano normalmente).
-public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, int Rotacion, string? CodigoOriginal = null, bool Reducida = false);
+// SectorId: el sector del salón en el que está la mesa (ver Models/Sector.cs).
+public record MesaDto(int Id, string Codigo, int Capacidad, int? MesaPadreId, int Orden, double? PosX, double? PosY, int SalonId, bool EsTemporal, FormaMesa Forma, bool Fijada, int Rotacion, string? CodigoOriginal = null, bool Reducida = false, int? SectorId = null);
 
 // Trae TODAS las mesas de TODOS los salones (no solo el elegido en
 // pantalla): el frontend las filtra por SalonId donde haga falta, igual
 // criterio que ya usaba para ocultar mesas "totalmente divididas" — evita
 // tener que volver a pedir /api/meta cada vez que se cambia de salon.
 // Salones es la lista completa para el selector.
-public record MetaDto(List<MesaDto> Mesas, List<SalonDto> Salones);
+// Sectores: los de todos los salones activos (ver Models/Sector.cs).
+public record MetaDto(List<MesaDto> Mesas, List<SalonDto> Salones, List<SectorDto>? Sectores = null);
 
 public record CrearReservaRequest(DateOnly Fecha, Turno Turno, int SalonId, string? Hora);
 

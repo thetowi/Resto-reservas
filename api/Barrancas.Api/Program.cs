@@ -56,6 +56,7 @@ builder.Services.AddHttpClient<AnthropicClient>();
 // cliente navega dias y horarios) y creacion acotada, contra abuso.
 builder.Services.AddScoped<ReservaOnlineService>();
 builder.Services.AddScoped<ReservaWebService>();
+builder.Services.AddScoped<SectoresService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddRateLimiter(options =>
 {

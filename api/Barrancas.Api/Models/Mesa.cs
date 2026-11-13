@@ -40,6 +40,11 @@ public class Mesa
     public int SalonId { get; set; }
     public Salon? Salon { get; set; }
 
+    // Sector del salón (Bodega, Terraza...), ver Models/Sector.cs. Null = sin
+    // sector. Las divisiones tienen el mismo sector que su mesa.
+    public int? SectorId { get; set; }
+    public Sector? Sector { get; set; }
+
     public int? MesaPadreId { get; set; }
     public Mesa? MesaPadre { get; set; }
     public List<Mesa> Divisiones { get; set; } = new();

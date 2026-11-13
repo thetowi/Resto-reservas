@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { patchReserva, borrarReserva } from "@/lib/api";
-import type { Mesa, Reserva } from "@/lib/types";
+import type { Mesa, Reserva, SectorTurno } from "@/lib/types";
 import { TOLERANCIA_MINUTOS, excedioTolerancia } from "@/lib/tolerancia";
 import { useConfirm } from "./ConfirmProvider";
 import BorrarReserva, { filaConDatos } from "./BorrarReserva";
 import { AsaArrastre, type Arrastre } from "./ArrastreReservas";
+import { cuandoLlego, quienLaCargo, tieneReserva } from "@/lib/llegada";
 
 interface Props {
   reserva: Reserva;
@@ -21,6 +22,11 @@ interface Props {
   // las 26 filas de un turno recalculan el aviso de tolerancia todas juntas
   // en vez de tener cada una su propio setInterval.
   ahora: Date;
+  // Lugar en el orden de llegada del turno (1 = la primera que entró), ver
+  // lib/llegada.ts. Undefined si la fila está vacía o no tiene ese dato.
+  numeroLlegada?: number;
+  // Si es el grupo que ocupa un sector completo, ese sector (para la etiqueta).
+  sectorDelGrupo?: SectorTurno;
 }
 
 // Selector compartido de "celdas" de la grilla: inputs/checkboxes y el
@@ -121,7 +127,17 @@ function alPresionarTecla(e: React.KeyboardEvent<HTMLElement>) {
   alPresionarFlecha(e);
 }
 
-export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impar, ahora, arrastre }: Props) {
+export default function ReservaRow({
+  reserva,
+  mesas,
+  reservas,
+  mesasWalkIn,
+  impar,
+  ahora,
+  arrastre,
+  numeroLlegada,
+  sectorDelGrupo,
+}: Props) {
   const { confirmar } = useConfirm();
   const [local, setLocal] = useState(reserva);
   const focusedField = useRef<string | null>(null);
@@ -207,7 +223,17 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           : "";
 
   return (
-    <tr className={filaClase + claseArrastre} data-reserva-id={reserva.id}>
+    <tr
+      className={filaClase + claseArrastre}
+      data-reserva-id={reserva.id}
+      // El grupo que ocupa un sector completo se pinta del color del sector
+      // (salvo que ya se haya tildado «Asistió», que tiene su propio verde).
+      style={
+        sectorDelGrupo && !local.asistio
+          ? { backgroundColor: `color-mix(in srgb, ${sectorDelGrupo.color} 30%, transparent)` }
+          : undefined
+      }
+    >
       <td className="w-5 pr-0">
         <AsaArrastre reserva={reserva} arrastre={arrastre} />
       </td>
@@ -243,6 +269,7 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           pax={local.pax}
           ocupadasPorOtros={ocupadasPorOtros}
           onCambiar={onCambiarMesas}
+          etiqueta={sectorDelGrupo ? `${sectorDelGrupo.nombre} (${local.mesaIds.length})` : undefined}
         />
       </td>
       <td className="w-14 text-center">
@@ -287,6 +314,15 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
             placeholder="Apellido / Nombre"
           />
           <EtiquetaOrigen origen={reserva.origen} estado={reserva.estado} />
+          {sectorDelGrupo && (
+            <span
+              className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-sm"
+              style={{ background: `color-mix(in srgb, ${sectorDelGrupo.color} 82%, black)` }}
+              title={`Grupo con todo el sector ${sectorDelGrupo.nombre} (${sectorDelGrupo.mesaIds.length} mesas)`}
+            >
+              {sectorDelGrupo.nombre} completa
+            </span>
+          )}
         </div>
       </td>
       <td className="w-24">
@@ -338,6 +374,9 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
           }}
         />
       </td>
+      <td className="w-32">
+        <CeldaRecibida reserva={reserva} numero={numeroLlegada} ahora={ahora} />
+      </td>
       <td className="w-14 text-right whitespace-nowrap">
         {/* Tachito: borra la reserva y deja la fila (con su horario) para
             cargar otra. La × de al lado quita la fila entera. */}
@@ -357,6 +396,42 @@ export default function ReservaRow({ reserva, mesas, reservas, mesasWalkIn, impa
   );
 }
 
+// Columna «Recibida»: número de llegada, cuándo entró y quién la cargó.
+function CeldaRecibida({ reserva, numero, ahora }: { reserva: Reserva; numero?: number; ahora: Date }) {
+  if (!tieneReserva(reserva)) return null;
+  if (!reserva.recibidaEn) {
+    return (
+      <span className="px-1.5 text-xs text-tinta-suave" title="Se cargó antes de que capax guardara la hora de llegada">
+        —
+      </span>
+    );
+  }
+  const { dia, hora } = cuandoLlego(reserva.recibidaEn, ahora);
+  const quien = quienLaCargo(reserva);
+  return (
+    <div
+      className="flex items-center gap-2 px-1.5 whitespace-nowrap"
+      title={[numero ? `Llegó ${numero}.ª` : null, `${dia} ${hora}`, quien].filter(Boolean).join(" · ")}
+    >
+      {numero && (
+        <span
+          className={`grid h-[22px] min-w-[26px] place-items-center rounded-md px-1 text-[11px] font-extrabold tabular-nums ${
+            numero === 1 ? "bg-tinta text-fondo" : "bg-arena-suave text-tinta"
+          }`}
+        >
+          {numero}.º
+        </span>
+      )}
+      <span className="grid leading-tight">
+        <span className="text-xs font-semibold tabular-nums">
+          {dia} · {hora}
+        </span>
+        {quien && <span className="text-[11px] text-tinta-suave">{quien}</span>}
+      </span>
+    </div>
+  );
+}
+
 interface MesaSelectorProps {
   mesas: Mesa[];
   seleccionadas: number[];
@@ -369,6 +444,8 @@ interface MesaSelectorProps {
   pax: number | null;
   ocupadasPorOtros: Set<number>;
   onCambiar: (ids: number[]) => void;
+  // Texto corto en lugar de la lista de mesas (ej. "Terraza (13)").
+  etiqueta?: string;
 }
 
 // Selector de mesas de una reserva: antes era un <select> de una sola
@@ -377,7 +454,16 @@ interface MesaSelectorProps {
 // un popover con un checkbox por mesa. Si la capacidad sumada de lo elegido
 // no alcanza para los pax cargados, se ve un aviso (⚠, en rojo) sin
 // bloquear la carga — es solo una ayuda visual para el mozo/host.
-function MesaSelector({ mesas, seleccionadas, bloqueada, retirada, pax, ocupadasPorOtros, onCambiar }: MesaSelectorProps) {
+function MesaSelector({
+  mesas,
+  seleccionadas,
+  bloqueada,
+  retirada,
+  pax,
+  ocupadasPorOtros,
+  onCambiar,
+  etiqueta,
+}: MesaSelectorProps) {
   const [abierto, setAbierto] = useState(false);
   const [estilo, setEstilo] = useState<React.CSSProperties | null>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
@@ -441,7 +527,9 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, retirada, pax, ocupadas
   }
 
   return (
-    <div className="relative">
+    // Ancho fijo: con muchas mesas (un grupo que ocupa un sector) la columna
+    // no se estira; la lista completa está en el título y en el desplegable.
+    <div className="relative w-24 max-w-24">
       <button
         ref={botonRef}
         type="button"
@@ -449,12 +537,18 @@ function MesaSelector({ mesas, seleccionadas, bloqueada, retirada, pax, ocupadas
         title={titulo}
         onClick={alTocarBoton}
         onKeyDown={alPresionarTecla}
-        className={`selector-mesas celda flex w-full items-center justify-between gap-1 text-left disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`selector-mesas celda flex w-full min-w-0 items-center justify-between gap-1 text-left disabled:cursor-not-allowed disabled:opacity-60 ${
           bloqueada ? "anillo-pedida" : ""
         } ${capacidadInsuficiente ? "text-ocupada" : ""}`}
       >
-        <span className={`truncate ${retirada ? "line-through" : ""}`}>
-          {codigos.length > 0 ? codigos.join(", ") : "—"}
+        <span className={`min-w-0 truncate ${retirada ? "line-through" : ""}`}>
+          {codigos.length === 0
+            ? "—"
+            : etiqueta
+              ? etiqueta
+              : codigos.length <= 3
+                ? codigos.join(", ")
+                : `${codigos.slice(0, 2).join(", ")} +${codigos.length - 2}`}
         </span>
         {capacidadInsuficiente && <span aria-hidden="true">⚠</span>}
       </button>

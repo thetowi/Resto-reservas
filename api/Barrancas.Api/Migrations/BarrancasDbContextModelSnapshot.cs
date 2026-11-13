@@ -417,9 +417,14 @@ namespace Barrancas.Api.Migrations
                     b.Property<int>("SalonId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SectorId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MesaPadreId");
+
+                    b.HasIndex("SectorId");
 
                     b.HasIndex("SalonId", "Codigo")
                         .IsUnique()
@@ -543,10 +548,19 @@ namespace Barrancas.Api.Migrations
                     b.Property<bool>("PidioMesa")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("RecibidaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecibidaPor")
+                        .HasColumnType("text");
+
                     b.Property<bool>("Retirada")
                         .HasColumnType("boolean");
 
                     b.Property<int>("SalonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SectorId")
                         .HasColumnType("integer");
 
                     b.Property<int>("Turno")
@@ -688,6 +702,81 @@ namespace Barrancas.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Salones");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.Sector", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SalonId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalonId", "Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Sectores");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.SectorTurno", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreadoPor")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Motivo")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ReservaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SalonId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SectorId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Turno")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SectorId");
+
+                    b.HasIndex("Fecha", "Turno", "SectorId")
+                        .IsUnique();
+
+                    b.ToTable("SectoresTurno");
                 });
 
             modelBuilder.Entity("Barrancas.Api.Models.SesionRecordada", b =>
@@ -954,9 +1043,16 @@ namespace Barrancas.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Barrancas.Api.Models.Sector", "Sector")
+                        .WithMany()
+                        .HasForeignKey("SectorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("MesaPadre");
 
                     b.Navigation("Salon");
+
+                    b.Navigation("Sector");
                 });
 
             modelBuilder.Entity("Barrancas.Api.Models.MesaReducida", b =>
@@ -1043,6 +1139,28 @@ namespace Barrancas.Api.Migrations
                     b.Navigation("Reserva");
 
                     b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.Sector", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Salon", "Salon")
+                        .WithMany()
+                        .HasForeignKey("SalonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Salon");
+                });
+
+            modelBuilder.Entity("Barrancas.Api.Models.SectorTurno", b =>
+                {
+                    b.HasOne("Barrancas.Api.Models.Sector", "Sector")
+                        .WithMany()
+                        .HasForeignKey("SectorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sector");
                 });
 
             modelBuilder.Entity("Barrancas.Api.Models.SesionRecordada", b =>

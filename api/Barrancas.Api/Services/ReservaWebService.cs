@@ -185,6 +185,9 @@ public class ReservaWebService
         reserva.Retirada = false;
         reserva.Origen = OrigenReserva.Staff;
         reserva.Estado = EstadoReserva.Confirmada;
+        reserva.RecibidaEn = null;
+        reserva.RecibidaPor = null;
+        reserva.SectorId = null;
         reserva.UpdatedAt = DateTime.UtcNow;
         var mesas = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
         _db.ReservaMesas.RemoveRange(mesas);

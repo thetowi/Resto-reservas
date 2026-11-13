@@ -104,7 +104,20 @@ public static class HorariosTurnoService
         }
     }
 
-    private static bool RearmarDia(BarrancasDbContext db, DateOnly fecha, int salonId, Turno turno, List<Reserva> filas, List<Franja> franjas)
+    /// <summary>
+    /// Las mismas franjas con menos filas, según la parte del salón que quedó
+    /// abierta (ver DiaService.FactorAbierto): redondeando para arriba y con
+    /// al menos una fila por horario; sin filas si está todo cerrado.
+    /// </summary>
+    public static List<Franja> Escalar(List<Franja> franjas, double factor)
+    {
+        if (factor >= 0.999) return franjas;
+        return franjas
+            .Select(f => f with { Filas = factor <= 0 ? 0 : Math.Max(1, (int)Math.Ceiling(f.Filas * factor - 1e-9)) })
+            .ToList();
+    }
+
+    public static bool RearmarDia(BarrancasDbContext db, DateOnly fecha, int salonId, Turno turno, List<Reserva> filas, List<Franja> franjas)
     {
         var conDatos = filas.Where(TieneDatos).ToList();
         var vacias = filas.Where(r => !TieneDatos(r)).ToList();

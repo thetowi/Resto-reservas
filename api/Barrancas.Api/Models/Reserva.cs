@@ -59,4 +59,19 @@ public class Reserva
     public EstadoReserva Estado { get; set; } = EstadoReserva.Confirmada;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    // Orden de llegada: cuándo entró esta reserva (UTC) y quién la cargó.
+    // Se toma cuando la fila vacía recibe su primer dato (ver
+    // ReservasController.Actualizar); editarla después no lo cambia, y
+    // moverla de horario lo conserva (es la misma reserva). Al vaciar la
+    // fila (tachito) vuelve a null. RecibidaPor es el usuario del panel; en
+    // las del link y del bot queda null (el origen ya dice de dónde vino) y
+    // en las del link RecibidaEn es la hora en que el cliente la mandó.
+    // Las cargadas a mano antes de esta función quedan en null.
+    public DateTime? RecibidaEn { get; set; }
+    public string? RecibidaPor { get; set; }
+
+    // Reserva de un grupo que ocupa un sector completo en este turno (ver
+    // Models/SectorTurno.cs): el sector. Null en las reservas comunes.
+    public int? SectorId { get; set; }
 }

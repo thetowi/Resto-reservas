@@ -180,9 +180,6 @@ public class ReservaOnlineService
     private async Task<List<string>> HorariosDeAsync(int salonId, Turno turno) =>
         (await FranjasAsync(salonId, turno)).Select(f => f.Hora).ToList();
 
-    private async Task<int> CupoDeAsync(int salonId, Turno turno, string hora) =>
-        (await FranjasAsync(salonId, turno)).FirstOrDefault(f => f.Hora == hora)?.Filas ?? 0;
-
     private static bool TryParseTurno(string? texto, out Turno turno)
     {
         switch (texto?.Trim().ToLowerInvariant())
@@ -238,7 +235,9 @@ public class ReservaOnlineService
     private async Task<EvaluacionTurno> EvaluarTurnoAsync(DateOnly fecha, Turno turno, int salonId, int pax, bool sembrar)
     {
         var data = await _diaService.GetTurnoAsync(fecha, turno, salonId, sembrar);
-        var franjas = await FranjasAsync(salonId, turno);
+        // Con parte del salón cerrada (sectores o mesas reducidas) el cupo de
+        // cada horario se achica igual que las filas de la planilla.
+        var franjas = DiaService.FranjasDelTurno(await FranjasAsync(salonId, turno), data);
         var horarios = franjas.Select(f => f.Hora).ToList();
 
         if (data.EstaCerrado)
@@ -616,6 +615,10 @@ public class ReservaOnlineService
         reserva.Retirada = false;
         reserva.Origen = OrigenReserva.Web;
         reserva.Estado = estado;
+        // Orden de llegada: la hora en que el cliente la mandó (una
+        // solicitud aprobada después igual conserva su lugar).
+        reserva.RecibidaEn = w.CreadaEn;
+        reserva.RecibidaPor = null;
         reserva.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -651,7 +654,8 @@ public class ReservaOnlineService
         var libres = MesasLibresEfectivas(data, w.ReservaId).OrderBy(m => m.Orden).ToList();
         var lugares = libres.Sum(m => m.Capacidad);
         var aLaHora = data.Reservas.Count(r => r.Pax is not null && r.Hora == w.Hora && r.Id != w.ReservaId);
-        var cupo = await CupoDeAsync(w.SalonId, w.Turno, w.Hora);
+        var cupo = DiaService.FranjasDelTurno(await FranjasAsync(w.SalonId, w.Turno), data)
+            .FirstOrDefault(f => f.Hora == w.Hora)?.Filas ?? 0;
         var sugeridas = SugerirMesas(libres, w.Pax);
 
         string estado;

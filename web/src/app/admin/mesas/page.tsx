@@ -13,8 +13,9 @@ import {
 } from "@/lib/api";
 import { esAdmin, haySesion } from "@/lib/auth";
 import { crearConexion } from "@/lib/signalr";
-import type { Mesa, Salon } from "@/lib/types";
+import type { Mesa, Salon, Sector } from "@/lib/types";
 import PlanoSalon from "@/components/PlanoSalon";
+import SectoresEditor from "@/components/SectoresEditor";
 import SalonSelector from "@/components/SalonSelector";
 
 export default function AdminMesasPage() {
@@ -26,7 +27,9 @@ export default function AdminMesasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nuevaAbierta, setNuevaAbierta] = useState(false);
-  const [vista, setVista] = useState<"lista" | "plano">("lista");
+  const [vista, setVista] = useState<"lista" | "plano" | "sectores">("lista");
+  // Sectores de todos los salones (Bodega, Terraza...), ver SectoresEditor.
+  const [sectores, setSectores] = useState<Sector[]>([]);
 
   useEffect(() => {
     if (!haySesion()) {
@@ -49,6 +52,7 @@ export default function AdminMesasPage() {
       .then((meta) => {
         setTodasLasMesas(meta.mesas);
         setSalones(meta.salones);
+        setSectores(meta.sectores ?? []);
         if (meta.salones.length > 0) setSalonId((prev) => prev ?? meta.salones[0].id);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Error cargando las mesas"))
@@ -65,6 +69,9 @@ export default function AdminMesasPage() {
     // pantalla solo trabaja con salones ACTIVOS, aunque el broadcast en sí
     // trae todos (activos e inactivos, lo necesita /admin/salones).
     conexion.on("SalonesActualizados", (data: Salon[]) => setSalones(data.filter((s) => s.activo)));
+    conexion.on("SectoresActualizados", (data: { salonId: number; sectores: Sector[] }) =>
+      setSectores((prev) => [...prev.filter((s) => s.salonId !== data.salonId), ...data.sectores]),
+    );
     conexion.start().catch(() => {});
     return () => {
       conexion.stop();
@@ -194,7 +201,7 @@ export default function AdminMesasPage() {
     // La vista "Plano" necesita bastante mas ancho que la lista para que el
     // mapa del salon se vea grande de verdad, asi que en esa pestaña el
     // contenedor se estira mucho mas.
-    <div className={`mx-auto px-6 py-8 ${vista === "plano" ? "max-w-[1700px]" : "max-w-3xl"}`}>
+    <div className={`mx-auto px-6 py-8 ${vista === "plano" ? "max-w-[1700px]" : vista === "sectores" ? "max-w-6xl" : "max-w-3xl"}`}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link href="/" className="text-xs text-tinta-suave underline hover:text-tinta">
@@ -245,6 +252,15 @@ export default function AdminMesasPage() {
         >
           Plano
         </button>
+        <button
+          onClick={() => setVista("sectores")}
+          aria-pressed={vista === "sectores"}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            vista === "sectores" ? "bg-marca text-white" : "text-tinta-suave hover:bg-superficie"
+          }`}
+        >
+          Sectores
+        </button>
       </div>
 
       {error && (
@@ -255,6 +271,16 @@ export default function AdminMesasPage() {
 
       {cargando ? (
         <div className="p-10 text-center text-tinta-suave">Cargando…</div>
+      ) : vista === "sectores" && salonId !== null ? (
+        <SectoresEditor
+          key={salonId}
+          salonId={salonId}
+          mesas={mesas}
+          todasLasMesas={todasLasMesas}
+          sectores={sectores.filter((s) => s.salonId === salonId).sort((a, b) => a.orden - b.orden)}
+          onSectores={(id, lista) => setSectores((prev) => [...prev.filter((s) => s.salonId !== id), ...lista])}
+          onMesas={setTodasLasMesas}
+        />
       ) : vista === "plano" && salonId !== null ? (
         <PlanoSalon
           mesas={mesas}

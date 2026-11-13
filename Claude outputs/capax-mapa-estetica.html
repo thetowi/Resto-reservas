@@ -1,0 +1,255 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Estética del mapa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 70px}
+button{font:inherit;color:inherit}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:26px}
+.wrap>*{min-width:0}
+h1{font-size:25px}
+.intro{color:#4f5c64;font-size:14.5px;line-height:1.55;max-width:96ch;margin-top:6px}
+.ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.op{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:15px 16px;display:grid;gap:8px;align-content:start;text-align:left;cursor:pointer;position:relative}
+.op:hover{border-color:#9fb0bb}
+.op.sel{border:2px solid #13242e;padding:14px 15px}
+.op .badge{position:absolute;top:-11px;right:14px;background:#32b49d;color:#04221c;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px}
+.op h3{font-size:15.5px;display:flex;gap:8px;align-items:center}.op h3 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:12px;flex:none}
+.op p{font-size:13.5px;color:#3d4a52;line-height:1.5}
+.pc{display:grid;gap:3px;font-size:12.5px;line-height:1.4}.pc .s{color:#1d7a69}.pc .no{color:#a33}
+.barra{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.seg{display:inline-flex;background:#fff;border:1px solid #d3dbe1;border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;color:#4f5c64;cursor:pointer}
+.seg button.on{background:#13242e;color:#fff}
+.lienzo{border-radius:18px;overflow:hidden;border:1px solid #c8d2da;background:#fff;box-shadow:0 30px 60px -36px rgba(12,38,55,.45)}
+.lienzo svg{display:block;width:100%;height:auto}
+.ley{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:#4f5c64;align-items:center}
+.ley span{display:inline-flex;gap:7px;align-items:center}
+.ley i{width:14px;height:14px;border-radius:5px;display:inline-block}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:5px;margin-top:4px}
+.tip{position:fixed;pointer-events:none;background:#13242e;color:#fff;font-size:12.5px;padding:7px 10px;border-radius:9px;line-height:1.4;z-index:10;box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
+.tip b{font-size:13.5px}
+svg .mesa{cursor:pointer}
+svg .mesa:focus{outline:none}
+svg .mesa:focus-visible .foco{stroke-width:3;stroke:#32b49d}
+</style></head><body><div class="wrap">
+
+<div><h1>Mapa del salón: 3 estilos</h1>
+<p class="intro">Mismo salón, mismas mesas y mismos carteles que hoy (Ventana, Entrada, Columna, Isla, Bodega, Mueble, Cocina), dibujados de 3 formas distintas. Cada cartel deja de ser un rectángulo con texto: se dibuja como lo que es. Elegí un estilo arriba, probá <b>claro / oscuro</b>, pasá el mouse por las mesas y <b>tocá una para cambiarle el estado</b>.</p></div>
+
+<div class="ops" role="radiogroup" aria-label="Estilos">
+ <button class="op sel" data-op="B" role="radio" aria-checked="true"><span class="badge">RECOMENDADA</span><h3><i>A</i>Ilustrado cálido</h3>
+  <p>Piso de madera, cocina con cerámica, bodega con botellas, ventanas con luz, plantas. Mesas de madera con sombra; el estado se ve en un aro y en la chapita del número.</p>
+  <div class="pc"><span class="s">✓ Se parece al restaurant de verdad</span><span class="s">✓ Lindo para mostrarle a un cliente o al equipo nuevo</span><span class="no">✗ Más detalle visual: el estado tiene que destacarse bien</span></div></button>
+ <button class="op" data-op="A" role="radio" aria-checked="false"><h3><i>B</i>Plano de arquitecto</h3>
+  <p>Paredes con grosor, ventanas en la pared, puerta con su arco, cocina rayada, columnas macizas. Líneas finas y letra técnica. En oscuro queda como un plano azul.</p>
+  <div class="pc"><span class="s">✓ Elegante y muy prolijo</span><span class="s">✓ Muy legible: casi todo es blanco y el estado resalta</span><span class="no">✗ Más frío, menos «restaurant»</span></div></button>
+ <button class="op" data-op="C" role="radio" aria-checked="false"><h3><i>C</i>Moderno por zonas</h3>
+  <p>Zonas suaves con el color de cada sector (Bodega, Terraza), íconos chicos para cocina, ventanas y entrada, y mesas como tarjetas con el estado pintado entero.</p>
+  <div class="pc"><span class="s">✓ El más claro para trabajar en pleno servicio</span><span class="s">✓ Usa los sectores que acabamos de armar</span><span class="no">✗ Más app que salón</span></div></button>
+</div>
+
+<div class="barra">
+ <div class="seg" role="group" aria-label="Tema"><button class="on" data-tema="claro">Claro</button><button data-tema="oscuro">Oscuro</button></div>
+ <div class="ley" id="ley"></div>
+</div>
+
+<div class="lienzo" id="lienzo"></div>
+
+<div class="nota"><ul>
+ <li><b>Los carteles se reconocen por su nombre:</b> Ventana, Entrada, Columna, Isla, Bodega, Mueble, Cocina y Barra tienen su dibujo. Un cartel con otro nombre («Otro…») se ve como un mueble genérico con su texto.</li>
+ <li><b>Las mesas mantienen su forma</b> (redonda o cuadrada, de 2, 4 o 6) y sus sillas; solo cambia cómo se dibujan.</li>
+ <li><b>Los colores de estado no cambian</b> (libre, ocupada, walk-in, pedida) para que nadie tenga que aprender nada nuevo.</li>
+ <li>Se aplica igual al mapa de Reservas, a Administrar mesas → Plano y al PDF exportado.</li>
+</ul></div>
+
+</div>
+<div class="tip" id="tip" hidden></div>
+<script>
+// ---------- datos (mismo salón que la captura)
+const W=950,H=700,OX=-30,OY=24;
+const carteles=[
+ {t:'Ventana',x:85,y:0,w:355,h:22},{t:'Entrada',x:448,y:0,w:45,h:22},{t:'Ventana',x:500,y:0,w:425,h:22},
+ {t:'Columna',x:452,y:160,w:40,h:40},{t:'Isla',x:431,y:227,w:82,h:126},{t:'Columna',x:452,y:380,w:40,h:40},
+ {t:'Bodega',x:810,y:209,w:121,h:278},{t:'Mueble',x:85,y:440,w:323,h:40},{t:'Cocina',x:85,y:519,w:323,h:130},
+];
+const m=(c,x,y,p,f)=>({c,x,y,p,f:f||'c',e:'libre'});
+const mesas=[m('14',163,78,6,'r'),m('24',295,78,2),m('44',467,124,2),
+ m('13',126,176,4),m('23',243,176,2),m('33',351,176,4),m('12',126,262,4),m('22',243,262,2),m('32',351,262,4),
+ m('11',126,366,4),m('21',243,366,2),m('31',351,366,4),
+ m('45',579,78,6),m('46',691,78,2),m('47',760,78,2),m('60',863,78,4),m('43',571,162,2),m('53',691,162,2),m('54',778,162,2),m('55',863,162,2),
+ m('42',592,262,4),m('52',730,262,4),m('41',592,366,4),m('51',730,366,4),m('40',592,469,4),m('50',730,469,4)];
+const estados={ '13':'ocupada','32':'ocupada','41':'ocupada','45':'ocupada','22':'walkin','52':'pedida','60':'ocupada'};
+mesas.forEach(x=>{if(estados[x.c])x.e=estados[x.c]});
+const reservas={'13':'Gómez · 4 pax · 21:00','32':'Familia Ruiz · 4 pax · 21:30','41':'Paz · 3 pax · 20:30','45':'Cumpleaños Fernández · 6 pax','60':'Álvarez · 4 pax','52':'Sosa (pidió la 52) · 22:00'};
+const orden=['libre','ocupada','walkin','pedida'];
+const nombreEstado={libre:'Libre',ocupada:'Ocupada',walkin:'Walk-in',pedida:'Pedida'};
+let op='B',tema='claro';
+
+// geometría de una mesa: tamaño de la tapa y posición de las sillas
+function geo(x){
+ if(x.f==='r'){const r=x.p>=6?30:22;const sillas=[];for(let i=0;i<x.p;i++){const a=i/x.p*Math.PI*2-Math.PI/2;sillas.push({x:x.x+Math.cos(a)*(r+10),y:x.y+Math.sin(a)*(r+10),rot:a*180/Math.PI+90})}return{r,sillas,w:r*2,h:r*2}}
+ const cols=x.p>=6?3:x.p>=4?2:1;const lado=40;const w=cols*lado,h=lado;const sillas=[];
+ for(let i=0;i<cols;i++){const cx=x.x-w/2+lado/2+i*lado;sillas.push({x:cx,y:x.y-h/2-9,rot:0});if(x.p>=2&&(cols>1||x.p>=2))sillas.push({x:cx,y:x.y+h/2+9,rot:180})}
+ if(cols===1){sillas.length=0;sillas.push({x:x.x-w/2-9,y:x.y,rot:-90},{x:x.x+w/2+9,y:x.y,rot:90})}
+ return{w,h,sillas};
+}
+
+// ---------- paletas
+const P={
+ A:{claro:{fondo:'#f6f4ef',grilla:'#e7e2d8',pared:'#2b2a28',vidrio:'#8ec3dc',linea:'#2b2a28',suave:'#7d776d',mesa:'#ffffff',silla:'#ffffff',txt:'#2b2a28',raya:'#b9b2a5',tinta:'#2b2a28'},
+    oscuro:{fondo:'#123a5c',grilla:'#1a4a72',pared:'#e8f2fb',vidrio:'#7fd3ff',linea:'#d7e9f8',suave:'#9fc3e0',mesa:'#16446b',silla:'#16446b',txt:'#e8f2fb',raya:'#5d8cb3',tinta:'#e8f2fb'}},
+ B:{claro:{piso1:'#e9d3b0',piso2:'#e2c79f',junta:'#d4b688',cer1:'#f3f1ec',cer2:'#e4e0d7',pared:'#5b4a3a',mesa:'#b98a55',mesaB:'#a4773f',silla:'#efe6d8',sillaB:'#c9b79c',txt:'#3b2b1c',luz:'rgba(255,240,200,.55)',hoja:'#5f8a4b',hoja2:'#7aa863',chapa:'#fffaf2'},
+    oscuro:{piso1:'#4a3a2b',piso2:'#45362a',junta:'#3a2d22',cer1:'#3b3936',cer2:'#34322f',pared:'#1e1712',mesa:'#8a6338',mesaB:'#6f4f2c',silla:'#5c5146',sillaB:'#433a31',txt:'#f6ead9',luz:'rgba(255,200,120,.22)',hoja:'#4c7a3c',hoja2:'#5f9149',chapa:'#2a221b'}},
+ C:{claro:{fondo:'#f4f6f8',zonaB:'#f6ebe0',zonaBb:'#e7cfb5',zonaT:'#e0f2ee',zonaTb:'#b5ddd4',chip:'#ffffff',chipB:'#d3dbe1',txt:'#13242e',suave:'#5b6870',mesa:'#ffffff',mesaB:'#c8d2da',silla:'#c8d2da',neutro:'#e3e8eb'},
+    oscuro:{fondo:'#0f1a22',zonaB:'#2a2119',zonaBb:'#4a3a2a',zonaT:'#14302b',zonaTb:'#245248',chip:'#17242d',chipB:'#2c3c47',txt:'#e8eef2',suave:'#9aa8b1',mesa:'#1b2a34',mesaB:'#33454f',silla:'#3a4c57',neutro:'#24333d'}},
+};
+const EST={claro:{ocupada:'#d92d2d',walkin:'#8f5ad1',pedida:'#d98a16',libre:null},oscuro:{ocupada:'#ff5a5a',walkin:'#b48af0',pedida:'#f0a73a',libre:null}};
+
+// ---------- A: plano de arquitecto
+function dibujarA(){
+ const c=P.A[tema];const e=EST[tema];let s='';
+ s+=`<defs><pattern id="gA" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="${c.grilla}" stroke-width="1"/></pattern>
+ <pattern id="rayA" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="${c.raya}" stroke-width="1.6"/></pattern></defs>`;
+ s+=`<rect width="${W}" height="${H}" fill="${c.fondo}"/><rect width="${W}" height="${H}" fill="url(#gA)"/>`;
+ s+=`<g transform="translate(${OX},${OY})" font-family="IBM Plex Mono,monospace">`;
+ // paredes: contorno del salón
+ const L=60,T=10,R=950,B=652;
+ s+=`<path d="M${L} ${T}H${R}V${B}H${L}Z" fill="none" stroke="${c.pared}" stroke-width="9"/>`;
+ // aberturas: ventanas y entrada sobre la pared de arriba
+ carteles.filter(k=>k.t==='Ventana').forEach(k=>{s+=`<rect x="${k.x+8}" y="${T-6}" width="${k.w-16}" height="12" fill="${c.fondo}"/><line x1="${k.x+8}" y1="${T-3}" x2="${k.x+k.w-8}" y2="${T-3}" stroke="${c.vidrio}" stroke-width="2"/><line x1="${k.x+8}" y1="${T+3}" x2="${k.x+k.w-8}" y2="${T+3}" stroke="${c.vidrio}" stroke-width="2"/>`;
+  for(let x=k.x+8;x<=k.x+k.w-8;x+=60)s+=`<line x1="${x}" y1="${T-6}" x2="${x}" y2="${T+6}" stroke="${c.linea}" stroke-width="1.5"/>`;
+  s+=`<text x="${k.x+k.w/2}" y="${T+24}" text-anchor="middle" font-size="10" fill="${c.suave}" letter-spacing="2">VENTANAL</text>`});
+ carteles.filter(k=>k.t==='Entrada').forEach(k=>{s+=`<rect x="${k.x-2}" y="${T-6}" width="${k.w+4}" height="12" fill="${c.fondo}"/><path d="M${k.x} ${T}A${k.w} ${k.w} 0 0 0 ${k.x+k.w} ${T+k.w}" fill="none" stroke="${c.suave}" stroke-width="1.3" stroke-dasharray="3 3"/><line x1="${k.x}" y1="${T}" x2="${k.x}" y2="${T+k.w}" stroke="${c.linea}" stroke-width="2"/><text x="${k.x+k.w/2}" y="${T+k.w+16}" text-anchor="middle" font-size="10" fill="${c.suave}" letter-spacing="2">ENTRADA</text>`});
+ carteles.forEach(k=>{
+  if(k.t==='Columna')s+=`<rect x="${k.x+6}" y="${k.y+6}" width="${k.w-12}" height="${k.h-12}" fill="${c.pared}"/>`;
+  if(k.t==='Isla')s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="6" fill="${c.mesa}" stroke="${c.linea}" stroke-width="1.5"/><rect x="${k.x+7}" y="${k.y+7}" width="${k.w-14}" height="${k.h-14}" rx="3" fill="none" stroke="${c.suave}" stroke-width="1"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-size="10" fill="${c.suave}" letter-spacing="2">ISLA</text>`;
+  if(k.t==='Mueble')s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" fill="${c.mesa}" stroke="${c.linea}" stroke-width="1.5"/><path d="M${k.x} ${k.y}L${k.x+k.w} ${k.y+k.h}M${k.x+k.w} ${k.y}L${k.x} ${k.y+k.h}" stroke="${c.suave}" stroke-width=".8"/><rect x="${k.x+k.w/2-34}" y="${k.y+k.h/2-9}" width="68" height="18" fill="${c.mesa}"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-size="10" fill="${c.suave}" letter-spacing="2">MUEBLE</text>`;
+  if(k.t==='Cocina')s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" fill="url(#rayA)" stroke="${c.pared}" stroke-width="5"/><rect x="${k.x+k.w/2-42}" y="${k.y+k.h/2-12}" width="84" height="24" fill="${c.fondo}"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-size="11" fill="${c.txt}" letter-spacing="3" font-weight="600">COCINA</text><line x1="${k.x+k.w-90}" y1="${k.y}" x2="${k.x+k.w-20}" y2="${k.y}" stroke="${c.fondo}" stroke-width="6"/>`;
+  if(k.t==='Bodega'){s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" fill="${c.mesa}" stroke="${c.linea}" stroke-width="1.5"/>`;for(let yy=k.y+14;yy<k.y+k.h-8;yy+=16)for(let xx=k.x+14;xx<k.x+k.w-8;xx+=16)s+=`<circle cx="${xx}" cy="${yy}" r="4.5" fill="none" stroke="${c.suave}" stroke-width="1"/>`;s+=`<rect x="${k.x+k.w/2-38}" y="${k.y+k.h/2-11}" width="76" height="22" fill="${c.mesa}"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-size="10" fill="${c.txt}" letter-spacing="2" font-weight="600">BODEGA</text>`}
+ });
+ // mesas
+ mesas.forEach((x,i)=>{const g=geo(x);const col=e[x.e];s+=`<g class="mesa" data-i="${i}" tabindex="0" role="button" aria-label="Mesa ${x.c}, ${x.p} pax, ${nombreEstado[x.e]}">`;
+  g.sillas.forEach(si=>{s+=`<rect x="${si.x-8}" y="${si.y-5}" width="16" height="10" rx="3" transform="rotate(${si.rot} ${si.x} ${si.y})" fill="${c.silla}" stroke="${col||c.linea}" stroke-width="1.2"/>`});
+  const fill=col?col+'22':c.mesa;
+  if(x.f==='r')s+=`<circle class="foco" cx="${x.x}" cy="${x.y}" r="${g.r}" fill="${fill}" stroke="${col||c.linea}" stroke-width="${col?2.2:1.5}"/>`;
+  else s+=`<rect class="foco" x="${x.x-g.w/2}" y="${x.y-g.h/2}" width="${g.w}" height="${g.h}" rx="3" fill="${fill}" stroke="${col||c.linea}" stroke-width="${col?2.2:1.5}"/>`;
+  if(x.e==='pedida')s+=`<circle cx="${x.x+g.w/2-2}" cy="${x.y-g.h/2+2}" r="5" fill="${col}"/>`;
+  s+=`<text x="${x.x}" y="${x.y+1}" text-anchor="middle" font-size="13" font-weight="600" fill="${col||c.txt}">${x.c}</text><text x="${x.x}" y="${x.y+13}" text-anchor="middle" font-size="8.5" fill="${c.suave}">${x.p}P</text></g>`});
+ // escala gráfica
+ s+=`<g transform="translate(${R-150},${B+-26})"><line x1="0" y1="0" x2="100" y2="0" stroke="${c.linea}" stroke-width="1.5"/><line x1="0" y1="-4" x2="0" y2="4" stroke="${c.linea}"/><line x1="50" y1="-3" x2="50" y2="3" stroke="${c.linea}"/><line x1="100" y1="-4" x2="100" y2="4" stroke="${c.linea}"/><text x="110" y="4" font-size="9" fill="${c.suave}">5 m</text></g>`;
+ s+=`<text x="${R-150}" y="${B-44}" font-size="10" fill="${c.suave}" letter-spacing="2">RESTAURANT · PLANTA</text>`;
+ return s+'</g>';
+}
+
+// ---------- B: ilustrado cálido
+function planta(x,y,r,c){let s=`<circle cx="${x}" cy="${y+3}" r="${r}" fill="rgba(0,0,0,.18)"/>`;for(let i=0;i<7;i++){const a=i/7*Math.PI*2;s+=`<ellipse cx="${x+Math.cos(a)*r*.45}" cy="${y+Math.sin(a)*r*.45}" rx="${r*.55}" ry="${r*.28}" transform="rotate(${a*180/Math.PI} ${x+Math.cos(a)*r*.45} ${y+Math.sin(a)*r*.45})" fill="${i%2?c.hoja:c.hoja2}"/>`}return s+`<circle cx="${x}" cy="${y}" r="${r*.25}" fill="${c.hoja}"/>`}
+function dibujarB(){
+ const c=P.B[tema];const e=EST[tema];let s='';
+ s+=`<defs>
+ <pattern id="parquet" width="120" height="36" patternUnits="userSpaceOnUse"><rect width="120" height="36" fill="${c.piso1}"/><rect y="0" width="80" height="12" fill="${c.piso2}"/><rect x="80" y="12" width="40" height="12" fill="${c.piso2}"/><rect x="30" y="24" width="90" height="12" fill="${c.piso2}"/><path d="M0 12H120M0 24H120M80 0V12M40 12V24M30 24V36" stroke="${c.junta}" stroke-width="1"/></pattern>
+ <pattern id="ceramica" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="${c.cer1}"/><rect width="13" height="13" fill="${c.cer2}"/><rect x="13" y="13" width="13" height="13" fill="${c.cer2}"/></pattern>
+ <linearGradient id="luz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.luz}"/><stop offset="1" stop-color="rgba(255,240,200,0)"/></linearGradient>
+ <linearGradient id="marmol" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${tema==='claro'?'#fbfaf7':'#5a5753'}"/><stop offset=".5" stop-color="${tema==='claro'?'#ece8e1':'#4b4844'}"/><stop offset="1" stop-color="${tema==='claro'?'#f7f5f0':'#56534f'}"/></linearGradient>
+ <filter id="sombra" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#2b1a0a" flood-opacity="${tema==='claro'?.28:.5}"/></filter>
+ <filter id="brillo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+ </defs>`;
+ s+=`<rect width="${W}" height="${H}" fill="${c.pared}"/>`;
+ s+=`<g transform="translate(${OX},${OY})" font-family="Inter,sans-serif">`;
+ const L=60,T=10,R=950,B=652;
+ s+=`<rect x="${L}" y="${T}" width="${R-L}" height="${B-T}" rx="4" fill="url(#parquet)"/>`;
+ // luz de ventanas
+ carteles.filter(k=>k.t==='Ventana').forEach(k=>{s+=`<rect x="${k.x}" y="${T}" width="${k.w}" height="150" fill="url(#luz)"/>`;
+  s+=`<rect x="${k.x}" y="${T-7}" width="${k.w}" height="12" rx="2" fill="${tema==='claro'?'#cfe7f3':'#3a5d70'}" stroke="${tema==='claro'?'#9cc7dc':'#6f9ab0'}" stroke-width="1.5"/>`;
+  for(let x=k.x+50;x<k.x+k.w;x+=50)s+=`<line x1="${x}" y1="${T-7}" x2="${x}" y2="${T+5}" stroke="${tema==='claro'?'#9cc7dc':'#6f9ab0'}" stroke-width="1.5"/>`});
+ // entrada: alfombra y plantas
+ carteles.filter(k=>k.t==='Entrada').forEach(k=>{s+=`<rect x="${k.x-6}" y="${T+2}" width="${k.w+12}" height="44" rx="6" fill="${tema==='claro'?'#8b3a3a':'#6a2a2a'}" opacity=".85"/><rect x="${k.x-1}" y="${T+7}" width="${k.w+2}" height="34" rx="4" fill="none" stroke="${tema==='claro'?'#d9b48a':'#a07e58'}" stroke-width="1.2"/><text x="${k.x+k.w/2}" y="${T+29}" text-anchor="middle" font-size="9" font-weight="700" letter-spacing="1.5" fill="#f5e6cf">ENTRADA</text>`});
+ // cocina con cerámica y mesada
+ carteles.filter(k=>k.t==='Cocina').forEach(k=>{s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="4" fill="url(#ceramica)" stroke="${c.pared}" stroke-width="5"/><rect x="${k.x+10}" y="${k.y+k.h-30}" width="${k.w-20}" height="20" rx="3" fill="url(#marmol)" stroke="${tema==='claro'?'#c9c3b8':'#6c6862'}"/>`;
+  for(let i=0;i<4;i++)s+=`<circle cx="${k.x+40+i*30}" cy="${k.y+36}" r="9" fill="none" stroke="${tema==='claro'?'#4a4a4a':'#bbb'}" stroke-width="2.5"/>`;
+  s+=`<g filter="url(#sombra)"><rect x="${k.x+k.w-120}" y="${k.y+20}" width="100" height="34" rx="17" fill="${c.chapa}"/></g><text x="${k.x+k.w-70}" y="${k.y+42}" text-anchor="middle" font-family="Fraunces,serif" font-size="15" fill="${c.txt}">Cocina</text>`});
+ // mueble aparador
+ carteles.filter(k=>k.t==='Mueble').forEach(k=>{s+=`<g filter="url(#sombra)"><rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="5" fill="${c.mesaB}"/></g><rect x="${k.x+4}" y="${k.y+4}" width="${k.w-8}" height="${k.h-8}" rx="3" fill="${c.mesa}"/>`;for(let x=k.x+k.w/4;x<k.x+k.w;x+=k.w/4)s+=`<line x1="${x}" y1="${k.y+6}" x2="${x}" y2="${k.y+k.h-6}" stroke="${c.mesaB}" stroke-width="1.5"/>`;s+=`<text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-family="Fraunces,serif" font-size="13" fill="#fff7ea">Aparador</text>`});
+ // bodega con botellas
+ carteles.filter(k=>k.t==='Bodega').forEach(k=>{s+=`<g filter="url(#sombra)"><rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="6" fill="${tema==='claro'?'#5a3826':'#3b2418'}"/></g>`;for(let yy=k.y+16;yy<k.y+k.h-10;yy+=17)for(let xx=k.x+15;xx<k.x+k.w-8;xx+=17){const tono=(xx*7+yy*3)%3;s+=`<circle cx="${xx}" cy="${yy}" r="6.2" fill="${tono===0?'#7a1f2b':tono===1?'#2f4a2a':'#9b2c3a'}" stroke="#2a160d" stroke-width="1.2"/><circle cx="${xx-1.5}" cy="${yy-1.5}" r="1.6" fill="rgba(255,255,255,.35)"/>`}
+  s+=`<g filter="url(#sombra)"><rect x="${k.x+k.w/2-42}" y="${k.y+k.h/2-15}" width="84" height="30" rx="15" fill="${c.chapa}"/></g><text x="${k.x+k.w/2}" y="${k.y+k.h/2+5}" text-anchor="middle" font-family="Fraunces,serif" font-size="14" fill="${c.txt}">Bodega</text>`});
+ // isla de mármol
+ carteles.filter(k=>k.t==='Isla').forEach(k=>{s+=`<g filter="url(#sombra)"><rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="10" fill="url(#marmol)"/></g><path d="M${k.x+10} ${k.y+30}C${k.x+40} ${k.y+20},${k.x+30} ${k.y+70},${k.x+70} ${k.y+90}" stroke="${tema==='claro'?'#d8d2c7':'#6a6560'}" stroke-width="1.2" fill="none"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+5}" text-anchor="middle" font-family="Fraunces,serif" font-size="14" fill="${tema==='claro'?'#6a5a48':'#e8ddcc'}">Isla</text>`});
+ // columnas de piedra
+ carteles.filter(k=>k.t==='Columna').forEach(k=>{s+=`<g filter="url(#sombra)"><rect x="${k.x+4}" y="${k.y+4}" width="${k.w-8}" height="${k.h-8}" rx="4" fill="${tema==='claro'?'#cfc8bb':'#6d665c'}"/></g><rect x="${k.x+9}" y="${k.y+9}" width="${k.w-18}" height="${k.h-18}" rx="2" fill="none" stroke="${tema==='claro'?'#b5ad9e':'#575148'}"/>`});
+ // plantas
+ [[78,30],[928,30],[930,630],[425,30],[528,214]].forEach(([x,y])=>s+=planta(x,y,13,c));
+ // mesas
+ mesas.forEach((x,i)=>{const g=geo(x);const col=e[x.e];s+=`<g class="mesa" data-i="${i}" tabindex="0" role="button" aria-label="Mesa ${x.c}, ${x.p} pax, ${nombreEstado[x.e]}">`;
+  if(col)s+= x.f==='r'?`<circle cx="${x.x}" cy="${x.y}" r="${g.r+16}" fill="${col}" opacity=".28" filter="url(#brillo)"/>`:`<rect x="${x.x-g.w/2-14}" y="${x.y-g.h/2-14}" width="${g.w+28}" height="${g.h+28}" rx="14" fill="${col}" opacity=".28" filter="url(#brillo)"/>`;
+  g.sillas.forEach(si=>{s+=`<g filter="url(#sombra)"><rect x="${si.x-9}" y="${si.y-6}" width="18" height="12" rx="5" transform="rotate(${si.rot} ${si.x} ${si.y})" fill="${col&&x.e!=='pedida'?col:c.silla}" stroke="${c.sillaB}" stroke-width="1"/></g>`});
+  s+='<g filter="url(#sombra)">';
+  if(x.f==='r')s+=`<circle class="foco" cx="${x.x}" cy="${x.y}" r="${g.r}" fill="${c.mesa}" stroke="${col||c.mesaB}" stroke-width="${col?3.5:2}"/>`;
+  else s+=`<rect class="foco" x="${x.x-g.w/2}" y="${x.y-g.h/2}" width="${g.w}" height="${g.h}" rx="6" fill="${c.mesa}" stroke="${col||c.mesaB}" stroke-width="${col?3.5:2}"/>`;
+  s+='</g>';
+  // vetas
+  if(x.f!=='r')s+=`<path d="M${x.x-g.w/2+6} ${x.y-6}H${x.x+g.w/2-6}M${x.x-g.w/2+6} ${x.y+7}H${x.x+g.w/2-10}" stroke="${c.mesaB}" stroke-width=".8" opacity=".6"/>`;
+  s+=`<circle cx="${x.x}" cy="${x.y}" r="12" fill="${col||c.chapa}" stroke="${col?'none':c.mesaB}"/><text x="${x.x}" y="${x.y+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="${col?'#fff':c.txt}">${x.c}</text></g>`});
+ return s+'</g>';
+}
+
+// ---------- C: moderno por zonas
+const icono={
+ ventana:(x,y,c)=>`<rect x="${x}" y="${y}" width="14" height="12" rx="2" fill="none" stroke="${c}" stroke-width="1.6"/><path d="M${x+7} ${y}V${y+12}M${x} ${y+6}H${x+14}" stroke="${c}" stroke-width="1.6"/>`,
+ puerta:(x,y,c)=>`<path d="M${x+2} ${y+13}V${y+1}H${x+11}V${y+13}M${x} ${y+13}H${x+14}" fill="none" stroke="${c}" stroke-width="1.6"/><circle cx="${x+9}" cy="${y+7}" r="1" fill="${c}"/>`,
+ cocina:(x,y,c)=>`<path d="M${x+3} ${y+8}a4 4 0 1 1 3-6a4 4 0 0 1 6 1a3.5 3.5 0 1 1 1 5V${y+13}H${x+3}Z" fill="none" stroke="${c}" stroke-width="1.5"/>`,
+ vino:(x,y,c)=>`<path d="M${x+3} ${y}H${x+11}V${y+3}a4 4 0 0 1-8 0Z M${x+7} ${y+7}V${y+12}M${x+4} ${y+13}H${x+10}" fill="none" stroke="${c}" stroke-width="1.6"/>`,
+};
+function dibujarC(){
+ const c=P.C[tema];const e=EST[tema];let s='';
+ s+=`<defs><filter id="sC" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#0c2637" flood-opacity="${tema==='claro'?.12:.45}"/></filter>
+ <pattern id="dotsC" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="${tema==='claro'?'#dfe4e8':'#1d2a33'}"/></pattern></defs>`;
+ s+=`<rect width="${W}" height="${H}" fill="${c.fondo}"/><rect width="${W}" height="${H}" fill="url(#dotsC)"/>`;
+ s+=`<g transform="translate(${OX},${OY})" font-family="Inter,sans-serif">`;
+ // zonas (sectores)
+ s+=`<rect x="70" y="40" width="345" height="408" rx="26" fill="${c.zonaB}" stroke="${c.zonaBb}" stroke-width="1.5"/>`;
+ s+=`<rect x="530" y="40" width="410" height="512" rx="26" fill="${c.zonaT}" stroke="${c.zonaTb}" stroke-width="1.5"/>`;
+ const chip=(x,y,txt,col,ic)=>`<g filter="url(#sC)"><rect x="${x}" y="${y}" width="${txt.length*7.2+(ic?44:26)}" height="26" rx="13" fill="${c.chip}" stroke="${c.chipB}"/></g>${ic?ic(x+11,y+6.5,col):''}<text x="${x+(ic?32:13)}" y="${y+17.5}" font-size="12" font-weight="700" fill="${col}">${txt}</text>`;
+ s+=chip(84,412,'Bodega · 11 mesas',tema==='claro'?'#8a5a2b':'#e0b088');
+ s+=chip(546,514,'Terraza · 14 mesas',tema==='claro'?'#2f7d6d':'#7fd0bd');
+ // ventanas: tira con ícono
+ carteles.filter(k=>k.t==='Ventana').forEach(k=>{s+=`<rect x="${k.x}" y="2" width="${k.w}" height="8" rx="4" fill="${tema==='claro'?'#bfe0ee':'#24536a'}"/>`+icono.ventana(k.x+k.w/2-7,14,c.suave)});
+ carteles.filter(k=>k.t==='Entrada').forEach(k=>{s+=`<rect x="${k.x}" y="2" width="${k.w}" height="8" rx="4" fill="#32b49d"/>`+icono.puerta(k.x+k.w/2-7,14,'#32b49d')});
+ carteles.filter(k=>k.t==='Columna').forEach(k=>{s+=`<circle cx="${k.x+k.w/2}" cy="${k.y+k.h/2}" r="9" fill="${c.neutro}" stroke="${c.chipB}"/>`});
+ carteles.filter(k=>k.t==='Isla').forEach(k=>{s+=`<rect x="${k.x+10}" y="${k.y}" width="${k.w-20}" height="${k.h}" rx="31" fill="${c.neutro}" stroke="${c.chipB}"/><text x="${k.x+k.w/2}" y="${k.y+k.h/2+4}" text-anchor="middle" font-size="11" font-weight="600" fill="${c.suave}">Isla</text>`});
+ carteles.filter(k=>k.t==='Mueble').forEach(k=>{s+=`<rect x="${k.x}" y="${k.y+12}" width="${k.w}" height="14" rx="7" fill="${c.neutro}" stroke="${c.chipB}"/><text x="${k.x+k.w/2}" y="${k.y+46}" text-anchor="middle" font-size="11" fill="${c.suave}">Mueble</text>`});
+ carteles.filter(k=>k.t==='Bodega').forEach(k=>{s+=`<rect x="${k.x+40}" y="${k.y}" width="${k.w-40}" height="${k.h}" rx="18" fill="${c.chip}" stroke="${c.chipB}" stroke-dasharray="5 4"/>`+icono.vino(k.x+k.w/2+13,k.y+k.h/2-20,'#8a5a2b')+`<text x="${k.x+k.w/2+20}" y="${k.y+k.h/2+14}" text-anchor="middle" font-size="11" font-weight="600" fill="${c.suave}">Cava</text>`});
+ carteles.filter(k=>k.t==='Cocina').forEach(k=>{s+=`<rect x="${k.x}" y="${k.y}" width="${k.w}" height="${k.h}" rx="20" fill="${c.neutro}"/>`+icono.cocina(k.x+k.w/2-35,k.y+k.h/2-7,c.suave)+`<text x="${k.x+k.w/2-12}" y="${k.y+k.h/2+4}" font-size="13" font-weight="700" fill="${c.suave}">Cocina</text>`});
+ // mesas como tarjetas
+ mesas.forEach((x,i)=>{const g=geo(x);const col=e[x.e];s+=`<g class="mesa" data-i="${i}" tabindex="0" role="button" aria-label="Mesa ${x.c}, ${x.p} pax, ${nombreEstado[x.e]}">`;
+  g.sillas.forEach(si=>{s+=`<circle cx="${si.x}" cy="${si.y}" r="4.2" fill="${col&&x.e!=='pedida'?col:c.silla}" opacity="${col?.7:1}"/>`});
+  const fill=col&&x.e!=='pedida'?col:c.mesa;const t=col&&x.e!=='pedida'?'#fff':c.txt;
+  s+='<g filter="url(#sC)">';
+  if(x.f==='r')s+=`<circle class="foco" cx="${x.x}" cy="${x.y}" r="${g.r}" fill="${fill}" stroke="${x.e==='pedida'?col:col?'none':c.mesaB}" stroke-width="${x.e==='pedida'?3:1.2}"/>`;
+  else s+=`<rect class="foco" x="${x.x-g.w/2}" y="${x.y-g.h/2}" width="${g.w}" height="${g.h}" rx="11" fill="${fill}" stroke="${x.e==='pedida'?col:col?'none':c.mesaB}" stroke-width="${x.e==='pedida'?3:1.2}"/>`;
+  s+='</g>';
+  s+=`<text x="${x.x}" y="${x.y+2}" text-anchor="middle" font-size="14" font-weight="800" fill="${t}">${x.c}</text><text x="${x.x}" y="${x.y+13.5}" text-anchor="middle" font-size="8.5" font-weight="600" fill="${t}" opacity=".75">${x.p} pax</text></g>`});
+ return s+'</g>';
+}
+
+function dibujar(){
+ const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa del salón, estilo ${op}">${op==='A'?dibujarA():op==='B'?dibujarB():dibujarC()}</svg>`;
+ document.getElementById('lienzo').innerHTML=svg;
+ const e=EST[tema];
+ document.getElementById('ley').innerHTML=orden.map(k=>`<span><i style="background:${e[k]||(tema==='claro'?'#fff':'#1b2a34')};border:1px solid #c8d2da"></i>${nombreEstado[k]}</span>`).join('')+'<span style="color:#7a868d">Tocá una mesa para cambiarle el estado</span>';
+ const tip=document.getElementById('tip');
+ document.querySelectorAll('svg .mesa').forEach(g=>{const x=mesas[+g.dataset.i];
+  const mostrar=ev=>{tip.hidden=false;tip.innerHTML=`<b>Mesa ${x.c}</b> · ${x.p} pax<br>${nombreEstado[x.e]}${reservas[x.c]&&x.e!=='libre'?' · '+reservas[x.c]:''}`;const r=ev.clientX!==undefined&&ev.clientX?{x:ev.clientX,y:ev.clientY}:(()=>{const b=g.getBoundingClientRect();return{x:b.right,y:b.top}})();tip.style.left=(r.x+14)+'px';tip.style.top=(r.y+14)+'px'};
+  g.addEventListener('mousemove',mostrar);g.addEventListener('focus',mostrar);
+  g.addEventListener('mouseleave',()=>tip.hidden=true);g.addEventListener('blur',()=>tip.hidden=true);
+  const ciclar=()=>{x.e=orden[(orden.indexOf(x.e)+1)%orden.length];tip.hidden=true;dibujar();const n=document.querySelector(`svg .mesa[data-i="${g.dataset.i}"]`);n&&n.focus()};
+  g.addEventListener('click',ciclar);g.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();ciclar()}});
+ });
+}
+document.querySelectorAll('.op').forEach(b=>b.addEventListener('click',()=>{op=b.dataset.op;document.querySelectorAll('.op').forEach(x=>{x.classList.toggle('sel',x===b);x.setAttribute('aria-checked',x===b)});dibujar()}));
+document.querySelectorAll('[data-tema]').forEach(b=>b.addEventListener('click',()=>{tema=b.dataset.tema;document.querySelectorAll('[data-tema]').forEach(x=>x.classList.toggle('on',x===b));dibujar()}));
+dibujar();
+</script>
+</body></html>

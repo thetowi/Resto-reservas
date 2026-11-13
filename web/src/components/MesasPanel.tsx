@@ -10,7 +10,7 @@ import {
   toggleWalkIn,
   unirMesaPorTurno,
 } from "@/lib/api";
-import type { Mesa, Reserva, Turno } from "@/lib/types";
+import type { Mesa, Reserva, SectorTurno, Turno } from "@/lib/types";
 import { useConfirm } from "./ConfirmProvider";
 
 interface Props {
@@ -21,6 +21,8 @@ interface Props {
   reservas: Reserva[];
   fecha: string;
   turno: Turno;
+  // Sectores del salón y su estado en este turno (ver SectoresTurno.tsx).
+  sectores?: SectorTurno[];
 }
 
 export default function MesasPanel({
@@ -31,6 +33,7 @@ export default function MesasPanel({
   reservas,
   fecha,
   turno,
+  sectores = [],
 }: Props) {
   const { confirmar } = useConfirm();
   const [error, setError] = useState<string | null>(null);
@@ -221,6 +224,220 @@ export default function MesasPanel({
     }
   }
 
+  // Con sectores (Bodega, Terraza...), las mesas se muestran por sector. Un
+  // sector cerrado no tiene mesas disponibles; uno con un grupo las muestra
+  // del color del sector (ver components/SectoresTurno.tsx).
+  const gruposSector = sectores.length === 0
+    ? []
+    : [
+        ...sectores.map((s) => {
+          const g = s.estado === "grupo" ? reservas.find((r) => r.id === s.reservaId) : undefined;
+          return {
+            id: s.sectorId as number | null,
+            nombre: s.nombre,
+            color: s.color,
+            nota: s.estado === "cerrado" ? `cerrado${s.motivo ? ` (${s.motivo.toLowerCase()})` : ""}` : g ? `${g.nombre ?? "grupo"}, ${g.pax ?? "?"} pax` : null,
+            mesas: mesasOrdenadas.filter((m) => m.sectorId === s.sectorId),
+          };
+        }),
+        {
+          id: null,
+          nombre: "Sin sector",
+          color: "var(--color-borde)",
+          nota: null,
+          mesas: mesasOrdenadas.filter((m) => !sectores.some((s) => s.sectorId === m.sectorId)),
+        },
+      ].filter((g) => g.id !== null || g.mesas.length > 0);
+  // Las de un sector cerrado ya se ven en su sector: el aviso es para las sueltas.
+  const deSectoresCerrados = new Set(sectores.filter((s) => s.estado === "cerrado").flatMap((s) => s.mesaIds));
+  const reducidasSueltas = mesasReducidas.filter((m) => !deSectoresCerrados.has(m.id));
+  const colorDeGrupo = new Map(
+    sectores.filter((s) => s.estado === "grupo").flatMap((s) => s.mesaIds.map((id) => [id, s.color] as const)),
+  );
+
+  function celda(m: Mesa) {
+    const ocupada = ocupadas.has(m.id);
+    const walkIn = walkIns.has(m.id);
+    // Las mesas de un grupo que ocupa todo el sector van del color del sector
+    // (y sin el anillo de "pedida", que lo tendrían todas).
+    const colorGrupo = colorDeGrupo.get(m.id);
+    const pedida = pedidas.has(m.id) && !colorGrupo;
+    const reserva = reservas.find((r) => r.mesaIds.includes(m.id));
+    const puedeDividir = m.mesaPadreId === null && m.capacidad >= 2;
+    // Solo una mitad TEMPORAL (creada por esta misma feature) ofrece
+    // "Unir" — una division permanente de /admin/mesas no se deshace
+    // desde acá.
+    const puedeUnir = m.esTemporal && m.mesaPadreId !== null;
+    const titulo = ocupada
+      ? `Mesa ${m.codigo} — ${m.capacidad} pax — ocupada (${reserva?.nombre || "reserva"})${pedida ? ", pedida puntualmente" : ""}`
+      : walkIn
+        ? `Mesa ${m.codigo} — ${m.capacidad} pax — ocupada por un walk-in: tocá para liberarla`
+        : `Mesa ${m.codigo} — ${m.capacidad} pax — libre`;
+    return (
+      <div key={m.id} className="relative">
+        <button
+          type="button"
+          title={titulo}
+          disabled={enviando === m.id}
+          onClick={() => onTocarMesa(m)}
+          style={ocupada && colorGrupo ? { background: colorGrupo, borderColor: colorGrupo } : undefined}
+          className={`relative w-full rounded-lg border px-1 py-2 text-center text-xs font-semibold transition-opacity disabled:opacity-50 ${
+            ocupada
+              ? "border-ocupada bg-ocupada text-white"
+              : walkIn
+                ? "border-walkin bg-walkin text-white"
+                : "border-borde bg-libre text-tinta-suave hover:bg-arena-suave"
+          } ${pedida ? "anillo-pedida" : ""}`}
+        >
+          {m.codigo}
+          <span className="block text-[9px] font-normal opacity-75">{m.capacidad}p</span>
+        </button>
+        {pedida && <span className="chip-pedida" aria-hidden="true" />}
+
+        {menuAbiertoPara === m.id && (
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={cerrarMenus}
+            />
+            <div className="absolute top-full left-1/2 z-50 mt-1 w-40 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-1 text-left shadow-lg">
+              <button
+                type="button"
+                onClick={() => onOcupar(m)}
+                className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+              >
+                Ocupar (walk-in)
+              </button>
+              {puedeUnir ? (
+                <button
+                  type="button"
+                  onClick={() => onUnir(m)}
+                  className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+                >
+                  Unir mesas
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!puedeDividir}
+                  title={puedeDividir ? undefined : "No hay pax suficientes para dividir esta mesa"}
+                  onClick={() => onAbrirDividir(m)}
+                  className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  Dividir mesa
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onAbrirEditar(m)}
+                className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+              >
+                Editar número
+              </button>
+              {m.codigoOriginal && (
+                <button
+                  type="button"
+                  onClick={() => onRevertirNombre(m)}
+                  className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
+                >
+                  Volver a mesa {m.codigoOriginal}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {editandoPara === m.id && (
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={cerrarMenus}
+            />
+            <div className="absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-2.5 text-left shadow-lg">
+              <div className="mb-1.5 text-[11px] text-tinta-suave">
+                Nuevo número para esta mesa, solo para este turno.
+              </div>
+              <div className="mb-2 flex items-center justify-center">
+                <input
+                  type="text"
+                  autoFocus
+                  value={codigoEditado}
+                  onChange={(e) => setCodigoEditado(e.target.value)}
+                  className="w-20 rounded-md border border-borde bg-fondo px-1.5 py-1 text-center text-xs text-tinta"
+                />
+              </div>
+              <div className="flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={cerrarMenus}
+                  className="rounded-md px-2 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onConfirmarEditar(m)}
+                  className="rounded-md bg-marca px-2 py-1 text-xs text-white"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {dividiendoPara === m.id && (
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={cerrarMenus}
+            />
+            <div className="absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-2.5 text-left shadow-lg">
+              <div className="mb-1.5 text-[11px] text-tinta-suave">
+                Mesa {m.codigo} tiene {m.capacidad} pax. ¿Cuántos pasan a la mesa nueva?
+              </div>
+              <div className="mb-2 flex items-center justify-center">
+                <input
+                  type="number"
+                  min={1}
+                  max={m.capacidad - 1}
+                  value={paxDivision}
+                  onChange={(e) => setPaxDivision(e.target.value)}
+                  className="w-16 rounded-md border border-borde bg-fondo px-1.5 py-1 text-center text-xs text-tinta"
+                />
+              </div>
+              <div className="mb-2 text-center text-[11px] text-tinta-suave">
+                Mesa {m.codigo} queda con {Math.max(m.capacidad - (Number(paxDivision) || 0), 0)} pax
+              </div>
+              <div className="flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={cerrarMenus}
+                  className="rounded-md px-2 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onConfirmarDividir(m)}
+                  className="rounded-md bg-marca px-2 py-1 text-xs text-white"
+                >
+                  Dividir
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-borde bg-superficie p-4 shadow-sm">
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -236,186 +453,28 @@ export default function MesasPanel({
         <div className="mb-2.5 rounded-lg bg-ocupada-suave px-2.5 py-2 text-xs text-ocupada">{error}</div>
       )}
 
-      <div className="grid grid-cols-4 gap-1.5">
-        {mesasOrdenadas.map((m) => {
-          const ocupada = ocupadas.has(m.id);
-          const walkIn = walkIns.has(m.id);
-          const pedida = pedidas.has(m.id);
-          const reserva = reservas.find((r) => r.mesaIds.includes(m.id));
-          const puedeDividir = m.mesaPadreId === null && m.capacidad >= 2;
-          // Solo una mitad TEMPORAL (creada por esta misma feature) ofrece
-          // "Unir" — una division permanente de /admin/mesas no se deshace
-          // desde acá.
-          const puedeUnir = m.esTemporal && m.mesaPadreId !== null;
-          const titulo = ocupada
-            ? `Mesa ${m.codigo} — ${m.capacidad} pax — ocupada (${reserva?.nombre || "reserva"})${pedida ? ", pedida puntualmente" : ""}`
-            : walkIn
-              ? `Mesa ${m.codigo} — ${m.capacidad} pax — ocupada por un walk-in: tocá para liberarla`
-              : `Mesa ${m.codigo} — ${m.capacidad} pax — libre`;
-          return (
-            <div key={m.id} className="relative">
-              <button
-                type="button"
-                title={titulo}
-                disabled={enviando === m.id}
-                onClick={() => onTocarMesa(m)}
-                className={`relative w-full rounded-lg border px-1 py-2 text-center text-xs font-semibold transition-opacity disabled:opacity-50 ${
-                  ocupada
-                    ? "border-ocupada bg-ocupada text-white"
-                    : walkIn
-                      ? "border-walkin bg-walkin text-white"
-                      : "border-borde bg-libre text-tinta-suave hover:bg-arena-suave"
-                } ${pedida ? "anillo-pedida" : ""}`}
-              >
-                {m.codigo}
-                <span className="block text-[9px] font-normal opacity-75">{m.capacidad}p</span>
-              </button>
-              {pedida && <span className="chip-pedida" aria-hidden="true" />}
-
-              {menuAbiertoPara === m.id && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Cerrar"
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={cerrarMenus}
-                  />
-                  <div className="absolute top-full left-1/2 z-50 mt-1 w-40 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-1 text-left shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => onOcupar(m)}
-                      className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
-                    >
-                      Ocupar (walk-in)
-                    </button>
-                    {puedeUnir ? (
-                      <button
-                        type="button"
-                        onClick={() => onUnir(m)}
-                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
-                      >
-                        Unir mesas
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={!puedeDividir}
-                        title={puedeDividir ? undefined : "No hay pax suficientes para dividir esta mesa"}
-                        onClick={() => onAbrirDividir(m)}
-                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                      >
-                        Dividir mesa
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onAbrirEditar(m)}
-                      className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
-                    >
-                      Editar número
-                    </button>
-                    {m.codigoOriginal && (
-                      <button
-                        type="button"
-                        onClick={() => onRevertirNombre(m)}
-                        className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-tinta hover:bg-arena-suave"
-                      >
-                        Volver a mesa {m.codigoOriginal}
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {editandoPara === m.id && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Cerrar"
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={cerrarMenus}
-                  />
-                  <div className="absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-2.5 text-left shadow-lg">
-                    <div className="mb-1.5 text-[11px] text-tinta-suave">
-                      Nuevo número para esta mesa, solo para este turno.
-                    </div>
-                    <div className="mb-2 flex items-center justify-center">
-                      <input
-                        type="text"
-                        autoFocus
-                        value={codigoEditado}
-                        onChange={(e) => setCodigoEditado(e.target.value)}
-                        className="w-20 rounded-md border border-borde bg-fondo px-1.5 py-1 text-center text-xs text-tinta"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={cerrarMenus}
-                        className="rounded-md px-2 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onConfirmarEditar(m)}
-                        className="rounded-md bg-marca px-2 py-1 text-xs text-white"
-                      >
-                        Guardar
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {dividiendoPara === m.id && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Cerrar"
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={cerrarMenus}
-                  />
-                  <div className="absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-lg border border-borde bg-superficie p-2.5 text-left shadow-lg">
-                    <div className="mb-1.5 text-[11px] text-tinta-suave">
-                      Mesa {m.codigo} tiene {m.capacidad} pax. ¿Cuántos pasan a la mesa nueva?
-                    </div>
-                    <div className="mb-2 flex items-center justify-center">
-                      <input
-                        type="number"
-                        min={1}
-                        max={m.capacidad - 1}
-                        value={paxDivision}
-                        onChange={(e) => setPaxDivision(e.target.value)}
-                        className="w-16 rounded-md border border-borde bg-fondo px-1.5 py-1 text-center text-xs text-tinta"
-                      />
-                    </div>
-                    <div className="mb-2 text-center text-[11px] text-tinta-suave">
-                      Mesa {m.codigo} queda con {Math.max(m.capacidad - (Number(paxDivision) || 0), 0)} pax
-                    </div>
-                    <div className="flex justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={cerrarMenus}
-                        className="rounded-md px-2 py-1 text-xs text-tinta-suave hover:bg-arena-suave"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onConfirmarDividir(m)}
-                        className="rounded-md bg-marca px-2 py-1 text-xs text-white"
-                      >
-                        Dividir
-                      </button>
-                    </div>
-                  </div>
-                </>
+      {gruposSector.length === 0 ? (
+        <div className="grid grid-cols-4 gap-1.5">{mesasOrdenadas.map(celda)}</div>
+      ) : (
+        <div className="grid gap-2.5">
+          {gruposSector.map((g) => (
+            <div key={g.id ?? "sin"} className="grid gap-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-tinta-suave uppercase">
+                <i className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: g.color }} />
+                {g.nombre}
+                {g.nota && <span className="font-normal tracking-normal normal-case">· {g.nota}</span>}
+              </div>
+              {g.mesas.length > 0 ? (
+                <div className="grid grid-cols-4 gap-1.5">{g.mesas.map(celda)}</div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-borde px-2 py-1.5 text-[11px] text-tinta-suave">
+                  Sin mesas para reservas en este turno.
+                </div>
               )}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5 text-[11px] text-tinta-suave">
         <div className="flex flex-wrap gap-3.5">
           <span className="inline-flex items-center gap-1.5">
@@ -439,10 +498,10 @@ export default function MesasPanel({
           Administrar mesas
         </Link>
       </div>
-      {mesasReducidas.length > 0 && (
+      {reducidasSueltas.length > 0 && (
         <div className="mt-2 rounded-lg bg-arena-suave px-2.5 py-1.5 text-[11px] text-tinta-suave">
-          Salón reducido para este turno: {mesasReducidas.length === 1 ? "mesa" : "mesas"}{" "}
-          {mesasReducidas.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
+          Salón reducido para este turno: {reducidasSueltas.length === 1 ? "mesa" : "mesas"}{" "}
+          {reducidasSueltas.map((m) => m.codigo).join(", ")} fuera de &quot;Mesas disponibles&quot;.
         </div>
       )}
     </div>

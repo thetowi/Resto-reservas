@@ -101,7 +101,27 @@ public class HorariosController : ControllerBase
     private async Task<int> AplicarAsync(int salonId, Turno turno)
     {
         ReservaOnlineService.InvalidarCache();
-        var dias = await HorariosTurnoService.AplicarADiasAbiertosAsync(_db, salonId, turno, ReservaOnlineService.HoyLocal());
+        var hoy = ReservaOnlineService.HoyLocal();
+        var dias = await HorariosTurnoService.AplicarADiasAbiertosAsync(_db, salonId, turno, hoy);
+        // Los días con parte del salón cerrada (sectores o mesas reducidas)
+        // vuelven a quedar con su planilla achicada (ver
+        // DiaService.AjustarFilasAsync).
+        var conReduccion = (await _db.MesasReducidas
+                .Where(x => x.SalonId == salonId && x.Turno == turno && x.Fecha >= hoy)
+                .Select(x => x.Fecha)
+                .Distinct()
+                .ToListAsync())
+            .Concat(await _db.SectoresTurno
+                .Where(x => x.SalonId == salonId && x.Turno == turno && x.Fecha >= hoy)
+                .Select(x => x.Fecha)
+                .Distinct()
+                .ToListAsync())
+            .Distinct()
+            .ToList();
+        foreach (var fecha in conReduccion)
+        {
+            if (await _dias.AjustarFilasAsync(fecha, turno, salonId) && !dias.Contains(fecha)) dias.Add(fecha);
+        }
         foreach (var fecha in dias)
         {
             var data = await _dias.GetTurnoAsync(fecha, turno, salonId, sembrar: false);

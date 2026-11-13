@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, crearReserva, patchEspera, patchReserva, toggleWalkIn, vaciarReserva } from "@/lib/api";
 import { addDays, partesFecha, textoRelativo, todayISO } from "@/lib/date";
 import { excedioTolerancia } from "@/lib/tolerancia";
+import { cuandoLlego, numerosDeLlegada, quienLaCargo } from "@/lib/llegada";
 import type { Dia, Espera, Mesa, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import { linkWhatsApp, numeroWhatsApp } from "@/lib/whatsapp";
 import { EVENTO_VISTA, EVENTO_VISTA_ACTUAL } from "./BarraLateral";
@@ -155,6 +156,8 @@ export default function PanelCelular(props: Props) {
     () => new Set(reservas.filter((r) => r.asistio && !r.retirada).flatMap((r) => r.mesaIds)),
     [reservas],
   );
+  const numeros = useMemo(() => numerosDeLlegada(data?.reservas ?? []), [data]);
+  const sectorDe = (id: number) => data?.sectores?.find((s) => s.sectorId === id);
   const horas = useMemo(() => [...new Set((data?.reservas ?? []).map((r) => r.hora).filter((h): h is string => !!h))].sort(), [data]);
   const activas = reservas.filter((r) => !r.retirada);
   const sinMesa = activas.filter((r) => r.mesaIds.length === 0 && (r.pax ?? 0) > 0);
@@ -323,6 +326,15 @@ export default function PanelCelular(props: Props) {
           <b>{sinMesa.length}</b> sin mesa
         </span>
       )}
+      {/* Sectores cerrados o con un grupo en este turno (se cambian desde la compu). */}
+      {(data?.sectores ?? [])
+        .filter((s) => s.estado !== "abierto")
+        .map((s) => (
+          <span key={s.sectorId} className="pc-sector">
+            <i style={{ background: s.color }} />
+            {s.nombre}: {s.estado === "cerrado" ? "cerrado" : "grupo"}
+          </span>
+        ))}
     </div>
   );
 
@@ -348,6 +360,11 @@ export default function PanelCelular(props: Props) {
             <div className="pc-tj-t">
               <b>{r.nombre?.trim() || r.habTel?.trim() || "Sin nombre"}</b>
               {r.origen === "web" && <span className="pc-tag">web</span>}
+              {r.sectorId && (
+                <span className="pc-tag" style={{ background: sectorDe(r.sectorId)?.color, color: "#fff" }}>
+                  {sectorDe(r.sectorId)?.nombre ?? "sector"}
+                </span>
+              )}
               {r.estado === "pendienteBot" && <span className="pc-tag am">a confirmar</span>}
               {r.retirada && <span className="pc-tag am">se fue</span>}
             </div>
@@ -381,6 +398,7 @@ export default function PanelCelular(props: Props) {
                 {r.comentarios}
               </span>
             )}
+            <Recibida r={r} numero={numeros.get(r.id)} ahora={ahora} />
           </div>
           <button
             type="button"
@@ -583,6 +601,19 @@ export default function PanelCelular(props: Props) {
 }
 
 // ---------- hojas
+
+// Línea chica de la tarjeta: «2.ª · recibida dom 8/11 11:20 · por Lu».
+function Recibida({ r, numero, ahora }: { r: Reserva; numero?: number; ahora: Date }) {
+  if (!r.recibidaEn) return null;
+  const { dia, hora } = cuandoLlego(r.recibidaEn, ahora);
+  const quien = quienLaCargo(r);
+  return (
+    <span className="pc-recibida">
+      {numero ? `${numero}.ª · recibida` : "Recibida"} {dia} {hora}
+      {quien ? ` · ${quien}` : ""}
+    </span>
+  );
+}
 
 function Detalle({
   r,

@@ -67,6 +67,31 @@ export interface Mesa {
   // y ShiftSection.tsx no la cuenta en la capacidad del salón, hasta que
   // termine el turno (o se la vuelva a tildar en el mismo modal).
   reducida: boolean;
+  // Sector del salón en el que está (Bodega, Terraza...), ver Sector.
+  sectorId?: number | null;
+}
+
+// Una parte de un salón (en Barrancas: Bodega y Terraza). Se arma en
+// Administrar mesas → Sectores.
+export interface Sector {
+  id: number;
+  salonId: number;
+  nombre: string;
+  color: string;
+  orden: number;
+}
+
+// Cómo está un sector en un turno: abierto, cerrado (con motivo) u ocupado
+// por un grupo (reservaId: la fila del grupo). mesaIds: sus mesas en este
+// turno.
+export interface SectorTurno {
+  sectorId: number;
+  nombre: string;
+  color: string;
+  estado: "abierto" | "cerrado" | "grupo";
+  motivo: string | null;
+  reservaId: number | null;
+  mesaIds: number[];
 }
 
 export interface Meta {
@@ -74,6 +99,7 @@ export interface Meta {
   // Lista completa de salones (no depende del que esté elegido en
   // pantalla): alimenta el selector de salón en todas las pantallas.
   salones: Salon[];
+  sectores?: Sector[];
 }
 
 export interface Reserva {
@@ -104,6 +130,13 @@ export interface Reserva {
   // equipo. Opcionales para no romper filas armadas en el cliente.
   origen?: "staff" | "bot" | "web";
   estado?: "confirmada" | "pendienteBot";
+  // Orden de llegada (ver lib/llegada.ts): cuándo entró la reserva (ISO,
+  // UTC) y quién la cargó (usuario del panel; null en las del link y del
+  // bot). Null en las filas vacías y en las cargadas antes de este dato.
+  recibidaEn?: string | null;
+  recibidaPor?: string | null;
+  // Grupo que ocupa un sector completo: el sector (ver SectorTurno).
+  sectorId?: number | null;
 }
 
 // Una entrada en la lista de espera (gente sin reserva, esperando mesa).
@@ -154,6 +187,8 @@ export interface TurnoData {
   // Reemplaza a la lista global de Meta.mesas para pintar el panel
   // "Mesas disponibles" (ver MesasPanel.tsx / page.tsx).
   mesas: Mesa[];
+  // Sectores del salón y su estado en este turno (vacío si no tiene).
+  sectores?: SectorTurno[];
 }
 
 // Elemento de referencia del plano visual (no es una mesa): un cartel de

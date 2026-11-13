@@ -1,0 +1,215 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Orden de reservas</title>
+<style>
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#e6eaee;color:#13242e;padding:26px 16px 70px}
+button{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:30px}
+h1{font-size:25px} h2{font-size:18px;display:flex;align-items:center;gap:9px}
+h2 i{font-style:normal;width:26px;height:26px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:13px;flex:none}
+.intro{color:#4f5c64;font-size:14.5px;line-height:1.5;max-width:92ch;margin-top:6px}
+.sec{display:grid;gap:12px}.sec>p{color:#4f5c64;font-size:14px;line-height:1.5;max-width:92ch}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52;max-width:92ch}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:5px;margin-top:4px}
+
+/* selector de opción */
+.ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.op{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:15px 16px;display:grid;gap:8px;align-content:start;text-align:left;cursor:pointer;position:relative}
+.op:hover{border-color:#9fb0bb}
+.op.sel{border:2px solid #13242e;padding:14px 15px}
+.op .badge{position:absolute;top:-11px;right:14px;background:#32b49d;color:#04221c;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;letter-spacing:.02em}
+.op h3{font-size:15.5px;display:flex;gap:8px;align-items:center}.op h3 i{font-style:normal;width:24px;height:24px;border-radius:50%;background:#13242e;color:#fff;display:inline-grid;place-items:center;font-size:12px;flex:none}
+.op p{font-size:13.5px;color:#3d4a52;line-height:1.5}
+.pc{display:grid;gap:3px;font-size:12.5px;line-height:1.4}.pc .s{color:#1d7a69}.pc .no{color:#a33}
+.op:focus-visible,.seg button:focus-visible,.th-btn:focus-visible{outline:3px solid #32b49d;outline-offset:2px}
+
+/* panel */
+.panel{background:#fff;border:1px solid #c8d2da;border-radius:16px;padding:16px 18px}
+.lay{display:grid;grid-template-columns:1fr;gap:18px}
+.lay>*{min-width:0}
+.lay.conlado{grid-template-columns:1fr 270px}
+@media (max-width:980px){.lay>*{min-width:0}
+.lay.conlado{grid-template-columns:1fr}}
+.cabp{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid #c9a96e;padding-left:10px;margin-bottom:12px}
+.cabp h4{font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.seg{display:inline-flex;background:#eef1f3;border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:8px;padding:5px 11px;font-size:12.5px;font-weight:600;color:#4f5c64;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.seg button.on{background:#fff;color:#13242e;box-shadow:0 1px 3px rgba(12,38,55,.18)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:13.5px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56636b;text-align:left;font-weight:700;padding:9px 7px;border-bottom:2px solid #e3e8eb;white-space:nowrap}
+td{padding:7px;border-bottom:1px solid #eef1f3;vertical-align:middle;height:42px}
+tbody tr:nth-child(even) td{background:#f6f8fa}
+tr.vacia td{color:#a3aeb5}
+td.c{text-align:center}.hora{font-variant-numeric:tabular-nums;color:#3d4a52;white-space:nowrap}
+.mesa{display:inline-block;min-width:34px;text-align:center;border:1px solid #c8d2da;border-radius:7px;padding:3px 8px;font-weight:700;font-size:12.5px}
+.chk{width:16px;height:16px;border:1.5px solid #9aa6ae;border-radius:4px;display:inline-block;vertical-align:middle}
+.org{display:inline-block;font-size:10px;font-weight:700;border-radius:99px;padding:2px 7px;margin-left:6px;vertical-align:1px}
+.org.web{background:#e0f4f0;color:#1d7a69}.org.wa{background:#e0f4f0;color:#1d7a69}
+.th-btn{border:0;background:none;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;display:inline-flex;gap:4px;align-items:center;padding:0}
+.th-btn.on{color:#13242e}
+
+/* recibida */
+.rec{display:grid;grid-template-columns:auto 1fr;gap:0 8px;align-items:center;line-height:1.25;white-space:nowrap}
+.n{grid-row:span 2;min-width:26px;height:22px;border-radius:7px;background:#eef1f3;color:#3d4a52;font-size:11.5px;font-weight:800;display:grid;place-items:center;font-variant-numeric:tabular-nums;padding:0 5px}
+.n.uno{background:#13242e;color:#fff}
+.rec b{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.rec small{font-size:11.5px;color:#56636b}
+.sindato{font-size:12px;color:#7a868d}
+.nchico{display:inline-grid;place-items:center;min-width:20px;height:18px;border-radius:6px;background:#eef1f3;color:#3d4a52;font-size:10.5px;font-weight:800;margin-left:6px;padding:0 4px;vertical-align:1px;cursor:help;font-variant-numeric:tabular-nums;position:relative}
+.nchico.uno{background:#13242e;color:#fff}
+.tip{position:absolute;left:0;bottom:calc(100% + 6px);background:#13242e;color:#fff;font-size:11.5px;font-weight:500;padding:6px 9px;border-radius:8px;white-space:nowrap;display:none;z-index:5;line-height:1.35;text-align:left}
+.nchico:hover .tip,.nchico:focus .tip{display:block}
+.franja{background:#eef4fb;color:#244a6b;border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:10px;display:flex;gap:8px;align-items:center}
+
+/* panel lateral (C) */
+.lado{background:#fff;border:1px solid #c8d2da;border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start}
+.lado h5{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#3d4a52;display:flex;justify-content:space-between}
+.lado h5 span{color:#7a868d;font-weight:600;letter-spacing:0;text-transform:none}
+.lin{display:grid;grid-template-columns:auto 1fr;gap:0 10px;position:relative;padding-bottom:10px}
+.lin:not(:last-child)::before{content:"";position:absolute;left:12px;top:24px;bottom:0;width:2px;background:#e3e8eb}
+.lin .n{grid-row:span 2;height:24px;min-width:24px;border-radius:50%;padding:0}
+.lin b{font-size:13px}.lin small{font-size:11.5px;color:#56636b;line-height:1.35}
+.lado .mas{font-size:12px;color:#56636b;border-top:1px solid #eef1f3;padding-top:8px}
+
+/* celu */
+.fila{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.tel{width:330px;max-width:100%;height:600px;border-radius:44px;padding:11px;background:#0b0d0e;box-shadow:0 26px 50px -26px rgba(0,0,0,.5);flex:none}
+.pant{position:relative;height:100%;border-radius:34px;overflow:hidden;background:#f0f3f6;font-size:14px}
+.cab{background:#fff;border-bottom:1px solid #c8d2da;padding:30px 14px 10px;display:grid;gap:9px;justify-items:center;font-weight:700}
+.cab .seg button{padding:4px 10px;font-size:12px}
+.cuerpo{padding:10px 12px;display:grid;gap:8px}
+.tj{display:flex;gap:10px;align-items:center;padding:10px 12px;background:#fff;border:1px solid #c8d2da;border-radius:16px}
+.tj .c{flex:1;min-width:0;display:grid;gap:4px}.tj b{font-size:14.5px}
+.tj .d{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#3d4a52}
+.tj .r{font-size:11.5px;color:#56636b}
+.tj .cb{flex:none;width:40px;height:40px;border-radius:12px;border:2px solid #b7c2c9}
+.chip{border:1px solid #c8d2da;background:#e3e8eb;border-radius:8px;padding:2px 8px;font-weight:700;font-size:12px}
+.lateral{flex:1;min-width:280px;display:grid;gap:12px;align-content:start}
+</style></head><body><div class="wrap">
+
+<div><h1>Orden de reservas: cuál entró primero y a qué hora</h1>
+<p class="intro">Cada reserva guarda <b>cuándo se cargó</b> y <b>quién la cargó</b> (alguien del equipo, el link o WhatsApp). Con eso se puede ordenar la planilla por orden de llegada y ver el número de cada una: la 1.ª es la que entró primero para ese turno. Abajo hay 3 formas de mostrarlo. Tocá cada una y probá el botón de ordenar.</p></div>
+
+<section class="sec"><h2><i>1</i>Elegí cómo se ve</h2>
+<div class="ops" role="radiogroup" aria-label="Opciones">
+ <button class="op sel" data-op="A" role="radio" aria-checked="true"><span class="badge">RECOMENDADA</span><h3><i>A</i>Columna «Recibida»</h3>
+  <p>Una columna nueva con el número de llegada, el día y la hora, y quién la cargó. Botón para ordenar por hora o por llegada.</p>
+  <div class="pc"><span class="s">✓ Se ve todo de un vistazo, sin tocar nada</span><span class="s">✓ Igual que la columna «Recibida» de Reservas web</span><span class="no">✗ La planilla queda un poco más ancha</span></div></button>
+ <button class="op" data-op="B" role="radio" aria-checked="false"><h3><i>B</i>Número al lado de la hora</h3>
+  <p>Solo un numerito junto a la hora. El día, la hora y quién la cargó aparecen al pasar el mouse. También se puede ordenar.</p>
+  <div class="pc"><span class="s">✓ La planilla queda igual de ancha</span><span class="no">✗ Para ver a qué hora entró hay que pasar el mouse (en tablet, tocar)</span></div></button>
+ <button class="op" data-op="C" role="radio" aria-checked="false"><h3><i>C</i>Panel «Orden de llegada»</h3>
+  <p>La planilla no cambia. Al costado, debajo de Mesas y Lista de espera, una lista en orden de llegada.</p>
+  <div class="pc"><span class="s">✓ No toca la planilla</span><span class="no">✗ Hay que cruzar la lista con la planilla para ubicar la fila</span><span class="no">✗ Ocupa lugar en una columna que ya está cargada</span></div></button>
+</div></section>
+
+<section class="sec"><h2><i>2</i>Cómo queda en la planilla</h2>
+<p id="ayuda">Probá «Por llegada»: las reservas se ordenan de la primera a la última que entró y se esconden las filas vacías. Volvés a «Por hora» para cargar y mover reservas como siempre.</p>
+<div class="lay" id="lay">
+ <div class="panel">
+  <div class="cabp"><h4>Cena · Mar 10/11 · Restaurant</h4><div class="seg" id="seg" role="group" aria-label="Ordenar planilla"><button class="on" data-orden="hora">Por hora</button><button data-orden="llegada">Por llegada</button></div></div>
+  <div class="franja" id="franja" hidden>↓ Ordenado por llegada. Las filas vacías no se muestran y no se pueden arrastrar reservas hasta volver a «Por hora».</div>
+  <div class="tablewrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+ </div>
+ <aside class="lado" id="lado" hidden></aside>
+</div>
+</section>
+
+<section class="sec"><h2><i>3</i>En el celular</h2>
+<div class="fila">
+ <div class="tel"><div class="pant"><div class="cab">Mar 10/11 · Cena<div class="seg" id="segTel" role="group" aria-label="Ordenar en el celular"><button class="on" data-orden="hora">Por hora</button><button data-orden="llegada">Por llegada</button></div></div><div class="cuerpo" id="cuerpoTel"></div></div></div>
+ <div class="lateral"><div class="nota">En el panel del celular, cada tarjeta suma una línea chica con la hora en que se recibió y quién la cargó, y arriba aparece el mismo botón para ordenar. Se ve igual en las 3 opciones.</div></div>
+</div></section>
+
+<section class="sec"><h2><i>4</i>Cómo funciona por detrás</h2>
+<div class="nota"><ul>
+ <li><b>Cuándo se toma la hora:</b> cuando una fila vacía recibe su primer dato (nombre, pax, teléfono…). Editar la reserva después no cambia su lugar en el orden.</li>
+ <li><b>Mover de horario:</b> si se arrastra a otra hora o se cambia de mesa, conserva su hora de llegada original, porque es la misma reserva.</li>
+ <li><b>Vaciar la fila (tachito):</b> se borra su hora de llegada. Si después se carga otra reserva ahí, cuenta como nueva.</li>
+ <li><b>Quién la cargó:</b> el usuario con el que estaba iniciada la sesión, o «Link» / «WhatsApp» si la hizo el cliente.</li>
+ <li><b>Reservas que ya existen:</b> las que entraron por el link toman la hora real de Reservas web. Las cargadas a mano antes de esta actualización no tienen ese dato y aparecen con «—» al final del orden.</li>
+ <li>La hora se muestra siempre en hora de Argentina.</li>
+</ul></div>
+</section>
+
+</div>
+<script>
+// Datos de ejemplo: Cena del mar 10/11. hoy = mar 10/11.
+const filas=[
+ {h:'20:30',m:'4',p:2,n:'Gómez Laura',t:'11 5555-0142',c:'',rec:['dom 8/11','11:20','Lu']},
+ {h:'20:30',m:'9',p:4,n:'Fernández',t:'Hab 214',c:'Cumpleaños',o:'web',rec:['sáb 7/11','19:02','Link']},
+ {h:'20:30'},
+ {h:'20:45',m:'12',p:2,n:'Paz Martín',t:'3435 11-2233',c:'',rec:['hoy','13:47','Tobias']},
+ {h:'21:00',m:'7',p:6,n:'Familia Ruiz',t:'11 4420-7781',c:'Mesa de siempre',o:'wa',rec:['lun 9/11','09:15','WhatsApp']},
+ {h:'21:00',m:'3',p:2,n:'Sosa',t:'11 6021-3390',c:'',o:'web',rec:['dom 8/11','22:40','Link']},
+ {h:'21:15'},
+ {h:'21:30',m:'15',p:3,n:'Álvarez',t:'11 3021-8890',c:'Celíaca',rec:['hoy','12:05','Majo']},
+ {h:'21:45',m:'2',p:2,n:'Benítez',t:'11 2299-4410',c:'',o:'web',rec:['hoy','16:31','Link']},
+ {h:'22:00',m:'6',p:4,n:'Quiroga',t:'Hab 108',c:'',rec:null},
+ {h:'22:00'},
+];
+// orden de llegada (clave ordenable)
+const clave={'sáb 7/11':1,'dom 8/11':2,'lun 9/11':3,'hoy':4};
+const conDatos=filas.filter(f=>f.n);
+const llegada=[...conDatos].sort((a,b)=>{
+ if(!a.rec)return 1;if(!b.rec)return -1;
+ return clave[a.rec[0]]-clave[b.rec[0]]||a.rec[1].localeCompare(b.rec[1]);});
+llegada.forEach((f,i)=>{if(f.rec)f.num=i+1});
+const quien=r=>r[2]==='Link'||r[2]==='WhatsApp'?r[2]:'por '+r[2];
+const orgTxt={web:'Web',wa:'WhatsApp'};
+
+let op='A',orden='hora',ordenTel='hora';
+const $=id=>document.getElementById(id);
+
+function cab(){
+ const ordBtn=(txt)=>`<button class="th-btn ${orden==='llegada'?'on':''}" data-toggle aria-label="Ordenar por llegada">${txt} ${orden==='llegada'?'↓':'↕'}</button>`;
+ $('thead').innerHTML=`<tr><th class="hora">Hora</th><th>Mesa</th><th>Pidió</th><th>Pax</th><th>Apellido / Nombre</th><th>Hab / Tel</th><th>Comentarios</th><th>Asistió</th>${op==='A'?`<th>${ordBtn('Recibida')}</th>`:''}</tr>`;
+}
+function celdaRec(f){
+ if(!f.n)return '<td></td>';
+ if(!f.rec)return `<td><span class="sindato" title="Cargada antes de esta actualización">—</span></td>`;
+ return `<td><div class="rec"><span class="n ${f.num===1?'uno':''}">${f.num}.º</span><b>${f.rec[0]} · ${f.rec[1]}</b><small>${quien(f.rec)}</small></div></td>`;
+}
+function horaB(f){
+ if(op!=='B'||!f.n)return f.h;
+ if(!f.rec)return f.h;
+ return `${f.h}<span class="nchico ${f.num===1?'uno':''}" tabindex="0">${f.num}<span class="tip">Llegó ${f.num}.ª<br>${f.rec[0]} · ${f.rec[1]} · ${quien(f.rec)}</span></span>`;
+}
+function cuerpo(){
+ const lista=(orden==='llegada'&&op!=='C')?llegada:filas;
+ $('tbody').innerHTML=lista.map(f=>f.n?
+ `<tr><td class="hora">${horaB(f)}</td><td><span class="mesa">${f.m}</span></td><td class="c"><span class="chk"></span></td><td class="c">${f.p}</td><td>${f.n}${f.o?`<span class="org ${f.o}">${orgTxt[f.o]}</span>`:''}</td><td>${f.t}</td><td>${f.c}</td><td class="c"><span class="chk"></span></td>${op==='A'?celdaRec(f):''}</tr>`:
+ `<tr class="vacia"><td class="hora">${f.h}</td><td>—</td><td class="c"><span class="chk"></span></td><td></td><td></td><td></td><td></td><td class="c"><span class="chk"></span></td>${op==='A'?'<td></td>':''}</tr>`).join('');
+ $('franja').hidden=!(orden==='llegada'&&op!=='C');
+}
+function lado(){
+ $('lay').classList.toggle('conlado',op==='C');
+ $('lado').hidden=op!=='C';
+ if(op!=='C')return;
+ $('lado').innerHTML=`<h5>Orden de llegada <span>${llegada.filter(f=>f.rec).length} reservas</span></h5>`+
+ llegada.filter(f=>f.rec).map(f=>`<div class="lin"><span class="n ${f.num===1?'uno':''}">${f.num}</span><b>${f.n} · ${f.p} pax</b><small>${f.rec[0]} ${f.rec[1]} · ${quien(f.rec)} · ${f.h} · mesa ${f.m}</small></div>`).join('')+
+ `<div class="mas">Quiroga (22:00) no tiene hora de llegada: se cargó antes de esta actualización.</div>`;
+}
+function tel(){
+ const lista=ordenTel==='llegada'?llegada:conDatos;
+ $('cuerpoTel').innerHTML=lista.slice(0,6).map(f=>`<div class="tj"><div class="c"><b>${f.n}</b><div class="d"><span>${f.h}</span><span><b style="font-size:13px">${f.p}</b> pax</span><span class="chip">Mesa ${f.m}</span></div><div class="r">${f.rec?`${f.num}.ª · recibida ${f.rec[0]} ${f.rec[1]} · ${quien(f.rec)}`:'Recibida: sin dato'}</div></div><span class="cb"></span></div>`).join('');
+}
+function todo(){
+ if(op==='C'){orden='hora';}
+ $('seg').hidden=op==='C';
+ [...$('seg').children].forEach(b=>b.classList.toggle('on',b.dataset.orden===orden));
+ $('ayuda').textContent=op==='C'
+  ?'La planilla queda igual que hoy. El orden de llegada se ve en el panel de la derecha (debajo de Mesas y Lista de espera, que acá no se muestran).'
+  :(op==='B'?'Pasá el mouse por el número junto a la hora para ver cuándo entró y quién la cargó. Probá «Por llegada».'
+  :'Probá «Por llegada» (o tocá el título «Recibida»): las reservas se ordenan de la primera a la última que entró y se esconden las filas vacías. Con «Por hora» se carga y se mueve como siempre.');
+ cab();cuerpo();lado();tel();
+}
+document.querySelectorAll('.op').forEach(b=>b.addEventListener('click',()=>{
+ op=b.dataset.op;document.querySelectorAll('.op').forEach(x=>{x.classList.toggle('sel',x===b);x.setAttribute('aria-checked',x===b)});todo();}));
+$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;orden=b.dataset.orden;todo();});
+$('thead').addEventListener('click',e=>{if(!e.target.closest('[data-toggle]'))return;orden=orden==='hora'?'llegada':'hora';todo();});
+$('segTel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ordenTel=b.dataset.orden;[...$('segTel').children].forEach(x=>x.classList.toggle('on',x===b));tel();});
+todo();
+</script>
+</body></html>

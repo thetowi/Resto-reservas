@@ -18,6 +18,7 @@ import type {
   ReservaWeb,
   ResumenReservasWeb,
   Salon,
+  Sector,
   Turno,
   TurnoData,
   UsuarioCuenta,
@@ -277,6 +278,10 @@ export function restaurarReserva(r: Reserva, reservaWebId: number | null) {
       origen: r.origen ?? "staff",
       estado: r.estado ?? "confirmada",
       reservaWebId,
+      // Vuelve con su lugar en el orden de llegada.
+      recibidaEn: r.recibidaEn ?? null,
+      recibidaPor: r.recibidaPor ?? null,
+      sectorId: r.sectorId ?? null,
     }),
   });
 }
@@ -637,4 +642,43 @@ export function getDatosRestaurante() {
 
 export function guardarDatosRestaurante(datos: Pick<DatosRestaurante, "direccion" | "googleMapsUrl" | "appleMapsUrl" | "wazeUrl">) {
   return request<DatosRestaurante>("/api/datos-restaurante", { method: "PUT", body: JSON.stringify(datos) });
+}
+
+// ---- Sectores del salón (Bodega, Terraza...) ----
+
+export function crearSector(salonId: number, nombre: string, color?: string) {
+  return request<Sector[]>("/api/sectores", { method: "POST", body: JSON.stringify({ salonId, nombre, color: color ?? null }) });
+}
+
+export function editarSector(id: number, cambios: { nombre?: string; color?: string }) {
+  return request<Sector[]>(`/api/sectores/${id}`, { method: "PATCH", body: JSON.stringify(cambios) });
+}
+
+export function borrarSector(id: number) {
+  return request<Sector[]>(`/api/sectores/${id}`, { method: "DELETE" });
+}
+
+// Pinta mesas con un sector (null = sin sector). Las divisiones van con su mesa.
+export function asignarSector(sectorId: number | null, mesaIds: number[]) {
+  return request<Mesa[]>("/api/sectores/asignar", { method: "POST", body: JSON.stringify({ sectorId, mesaIds }) });
+}
+
+export interface GrupoSector {
+  nombre: string;
+  pax: number;
+  hora: string;
+  habTel: string | null;
+  comentarios: string | null;
+}
+
+export interface SectorEstado {
+  sectorId: number;
+  estado: "abierto" | "cerrado" | "grupo";
+  motivo: string | null;
+  grupo: GrupoSector | null;
+}
+
+// Estado de los sectores en un turno (modal «Sectores» del panel).
+export function setSectoresTurno(fecha: string, turno: Turno, salonId: number, sectores: SectorEstado[]) {
+  return request<TurnoData>("/api/sectores/turno", { method: "POST", body: JSON.stringify({ fecha, turno, salonId, sectores }) });
 }

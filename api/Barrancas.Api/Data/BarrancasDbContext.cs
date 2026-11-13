@@ -28,6 +28,8 @@ public class BarrancasDbContext : DbContext
     public DbSet<SuscripcionPush> SuscripcionesPush => Set<SuscripcionPush>();
     public DbSet<ConfigPush> ConfigPush => Set<ConfigPush>();
     public DbSet<HorarioTurno> HorariosTurno => Set<HorarioTurno>();
+    public DbSet<Sector> Sectores => Set<Sector>();
+    public DbSet<SectorTurno> SectoresTurno => Set<SectorTurno>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +69,29 @@ public class BarrancasDbContext : DbContext
                 .WithMany(m => m.Divisiones)
                 .HasForeignKey(m => m.MesaPadreId)
                 .OnDelete(DeleteBehavior.Restrict);
+            // Al borrar un sector sus mesas quedan sin sector.
+            e.HasOne(m => m.Sector)
+                .WithMany()
+                .HasForeignKey(m => m.SectorId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Sector>(e =>
+        {
+            e.HasIndex(x => new { x.SalonId, x.Nombre }).IsUnique();
+            e.HasOne(x => x.Salon)
+                .WithMany()
+                .HasForeignKey(x => x.SalonId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SectorTurno>(e =>
+        {
+            e.HasIndex(x => new { x.Fecha, x.Turno, x.SectorId }).IsUnique();
+            e.HasOne(x => x.Sector)
+                .WithMany()
+                .HasForeignKey(x => x.SectorId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Usuario>(e =>

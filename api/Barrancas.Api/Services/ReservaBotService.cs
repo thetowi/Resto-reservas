@@ -196,6 +196,8 @@ public class ReservaBotService
         reserva.Asistio = false;
         reserva.Origen = OrigenReserva.Bot;
         reserva.Estado = puedeAutoConfirmar ? EstadoReserva.Confirmada : EstadoReserva.PendienteBot;
+        reserva.RecibidaEn = DateTime.UtcNow;
+        reserva.RecibidaPor = null;
         reserva.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

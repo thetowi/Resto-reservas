@@ -77,7 +77,14 @@ public record RestaurarReservaRequest(
     List<int>? MesaIds,
     OrigenReserva Origen,
     EstadoReserva Estado,
-    int? ReservaWebId
+    int? ReservaWebId,
+    // Orden de llegada que tenía antes de borrarla (para que conserve su
+    // lugar al deshacer). Si no viene, cuenta como recibida ahora.
+    DateTime? RecibidaEn = null,
+    string? RecibidaPor = null,
+    // Si era el grupo de un sector completo, el sector (vuelve a quedar
+    // ocupado por el grupo).
+    int? SectorId = null
 );
 
 // Arrastrar una reserva a otra fila (vacia) del mismo turno.

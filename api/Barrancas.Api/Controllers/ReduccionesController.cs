@@ -103,6 +103,12 @@ public class ReduccionesController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        // Con menos mesas, menos filas en la planilla (y menos cupo en el
+        // link): ver DiaService.AjustarFilasAsync.
+        await _diaService.GetTurnoAsync(req.Fecha, req.Turno, req.SalonId);
+        await _diaService.AjustarFilasAsync(req.Fecha, req.Turno, req.SalonId);
+        ReservaOnlineService.InvalidarCache();
+
         var data = await _diaService.GetTurnoAsync(req.Fecha, req.Turno, req.SalonId);
         var grupo = ReservasHub.GrupoDe(req.Fecha.ToString("yyyy-MM-dd"), req.Turno.ToString().ToLowerInvariant(), req.SalonId);
         await _hub.Clients.Group(grupo).SendAsync("TurnoActualizado", data);

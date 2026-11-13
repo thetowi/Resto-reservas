@@ -93,7 +93,7 @@ public class DiaService
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.MesaId).ToList(),
                 r.ReservaMesas.OrderBy(rm => rm.Mesa.Orden).Select(rm => rm.Mesa.Codigo).ToList(),
                 r.Pax, r.Nombre, r.HabTel, r.Comentarios, r.Asistio, r.PidioMesa, r.Retirada,
-                r.UpdatedAt, r.Origen, r.Estado))
+                r.UpdatedAt, r.Origen, r.Estado, r.RecibidaEn, r.RecibidaPor, r.SectorId))
             .ToListAsync();
 
         var totalPax = reservas.Sum(r => r.Pax ?? 0);
@@ -147,7 +147,9 @@ public class DiaService
                 m.Forma,
                 m.Fijada,
                 m.Rotacion,
-                null))
+                null,
+                false,
+                m.SectorId))
             .ToListAsync();
 
         // Aplicamos los renombres despues de traer la lista (no se puede
@@ -176,9 +178,94 @@ public class DiaService
             .Select(m => reducidas.Contains(m.Id) ? m with { Reducida = true } : m)
             .ToList();
 
+        // Sectores del salón y cómo quedaron en este turno (abierto, cerrado
+        // o con un grupo): ver Models/SectorTurno.cs.
+        var sectores = await _db.Sectores
+            .Where(s => s.SalonId == salonId)
+            .OrderBy(s => s.Orden).ThenBy(s => s.Nombre)
+            .ToListAsync();
+        var estados = sectores.Count == 0
+            ? new Dictionary<int, SectorTurno>()
+            : await _db.SectoresTurno
+                .Where(x => x.Fecha == fecha && x.Turno == turno && x.SalonId == salonId)
+                .ToDictionaryAsync(x => x.SectorId);
+        var sectoresDto = sectores.Select(s =>
+        {
+            estados.TryGetValue(s.Id, out var est);
+            return new SectorTurnoDto(
+                s.Id, s.Nombre, s.Color,
+                est is null ? "abierto" : est.Estado == EstadoSector.Grupo ? "grupo" : "cerrado",
+                est?.Motivo,
+                est?.ReservaId,
+                mesas.Where(m => m.SectorId == s.Id).Select(m => m.Id).ToList());
+        }).ToList();
+
         return new TurnoDataDto(
             fecha, turno, salonId, reservas, totalPax, totalAsistio, mesasOcupadas, mesasPedidas, mesasWalkIn,
-            cierre is not null, cierre?.Motivo, mesas);
+            cierre is not null, cierre?.Motivo, mesas, sectoresDto);
+    }
+
+    /// <summary>
+    /// Qué parte del salón queda abierta para reservas nuevas en este turno
+    /// (0 a 1), por capacidad: se descuentan las mesas reducidas (a mano o
+    /// por un sector cerrado) y las de un sector ocupado por un grupo. Con
+    /// esto se achican las filas de la planilla y el cupo del link.
+    /// </summary>
+    public static double FactorAbierto(TurnoDataDto data)
+    {
+        var total = data.Mesas.Sum(m => m.Capacidad);
+        if (total <= 0) return 1;
+        var deGrupos = (data.Sectores ?? [])
+            .Where(s => s.Estado == "grupo")
+            .SelectMany(s => s.MesaIds)
+            .ToHashSet();
+        var abierta = data.Mesas.Where(m => !m.Reducida && !deGrupos.Contains(m.Id)).Sum(m => m.Capacidad);
+        return Math.Clamp((double)abierta / total, 0, 1);
+    }
+
+    /// <summary>
+    /// Filas por horario que le tocan a este turno: las configuradas,
+    /// achicadas según la parte del salón que quedó abierta, más una por cada
+    /// grupo que ocupa un sector (su reserva no le quita lugar al resto). Es
+    /// también el cupo de cada horario en el link.
+    /// </summary>
+    public static List<HorariosTurnoService.Franja> FranjasDelTurno(List<HorariosTurnoService.Franja> configuradas, TurnoDataDto data)
+    {
+        var franjas = HorariosTurnoService.Escalar(configuradas, FactorAbierto(data));
+        var grupos = data.Reservas.Where(r => r.SectorId is not null && r.Hora is not null).GroupBy(r => r.Hora!).ToDictionary(g => g.Key, g => g.Count());
+        if (grupos.Count == 0) return franjas;
+        return franjas.Select(f => grupos.TryGetValue(f.Hora, out var n) ? f with { Filas = f.Filas + n } : f).ToList();
+    }
+
+    /// <summary>
+    /// Deja la planilla de ese turno con las filas que le corresponden según
+    /// la parte del salón que quedó abierta (FactorAbierto): si se cierra la
+    /// mitad, queda la mitad de las filas vacías en cada horario; al volver a
+    /// abrir, vuelven. Nunca borra una reserva, solo filas vacías. No abre el
+    /// día si todavía no se abrió. Devuelve si cambió algo.
+    /// </summary>
+    public async Task<bool> AjustarFilasAsync(DateOnly fecha, Turno turno, int salonId)
+    {
+        var data = await GetTurnoAsync(fecha, turno, salonId, sembrar: false);
+        if (data.Reservas.Count == 0 || data.EstaCerrado) return false;
+        var franjas = FranjasDelTurno(await HorariosTurnoService.ObtenerAsync(_db, salonId, turno), data);
+
+        var candado = HorariosTurnoService.Candado(salonId, turno);
+        await candado.WaitAsync();
+        try
+        {
+            var filas = await _db.Reservas
+                .Include(r => r.ReservaMesas)
+                .Where(r => r.Fecha == fecha && r.Turno == turno && r.SalonId == salonId)
+                .ToListAsync();
+            if (!HorariosTurnoService.RearmarDia(_db, fecha, salonId, turno, filas, franjas)) return false;
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        finally
+        {
+            candado.Release();
+        }
     }
 
     // sembrar=false: solo mirar (lo usa el resumen de salones del panel, que

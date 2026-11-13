@@ -179,6 +179,7 @@ public class MesasController : ControllerBase
             Orden = padre.Orden + 1,
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
+            SectorId = padre.SectorId,
             // La division es fisicamente la misma mesa partida en dos: hereda
             // la forma y la rotacion de la base en vez de arrancar en el
             // default.
@@ -256,8 +257,8 @@ public class MesasController : ControllerBase
         await CorrerOrdenesAsync(padre.SalonId, padre.Orden, cantidad: 2);
 
         padre.Capacidad = 0;
-        var hijaA = new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma, Rotacion = padre.Rotacion };
-        var hijaB = new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id, Forma = padre.Forma, Rotacion = padre.Rotacion };
+        var hijaA = new Mesa { Codigo = codigoA, Capacidad = capacidadA, Orden = padre.Orden + 1, SalonId = padre.SalonId, MesaPadreId = padre.Id, SectorId = padre.SectorId, Forma = padre.Forma, Rotacion = padre.Rotacion };
+        var hijaB = new Mesa { Codigo = codigoB, Capacidad = capacidadB, Orden = padre.Orden + 2, SalonId = padre.SalonId, MesaPadreId = padre.Id, SectorId = padre.SectorId, Forma = padre.Forma, Rotacion = padre.Rotacion };
         // La mesa base queda en 0 pax (ver comentario arriba) y el plano ya
         // no la dibuja (PlanoSalon.tsx la oculta por capacidad <= 0): las dos
         // mitades nuevas toman su lugar, una al lado de la otra, en vez de
@@ -354,6 +355,7 @@ public class MesasController : ControllerBase
             Orden = padre.Orden + 1,
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
+            SectorId = padre.SectorId,
             EsTemporal = true,
             Forma = layoutDefault?.FormaA ?? padre.Forma,
             Fijada = layoutDefault?.FijadaA ?? false,
@@ -366,6 +368,7 @@ public class MesasController : ControllerBase
             Orden = padre.Orden + 2,
             SalonId = padre.SalonId,
             MesaPadreId = padre.Id,
+            SectorId = padre.SectorId,
             EsTemporal = true,
             Forma = layoutDefault?.FormaB ?? padre.Forma,
             Fijada = layoutDefault?.FijadaB ?? false,
@@ -732,7 +735,7 @@ public class MesasController : ControllerBase
         var mesas = await _db.Mesas
             .Where(m => !m.EsTemporal)
             .OrderBy(m => m.Orden)
-            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada, m.Rotacion))
+            .Select(m => new MesaDto(m.Id, m.Codigo, m.Capacidad, m.MesaPadreId, m.Orden, m.PosX, m.PosY, m.SalonId, m.EsTemporal, m.Forma, m.Fijada, m.Rotacion, null, false, m.SectorId))
             .ToListAsync();
         await _hub.Clients.All.SendAsync("MesasActualizado", mesas);
         return mesas;

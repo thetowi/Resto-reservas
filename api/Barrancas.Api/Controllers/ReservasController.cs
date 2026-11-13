@@ -75,6 +75,11 @@ public class ReservasController : ControllerBase
             return BadRequest(new { error = "este turno está cerrado: no se pueden editar sus reservas" });
         }
 
+        // ¿La fila ya tenía una reserva antes de este cambio? (para el orden
+        // de llegada, más abajo).
+        var teniaMesas = await _db.ReservaMesas.AnyAsync(rm => rm.ReservaId == reserva.Id);
+        var teniaReserva = TieneDatos(reserva) || teniaMesas;
+
         if (req.Hora is not null) reserva.Hora = req.Hora;
         if (req.Nombre is not null) reserva.Nombre = req.Nombre;
         if (req.HabTel is not null) reserva.HabTel = req.HabTel;
@@ -125,6 +130,23 @@ public class ReservasController : ControllerBase
         // marcándola (caso raro, se resuelve a mano reasignando mesa).
         if (req.Retirada.HasValue) reserva.Retirada = req.Retirada.Value;
 
+        // Orden de llegada: se anota cuando la fila vacía recibe su primer
+        // dato (y quién la cargó). Editarla después no lo cambia, y una
+        // reserva cargada antes de esta función sigue sin hora (no se sabe
+        // cuándo entró). Si a mano le borran todo, vuelve a quedar sin hora:
+        // la próxima reserva que se cargue ahí cuenta como nueva.
+        var tieneMesas = req.MesaIds is not null ? req.MesaIds.Count > 0 : teniaMesas;
+        if (!TieneDatos(reserva) && !tieneMesas)
+        {
+            reserva.RecibidaEn = null;
+            reserva.RecibidaPor = null;
+        }
+        else if (!teniaReserva)
+        {
+            reserva.RecibidaEn = DateTime.UtcNow;
+            reserva.RecibidaPor = reserva.Origen == OrigenReserva.Staff ? ReservaWebService.Usuario(User) : null;
+        }
+
         reserva.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -141,8 +163,10 @@ public class ReservasController : ControllerBase
         // Si era una reserva del link, su registro queda como cancelada
         // (no se borra con la fila).
         await _reservasWeb.CancelarDeFilaAsync(reserva.Id, ReservaWebService.Usuario(User));
+        var eraGrupo = await SoltarSectorAsync(reserva);
         _db.Reservas.Remove(reserva);
         await _db.SaveChangesAsync();
+        if (eraGrupo) await _diaService.AjustarFilasAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
 
         var data = await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         return Ok(data);
@@ -173,10 +197,16 @@ public class ReservasController : ControllerBase
         reserva.Retirada = false;
         reserva.Origen = OrigenReserva.Staff;
         reserva.Estado = EstadoReserva.Confirmada;
+        reserva.RecibidaEn = null;
+        reserva.RecibidaPor = null;
+        var eraGrupo = await SoltarSectorAsync(reserva);
+        reserva.SectorId = null;
         reserva.UpdatedAt = DateTime.UtcNow;
         var mesas = await _db.ReservaMesas.Where(rm => rm.ReservaId == reserva.Id).ToListAsync();
         _db.ReservaMesas.RemoveRange(mesas);
         await _db.SaveChangesAsync();
+        // El sector del grupo vuelve a estar abierto: la planilla recupera filas.
+        if (eraGrupo) await _diaService.AjustarFilasAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
 
         await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         return Ok(new VaciarReservaResultado(registro?.Id));
@@ -216,6 +246,12 @@ public class ReservasController : ControllerBase
         reserva.Retirada = req.Retirada;
         reserva.Origen = req.Origen;
         reserva.Estado = req.Estado;
+        // Vuelve con el lugar que tenía en el orden de llegada.
+        var conDatos = TieneDatos(reserva) || idsMesas.Count > 0;
+        reserva.RecibidaEn = !conDatos ? null : req.RecibidaEn ?? DateTime.UtcNow;
+        reserva.RecibidaPor = !conDatos ? null
+            : req.RecibidaEn is not null ? req.RecibidaPor
+            : req.Origen == OrigenReserva.Staff ? ReservaWebService.Usuario(User) : null;
         reserva.UpdatedAt = DateTime.UtcNow;
         _db.ReservaMesas.AddRange(idsMesas.Select(mesaId => new ReservaMesa { ReservaId = reserva.Id, MesaId = mesaId }));
 
@@ -231,7 +267,29 @@ public class ReservasController : ControllerBase
             }
         }
 
+        // Si era el grupo de un sector completo, el sector vuelve a quedar
+        // ocupado por el grupo (si nadie lo cambió mientras tanto).
+        var volvioGrupo = false;
+        if (req.SectorId is int sectorId
+            && await _db.Sectores.AnyAsync(s => s.Id == sectorId && s.SalonId == reserva.SalonId)
+            && !await _db.SectoresTurno.AnyAsync(x => x.Fecha == reserva.Fecha && x.Turno == reserva.Turno && x.SectorId == sectorId))
+        {
+            reserva.SectorId = sectorId;
+            _db.SectoresTurno.Add(new SectorTurno
+            {
+                Fecha = reserva.Fecha,
+                Turno = reserva.Turno,
+                SalonId = reserva.SalonId,
+                SectorId = sectorId,
+                Estado = EstadoSector.Grupo,
+                ReservaId = reserva.Id,
+                CreadoPor = ReservaWebService.Usuario(User),
+            });
+            volvioGrupo = true;
+        }
+
         await _db.SaveChangesAsync();
+        if (volvioGrupo) await _diaService.AjustarFilasAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         var data = await BroadcastTurnoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         return Ok(data);
     }
@@ -275,6 +333,10 @@ public class ReservasController : ControllerBase
         destino.Retirada = origen.Retirada;
         destino.Origen = origen.Origen;
         destino.Estado = origen.Estado;
+        // Es la misma reserva: conserva su lugar en el orden de llegada.
+        destino.RecibidaEn = origen.RecibidaEn;
+        destino.RecibidaPor = origen.RecibidaPor;
+        destino.SectorId = origen.SectorId;
         destino.UpdatedAt = DateTime.UtcNow;
         _db.ReservaMesas.RemoveRange(mesasOrigen);
         _db.ReservaMesas.AddRange(mesasOrigen.Select(rm => new ReservaMesa { ReservaId = destino.Id, MesaId = rm.MesaId }));
@@ -288,6 +350,11 @@ public class ReservasController : ControllerBase
         origen.Retirada = false;
         origen.Origen = OrigenReserva.Staff;
         origen.Estado = EstadoReserva.Confirmada;
+        origen.RecibidaEn = null;
+        origen.RecibidaPor = null;
+        origen.SectorId = null;
+        var gruposSector = await _db.SectoresTurno.Where(x => x.ReservaId == origen.Id).ToListAsync();
+        foreach (var g in gruposSector) g.ReservaId = destino.Id;
         origen.UpdatedAt = DateTime.UtcNow;
 
         var registros = await _db.ReservasWeb
@@ -299,6 +366,21 @@ public class ReservasController : ControllerBase
         var data = await BroadcastTurnoAsync(origen.Fecha, origen.Turno, origen.SalonId);
         return Ok(data);
     }
+
+    // Si la reserva era el grupo de un sector completo, el sector vuelve a
+    // quedar abierto (se borra su estado del turno). No guarda.
+    private async Task<bool> SoltarSectorAsync(Reserva reserva)
+    {
+        if (reserva.SectorId is null) return false;
+        var estados = await _db.SectoresTurno.Where(x => x.ReservaId == reserva.Id).ToListAsync();
+        _db.SectoresTurno.RemoveRange(estados);
+        return true;
+    }
+
+    // ¿La fila tiene una reserva cargada? (sin contar mesas ni tildes).
+    private static bool TieneDatos(Reserva r) =>
+        r.Pax is not null || !string.IsNullOrWhiteSpace(r.Nombre)
+        || !string.IsNullOrWhiteSpace(r.HabTel) || !string.IsNullOrWhiteSpace(r.Comentarios);
 
     private Task<bool> TurnoCerradoAsync(Reserva reserva) =>
         _db.CierresTurno.AnyAsync(c => c.Fecha == reserva.Fecha && c.Turno == reserva.Turno && c.SalonId == reserva.SalonId);
