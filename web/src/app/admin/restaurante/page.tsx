@@ -18,12 +18,21 @@ interface Formulario {
   googleMapsUrl: string;
   appleMapsUrl: string;
   wazeUrl: string;
+  telefono: string;
+  whatsapp: string;
 }
 
-const vacio: Formulario = { direccion: "", googleMapsUrl: "", appleMapsUrl: "", wazeUrl: "" };
+const vacio: Formulario = { direccion: "", googleMapsUrl: "", appleMapsUrl: "", wazeUrl: "", telefono: "", whatsapp: "" };
 
 function aFormulario(d: DatosRestaurante): Formulario {
-  return { direccion: d.direccion ?? "", googleMapsUrl: d.googleMapsUrl ?? "", appleMapsUrl: d.appleMapsUrl ?? "", wazeUrl: d.wazeUrl ?? "" };
+  return {
+    direccion: d.direccion ?? "",
+    googleMapsUrl: d.googleMapsUrl ?? "",
+    appleMapsUrl: d.appleMapsUrl ?? "",
+    wazeUrl: d.wazeUrl ?? "",
+    telefono: d.telefono ?? "",
+    whatsapp: d.whatsapp ?? "",
+  };
 }
 
 function cuando(iso: string) {
@@ -79,6 +88,8 @@ export default function DatosRestaurantePage() {
         googleMapsUrl: form.googleMapsUrl.trim() || null,
         appleMapsUrl: form.appleMapsUrl.trim() || null,
         wazeUrl: form.wazeUrl.trim() || null,
+        telefono: form.telefono.trim() || null,
+        whatsapp: form.whatsapp.trim() || null,
       });
       setDatos(d);
       setForm(aFormulario(d));
@@ -139,6 +150,43 @@ export default function DatosRestaurantePage() {
               />
               <small className="text-xs text-tinta-suave">Con la dirección alcanza: los links de Google Maps, Apple Maps y Waze se arman solos.</small>
             </label>
+
+            <div className="grid gap-3 rounded-xl border border-borde px-4 py-3">
+              <div>
+                <h3 className="m-0 text-sm font-semibold">Contacto</h3>
+                <p className="mt-0.5 text-xs text-tinta-suave">
+                  Aparece en el link cuando una fecha no toma reservas online (por ejemplo Navidad), para que el cliente escriba o llame.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1.5">
+                  <span className={etiqueta}>WhatsApp</span>
+                  <input
+                    id="contacto-whatsapp"
+                    className={campo}
+                    inputMode="tel"
+                    value={form.whatsapp}
+                    maxLength={25}
+                    placeholder="Ej. 549 343 422-1234"
+                    onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                  />
+                  <small className="text-xs text-tinta-suave">Con 549 y la característica, sin el 0 ni el 15.</small>
+                </label>
+                <label className="grid gap-1.5">
+                  <span className={etiqueta}>Teléfono</span>
+                  <input
+                    id="contacto-telefono"
+                    className={campo}
+                    type="tel"
+                    value={form.telefono}
+                    maxLength={30}
+                    placeholder="Ej. 0343 422-1234"
+                    onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                  />
+                  <small className="text-xs text-tinta-suave">Como querés que se lea. Se puede tocar para llamar.</small>
+                </label>
+              </div>
+            </div>
 
             <details className="group rounded-xl border border-borde px-4 py-3" open={LINKS.some((l) => !!original[l.clave])}>
               <summary className="cursor-pointer text-sm font-semibold">Links exactos de cada app (opcional)</summary>

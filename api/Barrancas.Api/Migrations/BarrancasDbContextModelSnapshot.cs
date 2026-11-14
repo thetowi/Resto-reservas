@@ -123,6 +123,9 @@ namespace Barrancas.Api.Migrations
                     b.Property<string>("GoogleMapsUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("Telefono")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -130,6 +133,9 @@ namespace Barrancas.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("WazeUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Whatsapp")
                         .HasColumnType("text");
 
                     b.HasKey("Id");

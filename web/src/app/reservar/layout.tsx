@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { NOMBRE_PUBLICO } from "@/lib/marca";
+import TemaClaro from "./TemaClaro";
 
 // Pagina publica (sin login): titulo propio para la pestaña y para cuando se
 // comparte el link por WhatsApp o Instagram.
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default function ReservarLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <>
+      <TemaClaro />
+      {children}
+    </>
+  );
 }

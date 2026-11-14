@@ -640,7 +640,9 @@ export function getDatosRestaurante() {
   return request<DatosRestaurante>("/api/datos-restaurante");
 }
 
-export function guardarDatosRestaurante(datos: Pick<DatosRestaurante, "direccion" | "googleMapsUrl" | "appleMapsUrl" | "wazeUrl">) {
+export function guardarDatosRestaurante(
+  datos: Pick<DatosRestaurante, "direccion" | "googleMapsUrl" | "appleMapsUrl" | "wazeUrl" | "telefono" | "whatsapp">,
+) {
   return request<DatosRestaurante>("/api/datos-restaurante", { method: "PUT", body: JSON.stringify(datos) });
 }
 

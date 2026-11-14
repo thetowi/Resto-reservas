@@ -1066,6 +1066,8 @@ select option {
 .rv-aviso-wa a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px;
   background: #1fa855; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; }
 .rv-aviso-wa a:hover { filter: brightness(0.95); }
+.rv-aviso-wa a.tel { background: transparent; color: var(--color-tinta); border: 1px solid var(--color-borde); font-size: 14.5px; }
+.rv-aviso-wa a.tel:hover { background: var(--color-arena-suave); filter: none; }
 .rv-aviso-wa small { font-size: 12px; color: var(--color-tinta-suave); }
 
 @media (prefers-reduced-motion: reduce) {

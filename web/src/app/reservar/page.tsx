@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal, preload } from "react-dom";
 import { SimboloCapax, WordmarkCapax } from "@/components/MarcaCapax";
 import PlanoLogin from "@/components/PlanoLogin";
-import ThemeToggle from "@/components/ThemeToggle";
 import IntroLogoCliente from "@/components/IntroLogoCliente";
 import { linkGoogleCalendar, linkIcs, usaCalendarioApple } from "@/lib/calendario";
 import { LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } from "@/lib/marca";
@@ -368,8 +367,8 @@ export default function ReservarPage() {
         <div className="rv-final pend">
           <h1 ref={tituloRef} tabIndex={-1}>Sin reservas online</h1>
           <p>Por ahora no estamos tomando reservas por este medio.</p>
-          {WHATSAPP_CLIENTE && (
-            <a className="rv-sec" href={`https://wa.me/${WHATSAPP_CLIENTE}`} target="_blank" rel="noreferrer">
+          {whatsappDe(config?.ubicacion) && (
+            <a className="rv-sec" href={`https://wa.me/${whatsappDe(config?.ubicacion)}`} target="_blank" rel="noreferrer">
               Escribinos por WhatsApp
             </a>
           )}
@@ -404,16 +403,13 @@ export default function ReservarPage() {
           <div className="rv-hero-plano rv-plano-negro">
             <PlanoLogin animado={false} />
           </div>
-          {/* Claro / oscuro: arranca como el celular y se puede cambiar. */}
-          <ThemeToggle className="rv-tema rv-tema-hero" />
           <LogoPortada />
           <h1 className="rv-hero-t">Reservá tu mesa</h1>
         </header>
       ) : null}
       {paso === 0 ? (
-        <header className="rv-top rv-top-pc">
-          <ThemeToggle className="rv-tema" />
-        </header>
+        // Solo el espacio de arriba (el link va siempre en modo claro, ver app/layout.tsx).
+        <header className="rv-top rv-top-pc" aria-hidden="true" />
       ) : (
         <header className="rv-top">
           <button type="button" className="rv-atras" onClick={atras} aria-label="Volver al paso anterior">
@@ -422,7 +418,6 @@ export default function ReservarPage() {
             </svg>
           </button>
           <LogoBarra />
-          <ThemeToggle className="rv-tema" />
         </header>
       )}
 
@@ -576,7 +571,7 @@ export default function ReservarPage() {
                 </div>
               )}
               {diaElegido?.estado === "bloqueado" && fecha && (
-                <AvisoWhatsApp fecha={fecha} pax={pax} motivo={diaElegido.motivo} mensaje={diaElegido.mensaje} />
+                <AvisoWhatsApp fecha={fecha} pax={pax} motivo={diaElegido.motivo} mensaje={diaElegido.mensaje} contacto={config?.ubicacion} />
               )}
               {calAbierto && (
                 <Calendario
@@ -680,7 +675,7 @@ export default function ReservarPage() {
               const t = dispSalon.turnos.find((x) => x.turno === turno) ?? dispSalon.turnos[0];
               if (!t) return null;
               if (t.porWhatsApp && fecha) {
-                return <AvisoWhatsApp fecha={fecha} pax={pax} turno={t.turno} motivo={disp?.motivo} mensaje={disp?.mensaje} />;
+                return <AvisoWhatsApp fecha={fecha} pax={pax} turno={t.turno} motivo={disp?.motivo} mensaje={disp?.mensaje} contacto={config?.ubicacion} />;
               }
               if (t.enServicio) {
                 const otro = dispSalon.turnos.find((x) => x.turno !== t.turno && !x.enServicio && x.horarios.some((h) => h.estado !== "sin_lugar"));
@@ -1042,14 +1037,18 @@ function AvisoWhatsApp({
   turno,
   motivo,
   mensaje,
+  contacto,
 }: {
   fecha: string;
   pax: number;
   turno?: TurnoPublico;
   motivo?: string | null;
   mensaje?: string | null;
+  contacto?: UbicacionPublica | null;
 }) {
   const texto = `¡Hola! Quiero reservar para el ${fechaTxt(fecha)}${turno ? ` (${NOMBRE_TURNO[turno].toLowerCase()})` : ""}, ${personasTxt(pax)}.`;
+  const whatsapp = whatsappDe(contacto);
+  const telefono = contacto?.telefono?.trim() || null;
   return (
     <div className="rv-aviso-wa" role="status">
       <div className="rv-aviso-wa-t">
@@ -1058,18 +1057,37 @@ function AvisoWhatsApp({
         {motivo && <span>{motivo}</span>}
       </div>
       <p>{mensaje || `${turno ? "Ese turno" : "Ese día"} tomamos las reservas por WhatsApp.`}</p>
-      {WHATSAPP_CLIENTE ? (
+      {whatsapp && (
         <>
-          <a href={`https://wa.me/${WHATSAPP_CLIENTE}?text=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer">
+          <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer">
             <IconoWhatsApp size={18} />
             Reservar por WhatsApp
           </a>
           <small>El mensaje ya va con la fecha y la cantidad de personas.</small>
         </>
-      ) : (
-        <small>Comunicate con el restaurante para reservar.</small>
       )}
+      {telefono && (
+        <a className="tel" href={`tel:${telefono.replace(/[^\d+]/g, "")}`}>
+          <IconoTelefono />
+          {whatsapp ? `O llamanos al ${telefono}` : `Llamanos al ${telefono}`}
+        </a>
+      )}
+      {!whatsapp && !telefono && <small>Comunicate con el restaurante para reservar.</small>}
     </div>
+  );
+}
+
+// WhatsApp del restaurante: el que cargó el Admin en Datos del restaurante o,
+// si no hay, el de la variable de entorno.
+function whatsappDe(contacto?: UbicacionPublica | null) {
+  return contacto?.whatsapp?.replace(/\D/g, "") || WHATSAPP_CLIENTE;
+}
+
+function IconoTelefono() {
+  return (
+    <svg viewBox="0 0 24 24" width={17} height={17} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
+    </svg>
   );
 }
 

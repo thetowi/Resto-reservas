@@ -24,7 +24,14 @@ public record PublicoConfigDto(
     PublicoUbicacionDto? Ubicacion = null);
 
 // "Cómo llegar": direccion y links opcionales de cada app de mapas.
-public record PublicoUbicacionDto(string? Direccion, string? GoogleMapsUrl, string? AppleMapsUrl, string? WazeUrl);
+// Telefono / Whatsapp: contacto del restaurante (Whatsapp solo números).
+public record PublicoUbicacionDto(
+    string? Direccion,
+    string? GoogleMapsUrl,
+    string? AppleMapsUrl,
+    string? WazeUrl,
+    string? Telefono = null,
+    string? Whatsapp = null);
 
 // Estado: "ok" | "pocos" | "lleno" | "bloqueado" (sin reservas online ese
 // dia: el link muestra Motivo/Mensaje y el boton de WhatsApp) | "servicio"

@@ -70,4 +70,32 @@ public class DatosRestauranteTests : IClassFixture<BarrancasWebApplicationFactor
 
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
+
+    [Fact]
+    public async Task El_contacto_se_guarda_con_el_whatsapp_en_numeros_y_llega_al_link()
+    {
+        var admin = await ClienteAsync("admin");
+
+        var res = await admin.PutAsJsonAsync("/api/datos-restaurante",
+            new GuardarDatosRestauranteRequest("Av. Costanera 1234", null, null, null, " 0343 422-1234 ", "+54 9 343 422-1234"));
+
+        res.EnsureSuccessStatusCode();
+        var guardado = await res.Content.ReadFromJsonAsync<DatosRestauranteDto>();
+        Assert.Equal("0343 422-1234", guardado!.Telefono);
+        Assert.Equal("5493434221234", guardado.Whatsapp);
+        var config = await _factory.CreateClient().GetFromJsonAsync<PublicoConfigDto>("/api/publico/config");
+        Assert.Equal("5493434221234", config!.Ubicacion!.Whatsapp);
+        Assert.Equal("0343 422-1234", config.Ubicacion.Telefono);
+    }
+
+    [Fact]
+    public async Task Un_whatsapp_sin_codigo_de_area_se_rechaza()
+    {
+        var admin = await ClienteAsync("admin");
+
+        var res = await admin.PutAsJsonAsync("/api/datos-restaurante",
+            new GuardarDatosRestauranteRequest(null, null, null, null, null, "4221234"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
 }

@@ -36,6 +36,9 @@ export interface UbicacionPublica {
   googleMapsUrl: string | null;
   appleMapsUrl: string | null;
   wazeUrl: string | null;
+  // Contacto del restaurante (Datos del restaurante). Whatsapp: solo números.
+  telefono?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface DiaPublico {

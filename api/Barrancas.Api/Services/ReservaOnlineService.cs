@@ -303,9 +303,10 @@ public class ReservaOnlineService
             horarios[Nombre(turno)] = todos.ToList();
         }
         var datos = await _db.DatosRestaurante.AsNoTracking().OrderBy(d => d.Id).FirstOrDefaultAsync();
-        var ubicacion = datos is null || (datos.Direccion is null && datos.GoogleMapsUrl is null && datos.AppleMapsUrl is null && datos.WazeUrl is null)
+        var ubicacion = datos is null || (datos.Direccion is null && datos.GoogleMapsUrl is null && datos.AppleMapsUrl is null
+                && datos.WazeUrl is null && datos.Telefono is null && datos.Whatsapp is null)
             ? null
-            : new PublicoUbicacionDto(datos.Direccion, datos.GoogleMapsUrl, datos.AppleMapsUrl, datos.WazeUrl);
+            : new PublicoUbicacionDto(datos.Direccion, datos.GoogleMapsUrl, datos.AppleMapsUrl, datos.WazeUrl, datos.Telefono, datos.Whatsapp);
         return new PublicoConfigDto(
             salones.Select(s => new PublicoSalonDto(s.Id, s.Nombre, s.PermiteMerienda, ConfirmaSola(s))).ToList(),
             horarios,

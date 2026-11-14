@@ -21,6 +21,7 @@ public class DatosRestauranteController : ControllerBase
 {
     private const int MaxDireccion = 200;
     private const int MaxUrl = 500;
+    private const int MaxTelefono = 30;
     private readonly BarrancasDbContext _db;
 
     public DatosRestauranteController(BarrancasDbContext db)
@@ -29,7 +30,7 @@ public class DatosRestauranteController : ControllerBase
     }
 
     private static DatosRestauranteDto ADto(DatosRestaurante? d) =>
-        new(d?.Direccion, d?.GoogleMapsUrl, d?.AppleMapsUrl, d?.WazeUrl, d?.UpdatedAt, d?.UpdatedBy);
+        new(d?.Direccion, d?.GoogleMapsUrl, d?.AppleMapsUrl, d?.WazeUrl, d?.UpdatedAt, d?.UpdatedBy, d?.Telefono, d?.Whatsapp);
 
     private static string? Limpio(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
 
@@ -50,10 +51,22 @@ public class DatosRestauranteController : ControllerBase
         var google = Limpio(req.GoogleMapsUrl);
         var apple = Limpio(req.AppleMapsUrl);
         var waze = Limpio(req.WazeUrl);
+        var telefono = Limpio(req.Telefono);
+        // WhatsApp: solo los números (se aceptan espacios, guiones, "+").
+        var whatsapp = Limpio(req.Whatsapp) is string w ? new string(w.Where(char.IsDigit).ToArray()) : null;
+        if (whatsapp is { Length: 0 }) whatsapp = null;
 
         if (direccion is { Length: > MaxDireccion })
         {
             return BadRequest(new { error = $"La dirección puede tener hasta {MaxDireccion} caracteres." });
+        }
+        if (telefono is { Length: > MaxTelefono })
+        {
+            return BadRequest(new { error = $"El teléfono puede tener hasta {MaxTelefono} caracteres." });
+        }
+        if (whatsapp is { Length: < 10 or > 15 })
+        {
+            return BadRequest(new { error = "El WhatsApp tiene que tener el código de país y de área, ej. 5493434221234." });
         }
         foreach (var (nombre, url) in new[] { ("Google Maps", google), ("Apple Maps", apple), ("Waze", waze) })
         {
@@ -73,6 +86,8 @@ public class DatosRestauranteController : ControllerBase
         fila.GoogleMapsUrl = google;
         fila.AppleMapsUrl = apple;
         fila.WazeUrl = waze;
+        fila.Telefono = telefono;
+        fila.Whatsapp = whatsapp;
         fila.UpdatedAt = DateTime.UtcNow;
         fila.UpdatedBy = ReservaWebService.Usuario(User);
         await _db.SaveChangesAsync();

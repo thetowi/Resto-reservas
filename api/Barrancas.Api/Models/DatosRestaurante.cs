@@ -22,6 +22,13 @@ public class DatosRestaurante
     public string? AppleMapsUrl { get; set; }
     public string? WazeUrl { get; set; }
 
+    // Contacto para el cliente: teléfono para llamar (como se escribe, ej.
+    // "0343 422-1234") y WhatsApp (solo números, con código de país, ej.
+    // "5493434221234"). Se muestran en el link cuando una fecha no toma
+    // reservas online («Comunicate con el restaurante»).
+    public string? Telefono { get; set; }
+    public string? Whatsapp { get; set; }
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     // Usuario del panel que guardo el ultimo cambio.
     public string? UpdatedBy { get; set; }

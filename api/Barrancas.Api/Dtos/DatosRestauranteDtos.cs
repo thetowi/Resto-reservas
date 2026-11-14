@@ -8,10 +8,14 @@ public record DatosRestauranteDto(
     string? AppleMapsUrl,
     string? WazeUrl,
     DateTime? UpdatedAt,
-    string? UpdatedBy);
+    string? UpdatedBy,
+    string? Telefono = null,
+    string? Whatsapp = null);
 
 public record GuardarDatosRestauranteRequest(
     string? Direccion,
     string? GoogleMapsUrl,
     string? AppleMapsUrl,
-    string? WazeUrl);
+    string? WazeUrl,
+    string? Telefono = null,
+    string? Whatsapp = null);

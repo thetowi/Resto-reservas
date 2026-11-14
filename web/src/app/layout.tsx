@@ -28,6 +28,8 @@ const TEMA_SCRIPT = `
   try {
     var guardado = localStorage.getItem("barrancas-theme");
     var tema = guardado || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    // El link de reservas para clientes va siempre en modo claro.
+    if (location.pathname.indexOf("/reservar") === 0) tema = "light";
     document.documentElement.dataset.theme = tema;
   } catch (e) {}
 })();

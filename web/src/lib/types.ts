@@ -343,6 +343,9 @@ export interface DatosRestaurante {
   wazeUrl: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
+  // Contacto que ve el cliente en el link (WhatsApp: solo números, con código de país).
+  telefono?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface FechaCerradaWeb {
