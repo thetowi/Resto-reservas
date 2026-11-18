@@ -46,18 +46,31 @@ public class CierresController : ControllerBase
         var existente = await _db.CierresTurno.FirstOrDefaultAsync(c =>
             c.Fecha == req.Fecha && c.Turno == req.Turno && c.SalonId == req.SalonId);
 
+        if (req.Cerrar is bool quiere && quiere == await _diaService.TurnoCerradoAsync(req.Fecha, req.Turno, req.SalonId))
+        {
+            // Ya está como se pide.
+            return Ok(await _diaService.GetTurnoAsync(req.Fecha, req.Turno, req.SalonId));
+        }
+
         if (existente is not null)
         {
+            // Vuelve a lo de siempre: abierto, o cerrado si el salón no abre
+            // ese día de la semana (ver Salon.AbreEl).
             _db.CierresTurno.Remove(existente);
         }
         else
         {
+            // Si el salón no abre ese día, «Reabrir turno» lo abre solo ese
+            // día; si no, «Cerrar turno» lo cierra.
+            var salon = await _db.Salones.FirstAsync(s => s.Id == req.SalonId);
+            var cerradoPorSemana = !salon.AbreEl(req.Turno, req.Fecha);
             _db.CierresTurno.Add(new CierreTurno
             {
                 Fecha = req.Fecha,
                 Turno = req.Turno,
                 SalonId = req.SalonId,
-                Motivo = req.Motivo,
+                Motivo = cerradoPorSemana ? null : req.Motivo,
+                Reabierto = cerradoPorSemana,
             });
         }
 

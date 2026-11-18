@@ -23,7 +23,33 @@ export interface Salon {
   // reservas, historial); solo /admin/salones lo sigue mostrando, para
   // poder reactivarlo.
   activo: boolean;
+  // Configuración del salón (ficha en /admin/salones). Viene siempre de la
+  // API; opcional acá solo para no romper datos viejos en caché.
+  // Color: "#rrggbb" o "" (sin color: el punto en las pestañas no se ve).
+  color?: string;
+  ofreceAlmuerzo?: boolean;
+  ofreceCena?: boolean;
+  // Días de la semana en que abre cada turno: bits lunes = 1 ... domingo = 64
+  // (127 = todos). Ver lib/diasSemana.ts.
+  diasAlmuerzo?: number;
+  diasMerienda?: number;
+  diasCena?: number;
+  // Link de reservas (/reservar).
+  mostrarEnLink?: boolean;
+  confirmacion?: ConfirmacionWeb;
+  confirmaHastaPax?: number;
+  paxMaximoWeb?: number;
+  anticipacionMinutos?: number;
+  diasAdelante?: number;
+  // Minutos después de la hora reservada para el aviso «todavía no llegó»
+  // (0 = sin aviso). Ver lib/tolerancia.ts.
+  toleranciaMinutos?: number;
 }
+
+// Cómo confirma el link las reservas de un salón: al instante siempre, solo
+// con menos de confirmaHastaPax personas, o nunca (todas quedan como
+// solicitud que aprueba el equipo).
+export type ConfirmacionWeb = "siempre" | "hastaPax" | "nunca";
 
 // después
 export interface Mesa {

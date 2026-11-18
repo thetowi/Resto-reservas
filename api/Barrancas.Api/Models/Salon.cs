@@ -37,4 +37,75 @@ public class Salon
     // para un salon que nunca la usa), y el frontend no ofrece la opcion en
     // el selector de turno.
     public bool PermiteMerienda { get; set; } = false;
+
+    // ---- Configuración del salón (/admin/salones, ficha del salón) ----
+
+    // Color para identificarlo en las pestañas del panel y del celular (hex).
+    public string Color { get; set; } = string.Empty;
+
+    // Turnos que ofrece (Merienda: PermiteMerienda, de arriba) y qué días de
+    // la semana abre cada uno: máscara de bits lunes = 1, martes = 2, ...,
+    // domingo = 64 (127 = todos). Un turno que no se ofrece, o un día que no
+    // abre, queda cerrado en el panel y en el link (se puede reabrir un día
+    // puntual desde el panel, ver CierreTurno.Reabierto).
+    public bool OfreceAlmuerzo { get; set; } = true;
+    public bool OfreceCena { get; set; } = true;
+    public int DiasAlmuerzo { get; set; } = TodosLosDias;
+    public int DiasMerienda { get; set; } = TodosLosDias;
+    public int DiasCena { get; set; } = TodosLosDias;
+
+    // Link de reservas: si el salón aparece, cómo se confirman las reservas
+    // (ver ConfirmacionWeb), el máximo de personas, la anticipación mínima y
+    // hasta cuántos días adelante se puede reservar.
+    public bool MostrarEnLink { get; set; } = true;
+    public ConfirmacionWeb Confirmacion { get; set; } = ConfirmacionWeb.Nunca;
+    // Con ConfirmacionWeb.HastaPax: desde esta cantidad de personas queda a confirmar.
+    public int ConfirmaHastaPax { get; set; } = 6;
+    public int PaxMaximoWeb { get; set; } = 20;
+    public int AnticipacionMinutos { get; set; } = 60;
+    public int DiasAdelante { get; set; } = 60;
+
+    // Minutos después de la hora reservada en que la reserva se marca "tarde".
+    public int ToleranciaMinutos { get; set; } = 15;
+
+    public const int TodosLosDias = 127;
+
+    public bool Ofrece(Turno turno) => turno switch
+    {
+        Turno.Almuerzo => OfreceAlmuerzo,
+        Turno.Merienda => PermiteMerienda,
+        _ => OfreceCena,
+    };
+
+    public int DiasDe(Turno turno) => turno switch
+    {
+        Turno.Almuerzo => DiasAlmuerzo,
+        Turno.Merienda => DiasMerienda,
+        _ => DiasCena,
+    };
+
+    // Bit del día de la semana (lunes = 0 ... domingo = 6).
+    public static int BitDe(DateOnly fecha) => 1 << (((int)fecha.DayOfWeek + 6) % 7);
+
+    public bool AbreEl(Turno turno, DateOnly fecha) => Ofrece(turno) && (DiasDe(turno) & BitDe(fecha)) != 0;
+
+    // ¿Una reserva del link de tantas personas se confirma sola en este salón?
+    public bool ConfirmaSola(int pax) => Confirmacion switch
+    {
+        ConfirmacionWeb.Siempre => true,
+        ConfirmacionWeb.HastaPax => pax < ConfirmaHastaPax,
+        _ => false,
+    };
+}
+
+// Cómo se confirman las reservas del link en un salón.
+public enum ConfirmacionWeb
+{
+    // Se confirma sola si hay una mesa libre donde entren.
+    Siempre = 0,
+    // Se confirma sola por debajo de Salon.ConfirmaHastaPax personas; desde
+    // ahí queda como solicitud.
+    HastaPax = 1,
+    // Todas quedan como solicitud: el equipo las aprueba en Reservas web.
+    Nunca = 2,
 }

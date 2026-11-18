@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, crearReserva, patchEspera, patchReserva, toggleWalkIn, vaciarReserva } from "@/lib/api";
 import { addDays, partesFecha, textoRelativo, todayISO } from "@/lib/date";
-import { excedioTolerancia } from "@/lib/tolerancia";
+import { excedioTolerancia, toleranciaDe } from "@/lib/tolerancia";
+import { turnosDelSalon } from "@/lib/turno";
 import { cuandoLlego, numerosDeLlegada, quienLaCargo } from "@/lib/llegada";
 import type { Dia, Espera, Mesa, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import { linkWhatsApp, numeroWhatsApp } from "@/lib/whatsapp";
@@ -94,7 +95,8 @@ export default function PanelCelular(props: Props) {
   const inputFecha = useRef<HTMLInputElement>(null);
 
   const salon = salones.find((s) => s.id === salonId);
-  const turnos: Turno[] = salon?.permiteMerienda ? ["almuerzo", "merienda", "cena"] : ["almuerzo", "cena"];
+  const turnos = turnosDelSalon(salon);
+  const tolerancia = toleranciaDe(salon);
   const data: TurnoData | null = turno === "almuerzo" ? dia.almuerzo : turno === "merienda" ? dia.merienda : dia.cena;
 
   const aviso = useCallback((texto: string) => setToast((t) => ({ texto, n: (t?.n ?? 0) + 1 })), []);
@@ -162,7 +164,7 @@ export default function PanelCelular(props: Props) {
   const activas = reservas.filter((r) => !r.retirada);
   const sinMesa = activas.filter((r) => r.mesaIds.length === 0 && (r.pax ?? 0) > 0);
   const libres = mesas.filter((m) => !ocupadas.has(m.id));
-  const tarde = reservas.filter((r) => excedioTolerancia(r, ahora)).length;
+  const tarde = reservas.filter((r) => excedioTolerancia(r, ahora, tolerancia)).length;
   const esperando = espera.filter((e) => !e.ubicada);
 
   // ---------- llamadas
@@ -301,6 +303,9 @@ export default function PanelCelular(props: Props) {
               title={salonesConAviso.has(s.id) ? `Hay reservas en ${s.nombre}` : undefined}
               onClick={() => onSalon(s.id)}
             >
+              {s.color && (
+                <span aria-hidden className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: s.color }} />
+              )}
               {s.nombre}
               <i>{n}</i>
             </button>
@@ -352,7 +357,7 @@ export default function PanelCelular(props: Props) {
         );
         prev = r.hora;
       }
-      const esTarde = excedioTolerancia(r, ahora);
+      const esTarde = excedioTolerancia(r, ahora, tolerancia);
       const clase = r.retirada ? "fue" : r.asistio ? "llego" : esTarde ? "tarde" : "";
       out.push(
         <article key={r.id} className={`pc-tj ${clase}`} onClick={() => setHoja({ tipo: "detalle", id: r.id })}>
@@ -515,7 +520,7 @@ export default function PanelCelular(props: Props) {
         {resumen}
         {vista === "res" && tarde > 0 && (
           <div className="pc-aviso">
-            <IcReloj /> {tarde === 1 ? "1 reserva pasó" : `${tarde} reservas pasaron`} los 15 min de tolerancia
+            <IcReloj /> {tarde === 1 ? "1 reserva pasó" : `${tarde} reservas pasaron`} los {tolerancia} min de tolerancia
           </div>
         )}
         {vista === "res" ? tarjetas() : vistaMesas()}

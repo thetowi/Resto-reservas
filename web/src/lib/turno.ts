@@ -1,4 +1,4 @@
-import type { Turno } from "./types";
+import type { Salon, Turno } from "./types";
 
 // Antes de las 16hs se considera "Almuerzo"; de 16 a 18 "Merienda" (turno
 // intermedio del lobby bar — ver Salon.permiteMerienda); de ahi en mas
@@ -21,4 +21,14 @@ export function turnoPorDefecto(): Turno {
 // default un turno que ni siquiera pueden elegir.
 export function turnoPorDefectoSinMerienda(): Turno {
   return new Date().getHours() < 16 ? "almuerzo" : "cena";
+}
+
+// Los turnos que ofrece un salón (para los selectores de turno).
+export function turnosDelSalon(salon: Salon | null | undefined): Turno[] {
+  if (!salon) return ["almuerzo", "cena"];
+  const t: Turno[] = [];
+  if (salon.ofreceAlmuerzo !== false) t.push("almuerzo");
+  if (salon.permiteMerienda) t.push("merienda");
+  if (salon.ofreceCena !== false) t.push("cena");
+  return t.length > 0 ? t : ["almuerzo", "cena"];
 }

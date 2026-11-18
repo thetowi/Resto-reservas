@@ -10,6 +10,7 @@ import { LOGOS_CLIENTE, NOMBRE_PUBLICO, PRIVACIDAD_CLIENTE, WHATSAPP_CLIENTE } f
 import { direccionMapa, opcionesMapa, type AppMapa } from "@/lib/mapas";
 import {
   ErrorReserva,
+  confirmaAlInstante,
   crearReservaPublica,
   getConfigPublica,
   getDiasPublicos,
@@ -57,7 +58,7 @@ const personasTxt = (n: number) => `${n} ${n === 1 ? "persona" : "personas"}`;
 // web (se reserva por WhatsApp). Antes solo contaba hayLugar y, con el turno
 // en servicio, no se podia pasar del paso del salon.
 const entrable = (s: SalonDisponible | null | undefined) => !!s && (s.hayLugar || s.turnos.some((t) => t.enServicio || t.porWhatsApp));
-const seleccionable = (d: DiaPublico) => d.estado !== "lleno" && d.estado !== "bloqueado";
+const seleccionable = (d: DiaPublico) => d.estado !== "lleno" && d.estado !== "bloqueado" && d.estado !== "cerrado";
 
 // Tiempo minimo de la pantalla "Confirmando tu reserva…": si la API responde
 // muy rapido, evita que aparezca y desaparezca como un parpadeo.
@@ -155,7 +156,7 @@ export default function ReservarPage() {
   const pasoActual = pasos[Math.min(paso, pasos.length - 1)];
   const salon = salones.find((s) => s.id === salonId) ?? null;
   const dispSalon = disp?.salones.find((s) => s.salonId === salonId) ?? null;
-  const confirmaSola = !!salon && salon.confirmaSola && pax < (config?.limitePaxConfirmaSola ?? 6);
+  const confirmaSola = !!salon && confirmaAlInstante(salon, pax, config?.limitePaxConfirmaSola);
 
   // Celular con el teclado abierto: el navegador no achica la pagina, asi que
   // la barra fija de abajo (Continuar/Reservar) quedaba detras del teclado.
@@ -390,10 +391,13 @@ export default function ReservarPage() {
   if (salon && salones.length > 1 && paso > pasos.indexOf("salon")) contexto.push(salon.nombre);
   if (hora && paso > pasos.indexOf("horario")) contexto.push(`${hora} · ${NOMBRE_TURNO[turno]}`);
   const ultimo = paso === pasos.length - 1;
-  const grupo = pax >= config.limitePaxConfirmaSola;
+  // Grupo: con esta cantidad ningun salon confirma al instante (cada salon
+  // tiene su limite, ver Admin → Salones). Si ninguno confirma nunca, no se
+  // avisa nada especial por la cantidad.
+  const grupo = salones.some((s) => confirmaAlInstante(s, 1, config.limitePaxConfirmaSola)) && !salones.some((s) => confirmaAlInstante(s, pax, config.limitePaxConfirmaSola));
   // Lo elegido hasta ahora, abajo junto a Continuar.
   const resumen = [personasTxt(pax), fecha ? fechaTxt(fecha) : null, hora && paso > pasos.indexOf("horario") ? hora : null].filter(Boolean).join(" · ");
-  const confirmaPorWhatsApp = grupo || (!!salon && !salon.confirmaSola);
+  const confirmaPorWhatsApp = grupo || (!!salon && !confirmaAlInstante(salon, pax, config.limitePaxConfirmaSola));
 
   return (
     <Marco ubicacion={config.ubicacion}>
@@ -508,6 +512,8 @@ export default function ReservarPage() {
                         ? "En servicio: por orden de llegada"
                         : d.estado === "lleno"
                           ? "Completo"
+                          : d.estado === "cerrado"
+                            ? "Cerrado"
                           : d.estado === "pocos"
                             ? "Pocos lugares"
                             : "Hay lugar";
@@ -621,7 +627,9 @@ export default function ReservarPage() {
               const ds = disp.salones.find((x) => x.salonId === s.id);
               const libre = !!ds?.hayLugar;
               const servicio = !libre && !!ds?.turnos.some((t) => t.enServicio);
-              const sola = s.confirmaSola && pax < config.limitePaxConfirmaSola;
+              const sola = confirmaAlInstante(s, pax, config.limitePaxConfirmaSola);
+              // Más personas de las que este salón toma por el link.
+              const excede = s.paxMaximo !== undefined && pax > s.paxMaximo;
               const turnos = ds?.turnos.filter((t) => t.horarios.some((x) => x.estado !== "sin_lugar")).map((t) => NOMBRE_TURNO[t.turno]) ?? [];
               return (
                 <button
@@ -642,7 +650,7 @@ export default function ReservarPage() {
                         En servicio · por orden de llegada
                         <i className="rv-vivo" aria-hidden="true" />
                       </>
-                    ) : entrable(ds) ? "Se reserva por WhatsApp" : "Sin lugar este día"}
+                    ) : excede ? `Hasta ${s.paxMaximo} personas por acá` : entrable(ds) ? "Se reserva por WhatsApp" : "Sin lugar este día"}
                   </span>
                   {libre && <span className={`rv-sc ${sola ? "si" : "pend"}`}>{sola ? "Confirmación inmediata" : "Te confirmamos por WhatsApp"}</span>}
                 </button>
@@ -1133,7 +1141,7 @@ function Calendario({
   const siguiente = mesDe(y, m + 1);
   const hayAnterior = anterior >= hoy.slice(0, 7);
   const haySiguiente = siguiente <= ultimo.slice(0, 7);
-  const ESTADO: Record<string, string> = { bloqueado: "Se reserva por WhatsApp", lleno: "Completo", pocos: "Pocos lugares", ok: "Hay lugar" };
+  const ESTADO: Record<string, string> = { bloqueado: "Se reserva por WhatsApp", lleno: "Completo", cerrado: "Cerrado", pocos: "Pocos lugares", ok: "Hay lugar" };
 
   return (
     <div className="rv-cal" role="group" aria-label="Calendario">

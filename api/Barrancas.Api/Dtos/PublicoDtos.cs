@@ -5,10 +5,22 @@ namespace Barrancas.Api.Dtos;
 // nada interno: ni mesas, ni nombres de otros clientes, ni cantidades exactas
 // de reservas; solo si hay lugar o no.
 
-// ConfirmaSola: si una reserva de menos de LimitePaxConfirmaSola personas en
+// ConfirmaSola: si alguna reserva (según ConfirmaHasta) en
 // este salon se confirma al instante (true) o queda como solicitud que el
 // equipo confirma por WhatsApp (false).
-public record PublicoSalonDto(int Id, string Nombre, bool PermiteMerienda, bool ConfirmaSola);
+// ConfirmaHasta: se confirma al instante con MENOS de esa cantidad de
+// personas (0 = nunca). PaxMaximo / DiasAdelante / Ofrece*: la configuración
+// del salón para el link (Admin → Salones).
+public record PublicoSalonDto(
+    int Id,
+    string Nombre,
+    bool PermiteMerienda,
+    bool ConfirmaSola,
+    int ConfirmaHasta = 0,
+    int PaxMaximo = 20,
+    int DiasAdelante = 60,
+    bool OfreceAlmuerzo = true,
+    bool OfreceCena = true);
 
 // Horarios: "almuerzo"/"merienda"/"cena" -> horarios ofrecidos (los de la
 // planilla, ver HorariosDefault). Hoy: fecha local del restaurante.

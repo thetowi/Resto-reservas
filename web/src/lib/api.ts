@@ -334,10 +334,12 @@ export function toggleWalkIn(fecha: string, turno: Turno, mesaId: number) {
 // tomen reservas nuevas — ver ShiftSection.tsx. Mismo patron toggle que
 // toggleWalkIn: si no estaba cerrado, lo cierra (con el motivo, si vino);
 // si ya estaba cerrado, lo reabre (el motivo se ignora en ese caso).
-export function toggleCierre(fecha: string, turno: Turno, salonId: number, motivo?: string) {
+// cerrar: el estado que se quiere (si ya está así no se toca; ver
+// CierresController). Sin cerrar, es un interruptor.
+export function toggleCierre(fecha: string, turno: Turno, salonId: number, motivo?: string, cerrar?: boolean) {
   return request<TurnoData>("/api/cierres/toggle", {
     method: "POST",
-    body: JSON.stringify({ fecha, turno, salonId, motivo: motivo ?? null }),
+    body: JSON.stringify({ fecha, turno, salonId, motivo: motivo ?? null, cerrar: cerrar ?? null }),
   });
 }
 
@@ -573,13 +575,20 @@ export function crearSalon(nombre: string) {
   });
 }
 
-export function patchSalon(
-  id: number,
-  payload: Partial<{ nombre: string; orden: number; permiteMerienda: boolean; activo: boolean }>,
-) {
+export type CambiosSalon = Partial<Omit<Salon, "id">>;
+
+export function patchSalon(id: number, payload: CambiosSalon) {
   return request<Salon[]>(`/api/salones/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+// Orden nuevo de la lista (arrastrando en /admin/salones): todos los ids.
+export function ordenarSalones(ids: number[]) {
+  return request<Salon[]>("/api/salones/orden", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
   });
 }
 

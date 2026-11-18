@@ -3,9 +3,13 @@ import type { Reserva } from "./types";
 // Tolerancia (en minutos) antes de avisar que una reserva no se presentó a
 // la hora cargada: pasado este margen, ReservaRow resalta la fila (y ofrece
 // liberar la mesa al toque) y ShiftSection suma un contador en el
-// encabezado del turno. Un solo lugar para el número, por si en algún
-// momento se quiere hacer configurable.
+// encabezado del turno. Es el valor por defecto: cada salón tiene el suyo
+// (Salon.toleranciaMinutos, en Admin → Salones; 0 = sin aviso).
 export const TOLERANCIA_MINUTOS = 15;
+
+export function toleranciaDe(salon: { toleranciaMinutos?: number } | null | undefined): number {
+  return salon?.toleranciaMinutos ?? TOLERANCIA_MINUTOS;
+}
 
 function fechaLocalYMD(d: Date): string {
   const y = d.getFullYear();
@@ -33,7 +37,8 @@ export function esReservaCompleta(reserva: Reserva): boolean {
 // esReservaCompleta) del día de HOY (fecha local del navegador), que
 // todavía no se marcaron ni "Asistió" ni "Se fue" — apenas se tilda
 // cualquiera de las dos, el aviso desaparece solo (ver ReservaRow.tsx).
-export function excedioTolerancia(reserva: Reserva, ahora: Date): boolean {
+export function excedioTolerancia(reserva: Reserva, ahora: Date, tolerancia: number = TOLERANCIA_MINUTOS): boolean {
+  if (tolerancia <= 0) return false;
   if (reserva.asistio || reserva.retirada) return false;
   if (!esReservaCompleta(reserva)) return false;
   if (!reserva.hora) return false;
@@ -48,5 +53,5 @@ export function excedioTolerancia(reserva: Reserva, ahora: Date): boolean {
   const horaReserva = new Date(ahora);
   horaReserva.setHours(horas, minutos, 0, 0);
   const minutosTarde = (ahora.getTime() - horaReserva.getTime()) / 60000;
-  return minutosTarde >= TOLERANCIA_MINUTOS;
+  return minutosTarde >= tolerancia;
 }

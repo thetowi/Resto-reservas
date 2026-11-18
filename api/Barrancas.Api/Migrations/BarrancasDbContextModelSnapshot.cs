@@ -39,6 +39,9 @@ namespace Barrancas.Api.Migrations
                     b.Property<string>("Motivo")
                         .HasColumnType("text");
 
+                    b.Property<bool>("Reabierto")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("SalonId")
                         .HasColumnType("integer");
 
@@ -692,15 +695,55 @@ namespace Barrancas.Api.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("AnticipacionMinutos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ConfirmaHastaPax")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Confirmacion")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasAdelante")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasAlmuerzo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasCena")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasMerienda")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("MostrarEnLink")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("OfreceAlmuerzo")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("OfreceCena")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Orden")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PaxMaximoWeb")
                         .HasColumnType("integer");
 
                     b.Property<bool>("PermiteMerienda")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("ToleranciaMinutos")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

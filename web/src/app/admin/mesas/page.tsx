@@ -16,6 +16,7 @@ import { crearConexion } from "@/lib/signalr";
 import type { Mesa, Salon, Sector } from "@/lib/types";
 import PlanoSalon from "@/components/PlanoSalon";
 import SectoresEditor from "@/components/SectoresEditor";
+import { parametroDeLaUrl, salonDeLaUrl } from "@/lib/enlaceAdmin";
 import SalonSelector from "@/components/SalonSelector";
 
 export default function AdminMesasPage() {
@@ -53,7 +54,8 @@ export default function AdminMesasPage() {
         setTodasLasMesas(meta.mesas);
         setSalones(meta.salones);
         setSectores(meta.sectores ?? []);
-        if (meta.salones.length > 0) setSalonId((prev) => prev ?? meta.salones[0].id);
+        if (meta.salones.length > 0) setSalonId((prev) => prev ?? salonDeLaUrl(meta.salones) ?? meta.salones[0].id);
+        if (parametroDeLaUrl("vista") === "sectores") setVista("sectores");
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Error cargando las mesas"))
       .finally(() => setCargando(false));

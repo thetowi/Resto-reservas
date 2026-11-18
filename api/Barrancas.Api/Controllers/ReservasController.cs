@@ -35,7 +35,7 @@ public class ReservasController : ControllerBase
         {
             return BadRequest(new { error = "el salón indicado no existe" });
         }
-        if (await _db.CierresTurno.AnyAsync(c => c.Fecha == req.Fecha && c.Turno == req.Turno && c.SalonId == req.SalonId))
+        if (await _diaService.TurnoCerradoAsync(req.Fecha, req.Turno, req.SalonId))
         {
             return BadRequest(new { error = "este turno está cerrado: no se pueden cargar reservas nuevas" });
         }
@@ -68,8 +68,7 @@ public class ReservasController : ControllerBase
         var reserva = await _db.Reservas.FirstOrDefaultAsync(r => r.Id == id);
         if (reserva is null) return NotFound(new { error = "no encontrada" });
 
-        var cerrado = await _db.CierresTurno.AnyAsync(c =>
-            c.Fecha == reserva.Fecha && c.Turno == reserva.Turno && c.SalonId == reserva.SalonId);
+        var cerrado = await _diaService.TurnoCerradoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
         if (cerrado)
         {
             return BadRequest(new { error = "este turno está cerrado: no se pueden editar sus reservas" });
@@ -383,7 +382,7 @@ public class ReservasController : ControllerBase
         || !string.IsNullOrWhiteSpace(r.HabTel) || !string.IsNullOrWhiteSpace(r.Comentarios);
 
     private Task<bool> TurnoCerradoAsync(Reserva reserva) =>
-        _db.CierresTurno.AnyAsync(c => c.Fecha == reserva.Fecha && c.Turno == reserva.Turno && c.SalonId == reserva.SalonId);
+        _diaService.TurnoCerradoAsync(reserva.Fecha, reserva.Turno, reserva.SalonId);
 
     private async Task<TurnoDataDto> BroadcastTurnoAsync(DateOnly fecha, Turno turno, int salonId)
     {

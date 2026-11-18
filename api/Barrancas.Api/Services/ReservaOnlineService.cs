@@ -30,7 +30,10 @@ public class ReservaOnlineException : Exception
 /// - Hay lugar si queda una mesa libre (no ocupada, sin walk-in, no reducida)
 ///   con capacidad para esa cantidad de personas. Para grupos grandes alcanza
 ///   con que la suma de mesas libres llegue (lo arma el staff).
-/// - Se confirma sola si: salon "Restaurant" Y menos de 6 personas Y hay mesa;
+/// - Cada salón tiene su configuración del link (Admin → Salones, ver
+///   Models/Salon.cs): si aparece, qué turnos y días ofrece, hasta cuántas
+///   personas, con cuánta anticipación y hasta cuántos días adelante.
+/// - Se confirma sola según el salón (Siempre / Hasta N personas / Nunca) Y hay mesa;
 ///   la mesa NO se asigna: la elige el equipo en la grilla (la reserva igual
 ///   descuenta lugar, ver MesasLibresEfectivas). Cualquier otro caso queda
 ///   como SOLICITUD: solo el registro ReservaWeb (Pendiente, sin fila), que el
@@ -44,13 +47,14 @@ public class ReservaOnlineException : Exception
 /// </summary>
 public class ReservaOnlineService
 {
-    public const string SalonConfirmaSola = "Restaurant";
-    public const int LimitePaxConfirmaSola = 6; // se confirma sola con MENOS de 6
+    // Desde cuántas personas se busca lugar como grupo (sumando mesas libres,
+    // las junta el equipo) en vez de una mesa que alcance sola.
+    public const int UmbralGrupo = 6;
+    // Valores por defecto (si no hay ningún salón en el link). Cada salón
+    // tiene los suyos: PaxMaximoWeb, DiasAdelante, AnticipacionMinutos.
+    public const int LimitePaxConfirmaSola = 6;
     public const int PaxMaximo = 20;
-    // Hasta cuantos dias adelante se puede reservar por el link (la tira
-    // muestra 14; el resto se elige con "Otra fecha", en el calendario).
     public const int DiasAdelante = 60;
-    private const int MinutosAnticipacion = 60;
     private const int MaxReservasWebFuturasPorTelefono = 3;
 
     public const string Disponible = "disponible";
@@ -104,12 +108,13 @@ public class ReservaOnlineService
 
     public static DateOnly HoyLocal() => DateOnly.FromDateTime(AhoraLocal());
 
-    private static bool HoraYaPaso(DateOnly fecha, string hora)
+    // anticipacion: minutos mínimos entre ahora y la hora de la reserva
+    // (Salon.AnticipacionMinutos). Puede pasar a otro día (ej. 1440 = un día).
+    private static bool HoraYaPaso(DateOnly fecha, string hora, int anticipacion)
     {
-        var ahora = AhoraLocal();
-        if (fecha != DateOnly.FromDateTime(ahora)) return fecha < DateOnly.FromDateTime(ahora);
         if (!TimeOnly.TryParseExact(hora, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)) return true;
-        return t.ToTimeSpan() < ahora.TimeOfDay.Add(TimeSpan.FromMinutes(MinutosAnticipacion));
+        var cuando = fecha.ToDateTime(t);
+        return cuando < AhoraLocal().AddMinutes(anticipacion);
     }
 
     // ---------------------------------------------------------------- en servicio
@@ -154,12 +159,10 @@ public class ReservaOnlineService
 
     // ---------------------------------------------------------------- turnos y horarios
 
-    private static IEnumerable<Turno> TurnosDe(Salon salon)
-    {
-        yield return Turno.Almuerzo;
-        if (salon.PermiteMerienda) yield return Turno.Merienda;
-        yield return Turno.Cena;
-    }
+    // Los turnos que el salón ofrece (Salon.Ofrece). Los días de la semana
+    // en que abre cada uno los resuelve DiaService (turno cerrado).
+    private static IEnumerable<Turno> TurnosDe(Salon salon) =>
+        new[] { Turno.Almuerzo, Turno.Merienda, Turno.Cena }.Where(salon.Ofrece);
 
     private static string Nombre(Turno turno) => turno.ToString().ToLowerInvariant();
 
@@ -191,11 +194,28 @@ public class ReservaOnlineService
         }
     }
 
-    private static bool ConfirmaSola(Salon salon) =>
-        string.Equals(salon.Nombre.Trim(), SalonConfirmaSola, StringComparison.OrdinalIgnoreCase);
+    // Hasta cuántas personas (sin incluir) se confirma sola en este salón:
+    // 0 = nunca, PaxMaximoWeb + 1 = siempre. Es lo que ve el link.
+    private static int ConfirmaHasta(Salon salon) => salon.Confirmacion switch
+    {
+        ConfirmacionWeb.Siempre => salon.PaxMaximoWeb + 1,
+        ConfirmacionWeb.HastaPax => salon.ConfirmaHastaPax,
+        _ => 0,
+    };
 
-    private Task<List<Salon>> SalonesActivosAsync() =>
-        _db.Salones.Where(s => s.Activo).OrderBy(s => s.Orden).ToListAsync();
+    // Los salones que aparecen en el link (activos y con «Mostrar en el link»).
+    private Task<List<Salon>> SalonesDelLinkAsync() =>
+        _db.Salones.Where(s => s.Activo && s.MostrarEnLink).OrderBy(s => s.Orden).ThenBy(s => s.Id).ToListAsync();
+
+    // Lo más permisivo entre los salones del link (la tira de días y el
+    // selector de personas); cada salón después aplica lo suyo.
+    private static int PaxMaximoDe(List<Salon> salones) => salones.Count == 0 ? PaxMaximo : salones.Max(s => s.PaxMaximoWeb);
+
+    private static int DiasAdelanteDe(List<Salon> salones) => salones.Count == 0 ? DiasAdelante : salones.Max(s => s.DiasAdelante);
+
+    // Si el salón toma esa reserva por el link (personas y fecha).
+    private static bool Admite(Salon salon, DateOnly fecha, int pax, DateOnly hoy) =>
+        pax <= salon.PaxMaximoWeb && fecha >= hoy && fecha <= hoy.AddDays(salon.DiasAdelante);
 
     // ---------------------------------------------------------------- evaluacion de un turno
 
@@ -230,10 +250,13 @@ public class ReservaOnlineService
         return libres;
     }
 
-    private record EvaluacionTurno(bool Cerrado, bool HayLugar, List<PublicoHorarioDto> Horarios, MesaDto? MesaParaAsignar);
+    // ConMesas: el salón tiene mesas cargadas (si no, no se sabe el lugar real
+    // y la reserva queda como solicitud).
+    private record EvaluacionTurno(bool Cerrado, bool HayLugar, List<PublicoHorarioDto> Horarios, MesaDto? MesaParaAsignar, bool ConMesas = true);
 
-    private async Task<EvaluacionTurno> EvaluarTurnoAsync(DateOnly fecha, Turno turno, int salonId, int pax, bool sembrar)
+    private async Task<EvaluacionTurno> EvaluarTurnoAsync(DateOnly fecha, Turno turno, Salon salon, int pax, bool sembrar)
     {
+        var salonId = salon.Id;
         var data = await _diaService.GetTurnoAsync(fecha, turno, salonId, sembrar);
         // Con parte del salón cerrada (sectores o mesas reducidas) el cupo de
         // cada horario se achica igual que las filas de la planilla.
@@ -257,7 +280,7 @@ public class ReservaOnlineService
             hayLugar = true;
             mesasAptas = int.MaxValue;
         }
-        else if (pax < LimitePaxConfirmaSola)
+        else if (pax < UmbralGrupo)
         {
             var aptas = libres.Where(m => m.Capacidad >= pax).OrderBy(m => m.Capacidad).ThenBy(m => m.Orden).ToList();
             hayLugar = aptas.Count > 0;
@@ -277,26 +300,26 @@ public class ReservaOnlineService
             var usados = data.Reservas.Count(r => r.Pax is not null && r.Hora == h);
             var cupo = franjas.First(f => f.Hora == h).Filas;
             string estado;
-            if (!hayLugar || usados >= cupo || HoraYaPaso(fecha, h)) estado = SinLugar;
+            if (!hayLugar || usados >= cupo || HoraYaPaso(fecha, h, salon.AnticipacionMinutos)) estado = SinLugar;
             else if (mesasAptas <= 2 || cupo - usados == 1) estado = Pocas;
             else estado = Disponible;
             return new PublicoHorarioDto(h, estado);
         }).ToList();
 
-        return new(false, hayLugar, estados, mesa);
+        return new(false, hayLugar, estados, mesa, data.Mesas.Count > 0);
     }
 
     // ---------------------------------------------------------------- consultas
 
     public async Task<PublicoConfigDto> ConfigAsync()
     {
-        var salones = await SalonesActivosAsync();
-        // Todos los horarios de cada turno, sumando los de cada salon activo.
+        var salones = await SalonesDelLinkAsync();
+        // Todos los horarios de cada turno, sumando los de cada salon del link.
         var horarios = new Dictionary<string, List<string>>();
         foreach (var turno in new[] { Turno.Almuerzo, Turno.Merienda, Turno.Cena })
         {
             var todos = new SortedSet<string>(StringComparer.Ordinal);
-            foreach (var salon in salones.Where(s => turno != Turno.Merienda || s.PermiteMerienda))
+            foreach (var salon in salones.Where(s => s.Ofrece(turno)))
             {
                 todos.UnionWith(await HorariosDeAsync(salon.Id, turno));
             }
@@ -308,21 +331,22 @@ public class ReservaOnlineService
             ? null
             : new PublicoUbicacionDto(datos.Direccion, datos.GoogleMapsUrl, datos.AppleMapsUrl, datos.WazeUrl, datos.Telefono, datos.Whatsapp);
         return new PublicoConfigDto(
-            salones.Select(s => new PublicoSalonDto(s.Id, s.Nombre, s.PermiteMerienda, ConfirmaSola(s))).ToList(),
+            salones.Select(s => new PublicoSalonDto(
+                s.Id, s.Nombre, s.Ofrece(Turno.Merienda), s.Confirmacion != ConfirmacionWeb.Nunca,
+                ConfirmaHasta(s), s.PaxMaximoWeb, s.DiasAdelante, s.Ofrece(Turno.Almuerzo), s.Ofrece(Turno.Cena))).ToList(),
             horarios,
-            LimitePaxConfirmaSola,
-            PaxMaximo,
-            DiasAdelante,
+            salones.Count == 0 ? LimitePaxConfirmaSola : salones.Max(ConfirmaHasta),
+            PaxMaximoDe(salones),
+            DiasAdelanteDe(salones),
             HoyLocal(),
             ubicacion);
     }
 
-    private static int PaxValido(int pax) => Math.Clamp(pax, 1, PaxMaximo);
-
     public async Task<List<PublicoDiaDto>> DiasAsync(int pax, int cantidad)
     {
-        pax = PaxValido(pax);
-        cantidad = Math.Clamp(cantidad, 1, DiasAdelante + 1);
+        var salones = await SalonesDelLinkAsync();
+        pax = Math.Clamp(pax, 1, PaxMaximoDe(salones));
+        cantidad = Math.Clamp(cantidad, 1, DiasAdelanteDe(salones) + 1);
         var hoy = HoyLocal();
         var clave = $"publico-dias:{hoy}:{pax}:{cantidad}:{Volatile.Read(ref _versionCache)}";
         if (_cache.TryGetValue(clave, out List<PublicoDiaDto>? enCache) && enCache is not null)
@@ -334,7 +358,6 @@ public class ReservaOnlineService
         var bloqueadas = await _db.FechasBloqueadasBot
             .Where(f => f.Fecha >= hoy && f.Fecha <= hasta)
             .ToDictionaryAsync(f => f.Fecha);
-        var salones = await SalonesActivosAsync();
 
         var resultado = new List<PublicoDiaDto>();
         for (var fecha = hoy; fecha <= hasta; fecha = fecha.AddDays(1))
@@ -351,19 +374,23 @@ public class ReservaOnlineService
             var pocas = 0;
             var total = 0;
             var enServicio = false;
-            foreach (var salon in salones)
+            var abiertos = 0;
+            foreach (var salon in salones.Where(s => Admite(s, fecha, pax, hoy)))
             {
                 foreach (var turno in TurnosDe(salon))
                 {
                     // Turno cerrado para la web (el resto del dia sigue abierto).
                     if (cierre is not null && cierre.Cierra(turno)) continue;
+                    // Ese día el salón no abre ese turno (o lo cerró el equipo).
+                    if (await _diaService.TurnoCerradoAsync(fecha, turno, salon.Id)) continue;
+                    abiertos++;
                     // Turno de hoy ya en servicio: por orden de llegada.
                     if (await EnServicioAsync(fecha, turno, salon.Id))
                     {
                         enServicio = true;
                         continue;
                     }
-                    var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
+                    var ev = await EvaluarTurnoAsync(fecha, turno, salon, pax, sembrar: false);
                     total += ev.Horarios.Count;
                     disponibles += ev.Horarios.Count(h => h.Estado == Disponible);
                     pocas += ev.Horarios.Count(h => h.Estado == Pocas);
@@ -371,7 +398,9 @@ public class ReservaOnlineService
             }
 
             string estado;
-            if (disponibles + pocas == 0) estado = enServicio ? "servicio" : "lleno";
+            // Ningún salón abre ese día (ej. lunes cerrado): "cerrado", no "lleno".
+            if (abiertos == 0) estado = "cerrado";
+            else if (disponibles + pocas == 0) estado = enServicio ? "servicio" : "lleno";
             else if (total > 0 && disponibles < total * 0.35) estado = "pocos";
             else estado = "ok";
             resultado.Add(new PublicoDiaDto(fecha, estado));
@@ -383,10 +412,10 @@ public class ReservaOnlineService
 
     public async Task<PublicoDisponibilidadDto> DisponibilidadAsync(DateOnly fecha, int pax)
     {
-        pax = PaxValido(pax);
         var hoy = HoyLocal();
-        var salones = await SalonesActivosAsync();
-        var fueraDeRango = fecha < hoy || fecha > hoy.AddDays(DiasAdelante);
+        var salones = await SalonesDelLinkAsync();
+        pax = Math.Clamp(pax, 1, PaxMaximoDe(salones));
+        var fueraDeRango = fecha < hoy || fecha > hoy.AddDays(DiasAdelanteDe(salones));
         var cierre = await _db.FechasBloqueadasBot.FirstOrDefaultAsync(f => f.Fecha == fecha);
         var bloqueada = fueraDeRango || cierre is { Turno: null };
 
@@ -394,8 +423,17 @@ public class ReservaOnlineService
         foreach (var salon in salones)
         {
             var turnos = new List<PublicoTurnoDto>();
+            // Este salón no toma esa reserva (más personas de las que acepta
+            // o una fecha más allá de sus días): sus turnos van sin lugar.
+            var admite = Admite(salon, fecha, pax, hoy);
             foreach (var turno in TurnosDe(salon))
             {
+                if (!bloqueada && !admite)
+                {
+                    turnos.Add(new PublicoTurnoDto(Nombre(turno), true,
+                        (await HorariosDeAsync(salon.Id, turno)).Select(h => new PublicoHorarioDto(h, SinLugar)).ToList()));
+                    continue;
+                }
                 if (bloqueada || (cierre is not null && cierre.Cierra(turno)))
                 {
                     // PorWhatsApp: cerrado para la web por una fecha especial
@@ -414,7 +452,7 @@ public class ReservaOnlineService
                         EnServicio: true, FinServicio: FinServicio(turno)));
                     continue;
                 }
-                var ev = await EvaluarTurnoAsync(fecha, turno, salon.Id, pax, sembrar: false);
+                var ev = await EvaluarTurnoAsync(fecha, turno, salon, pax, sembrar: false);
                 turnos.Add(new PublicoTurnoDto(Nombre(turno), ev.Cerrado, ev.Horarios));
             }
             var hayLugar = turnos.Any(t => t.Horarios.Any(h => h.Estado != SinLugar));
@@ -449,13 +487,9 @@ public class ReservaOnlineService
         }
 
         var hoy = HoyLocal();
-        if (req.Fecha < hoy || req.Fecha > hoy.AddDays(DiasAdelante))
+        if (req.Pax < 1)
         {
-            throw new ReservaOnlineException($"Solo tomamos reservas online para los próximos {DiasAdelante} días.");
-        }
-        if (req.Pax < 1 || req.Pax > PaxMaximo)
-        {
-            throw new ReservaOnlineException($"Por este medio tomamos reservas de 1 a {PaxMaximo} personas.");
+            throw new ReservaOnlineException("Elegí para cuántas personas es la reserva.");
         }
 
         var nombre = Recortar(req.Nombre, 80);
@@ -473,14 +507,26 @@ public class ReservaOnlineService
         var ocasion = Recortar(req.Ocasion, 40);
         var comentarios = Recortar(req.Comentarios, 500);
 
-        var salon = await _db.Salones.FirstOrDefaultAsync(s => s.Id == req.SalonId && s.Activo);
+        var salon = await _db.Salones.FirstOrDefaultAsync(s => s.Id == req.SalonId && s.Activo && s.MostrarEnLink);
         if (salon is null)
         {
             throw new ReservaOnlineException("Ese salón no está tomando reservas online.");
         }
-        if (!TryParseTurno(req.Turno, out var turno) || (turno == Turno.Merienda && !salon.PermiteMerienda))
+        if (req.Fecha < hoy || req.Fecha > hoy.AddDays(salon.DiasAdelante))
+        {
+            throw new ReservaOnlineException($"En {salon.Nombre} tomamos reservas online para los próximos {salon.DiasAdelante} días.");
+        }
+        if (req.Pax > salon.PaxMaximoWeb)
+        {
+            throw new ReservaOnlineException($"En {salon.Nombre} tomamos reservas de hasta {salon.PaxMaximoWeb} personas por este medio. Para más, escribinos.");
+        }
+        if (!TryParseTurno(req.Turno, out var turno) || !salon.Ofrece(turno))
         {
             throw new ReservaOnlineException("Ese turno no está disponible en ese salón.");
+        }
+        if (await _diaService.TurnoCerradoAsync(req.Fecha, turno, salon.Id))
+        {
+            throw new ReservaOnlineException("Ese día ese turno está cerrado. Elegí otro día u horario.");
         }
         var hora = req.Hora?.Trim() ?? string.Empty;
         if (!(await HorariosDeAsync(salon.Id, turno)).Contains(hora))
@@ -511,27 +557,28 @@ public class ReservaOnlineService
 
         // Se vuelve a evaluar en el momento de reservar (pudo ocuparse
         // mientras el cliente completaba sus datos).
-        var previa = await EvaluarTurnoAsync(req.Fecha, turno, salon.Id, req.Pax, sembrar: false);
+        var previa = await EvaluarTurnoAsync(req.Fecha, turno, salon, req.Pax, sembrar: false);
         var estadoHora = previa.Horarios.FirstOrDefault(h => h.Hora == hora)?.Estado ?? SinLugar;
         if (estadoHora == SinLugar)
         {
             throw new ReservaOnlineException("Ese horario se acaba de ocupar. Elegí otro, por favor.");
         }
 
-        // Se confirma sola solo si el salon lo permite, es de menos de 6 y hay
-        // una mesa que le sirva (se mira que haya lugar, pero NO se asigna:
+        // Se confirma sola solo si el salon lo permite para esa cantidad
+        // (Salon.ConfirmaSola) y hay una mesa que le sirva — o, si es un
+        // grupo, mesas libres que sumen su gente (se mira que haya lugar, pero NO se asigna:
         // la mesa la elige el equipo segun como organice el salon, ver
         // MesasLibresEfectivas). Si no, queda como SOLICITUD: no entra a la
         // grilla (ni ocupa lugar) hasta que alguien del equipo la aprueba en
         // Reservas web (ver ReservasWebController.Confirmar / Rechazar).
-        MesaDto? mesa = null;
-        if (ConfirmaSola(salon) && req.Pax < LimitePaxConfirmaSola)
+        var confirmada = false;
+        if (salon.ConfirmaSola(req.Pax) && previa.ConMesas)
         {
             // Recien ahora se generan las filas del turno (como al abrir el dia).
             await _diaService.SeedTurnoSiVacioAsync(req.Fecha, turno, salon.Id);
-            mesa = (await EvaluarTurnoAsync(req.Fecha, turno, salon.Id, req.Pax, sembrar: false)).MesaParaAsignar;
+            var ev = await EvaluarTurnoAsync(req.Fecha, turno, salon, req.Pax, sembrar: false);
+            confirmada = req.Pax < UmbralGrupo ? ev.MesaParaAsignar is not null : ev.HayLugar;
         }
-        var confirmada = mesa is not null;
 
         // Registro aparte (panel "Reservas por el link"): queda aunque despues
         // la fila se vacie o se quite. Su Id es el codigo que ve el cliente.

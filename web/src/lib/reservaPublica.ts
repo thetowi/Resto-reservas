@@ -7,7 +7,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5238";
 
 export type TurnoPublico = "almuerzo" | "merienda" | "cena";
 // "servicio": hoy, el turno ya empezo y es por orden de llegada.
-export type EstadoDia = "ok" | "pocos" | "lleno" | "bloqueado" | "servicio";
+// "cerrado": ningun salon abre ese dia (ej. los lunes, ver Admin → Salones).
+export type EstadoDia = "ok" | "pocos" | "lleno" | "bloqueado" | "servicio" | "cerrado";
 export type EstadoHorario = "disponible" | "pocas" | "sin_lugar";
 
 export interface SalonPublico {
@@ -17,6 +18,17 @@ export interface SalonPublico {
   // Si una reserva de menos de limitePaxConfirmaSola personas se confirma al
   // instante en este salon (si no, queda como solicitud).
   confirmaSola: boolean;
+  // Configuracion del salon para el link (Admin → Salones). confirmaHasta:
+  // se confirma al instante con MENOS de esa cantidad de personas (0 = nunca).
+  confirmaHasta?: number;
+  paxMaximo?: number;
+  diasAdelante?: number;
+}
+
+// Si una reserva de pax personas en este salon se confirma al instante.
+export function confirmaAlInstante(salon: SalonPublico, pax: number, limiteGeneral = 6): boolean {
+  if (salon.confirmaHasta !== undefined) return pax < salon.confirmaHasta;
+  return salon.confirmaSola && pax < limiteGeneral;
 }
 
 export interface ConfigPublica {

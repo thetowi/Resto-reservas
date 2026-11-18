@@ -18,13 +18,16 @@ interface Props {
   // del selector, y una vez ahí te termina de llevar hasta el turno con
   // el mismo anillo en el botón.
   turnosConAviso?: Set<Turno>;
+  // Los turnos que ofrece el salón (ver turnosDelSalon en lib/turno.ts). Si
+  // viene, manda sobre permiteMerienda.
+  turnos?: Turno[];
 }
 
 const NOMBRES: Record<Turno, string> = { almuerzo: "Almuerzo", merienda: "Merienda", cena: "Cena" };
 
 // Control segmentado, igual que SalonSelector (mismo anillo rojo de aviso).
-export default function TurnoToggle({ turno, onCambiar, permiteMerienda = false, turnosConAviso }: Props) {
-  const turnos: Turno[] = permiteMerienda ? ["almuerzo", "merienda", "cena"] : ["almuerzo", "cena"];
+export default function TurnoToggle({ turno, onCambiar, permiteMerienda = false, turnosConAviso, turnos: delSalon }: Props) {
+  const turnos: Turno[] = delSalon ?? (permiteMerienda ? ["almuerzo", "merienda", "cena"] : ["almuerzo", "cena"]);
   return (
     <div className="inline-flex gap-1 rounded-[13px] border border-borde bg-arena-suave p-1">
       {turnos.map((t) => {

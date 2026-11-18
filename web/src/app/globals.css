@@ -839,8 +839,8 @@ select option {
 .rv-num { font-size: 19px; font-weight: 700; }
 .rv-est { width: 6px; height: 6px; border-radius: 50%; background: #32b49d; margin-top: 3px; }
 .rv-dia.pocos .rv-est { background: var(--color-aviso); }
-.rv-dia.lleno, .rv-dia.bloqueado { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
-.rv-dia.lleno .rv-est, .rv-dia.bloqueado .rv-est { background: transparent; border: 1px solid var(--color-tinta-suave); }
+.rv-dia.lleno, .rv-dia.bloqueado, .rv-dia.cerrado { background: var(--rv-apagado); color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-dia.lleno .rv-est, .rv-dia.bloqueado .rv-est, .rv-dia.cerrado .rv-est { background: transparent; border: 1px solid var(--color-tinta-suave); }
 .rv-dia[aria-pressed="true"] { background: var(--rv-acento); border-color: transparent; color: var(--rv-acento-tx); }
 .rv-dia[aria-pressed="true"] .rv-dsem { color: inherit; opacity: 0.8; }
 .rv-dia[aria-pressed="true"] .rv-est { background: currentColor; }
@@ -1039,9 +1039,9 @@ select option {
   font: inherit; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; display: grid; place-items: center; }
 .rv-cal-dia i { position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #32b49d; }
 .rv-cal-dia.pocos i { background: var(--color-aviso); }
-.rv-cal-dia.lleno, .rv-cal-dia.bloqueado, .rv-cal-dia.fuera { color: var(--color-tinta-suave); cursor: not-allowed; }
+.rv-cal-dia.lleno, .rv-cal-dia.bloqueado, .rv-cal-dia.cerrado, .rv-cal-dia.fuera { color: var(--color-tinta-suave); cursor: not-allowed; }
 .rv-cal-dia.fuera { opacity: 0.4; }
-.rv-cal-dia.lleno i, .rv-cal-dia.bloqueado i { background: transparent; border: 1px solid var(--color-tinta-suave); }
+.rv-cal-dia.lleno i, .rv-cal-dia.bloqueado i, .rv-cal-dia.cerrado i { background: transparent; border: 1px solid var(--color-tinta-suave); }
 .rv-cal-dia:not([aria-disabled="true"]):hover { background: var(--rv-apagado); }
 .rv-cal-dia[aria-pressed="true"] { background: var(--rv-acento); color: var(--rv-acento-tx); }
 .rv-cal-dia[aria-pressed="true"] i { background: currentColor; }

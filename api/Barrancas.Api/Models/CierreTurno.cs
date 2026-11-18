@@ -18,5 +18,10 @@ public class CierreTurno
     public Salon? Salon { get; set; }
 
     public string? Motivo { get; set; }
+
+    // true: el turno se abre ese día aunque el salón no abra ese día de la
+    // semana (ver Salon.AbreEl). Es el «Reabrir turno» de un día cerrado por
+    // los días del salón.
+    public bool Reabierto { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

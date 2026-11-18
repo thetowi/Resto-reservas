@@ -22,6 +22,8 @@ interface Props {
   // las 26 filas de un turno recalculan el aviso de tolerancia todas juntas
   // en vez de tener cada una su propio setInterval.
   ahora: Date;
+  // Minutos de tolerancia del salón (ver lib/tolerancia.ts).
+  tolerancia?: number;
   // Lugar en el orden de llegada del turno (1 = la primera que entró), ver
   // lib/llegada.ts. Undefined si la fila está vacía o no tiene ese dato.
   numeroLlegada?: number;
@@ -134,6 +136,7 @@ export default function ReservaRow({
   mesasWalkIn,
   impar,
   ahora,
+  tolerancia = TOLERANCIA_MINUTOS,
   arrastre,
   numeroLlegada,
   sectorDelGrupo,
@@ -155,7 +158,7 @@ export default function ReservaRow({
     ...mesasWalkIn,
   ]);
 
-  const enTolerancia = excedioTolerancia(local, ahora);
+  const enTolerancia = excedioTolerancia(local, ahora, tolerancia);
 
   useEffect(() => {
     setLocal((prev) => {
@@ -252,7 +255,7 @@ export default function ReservaRow({
             <button
               type="button"
               onClick={() => onCambiarMesas([])}
-              title={`Pasaron ${TOLERANCIA_MINUTOS}+ minutos de la hora reservada y todavía no llegó. Cambiá el horario si se corrió, o tocá acá para liberar su mesa y ofrecérsela a otra reserva o a un walk-in.`}
+              title={`Pasaron ${tolerancia}+ minutos de la hora reservada y todavía no llegó. Cambiá el horario si se corrió, o tocá acá para liberar su mesa y ofrecérsela a otra reserva o a un walk-in.`}
               className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-aviso text-[9px] leading-none text-white shadow"
             >
               ⏰

@@ -79,7 +79,7 @@ public class ReservaBotService
         {
             return new(false, "Esa fecha no está disponible para reservar por este medio — comunicate directamente con el restaurante.", new());
         }
-        if (await _db.CierresTurno.AnyAsync(c => c.Fecha == fecha && c.Turno == turno && c.SalonId == salon.Id))
+        if (await _diaService.TurnoCerradoAsync(fecha, turno, salon.Id))
         {
             return new(false, "Ese turno está cerrado ese día.", new());
         }
@@ -137,7 +137,7 @@ public class ReservaBotService
         {
             return new("rechazada", null, null, null, "Esa fecha no está disponible para reservar por este medio.");
         }
-        if (await _db.CierresTurno.AnyAsync(c => c.Fecha == fecha && c.Turno == turno && c.SalonId == salon.Id))
+        if (await _diaService.TurnoCerradoAsync(fecha, turno, salon.Id))
         {
             return new("rechazada", null, null, null, "Ese turno está cerrado ese día.");
         }

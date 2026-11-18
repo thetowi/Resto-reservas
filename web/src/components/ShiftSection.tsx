@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, crearReserva, reducirSalonPorTurno, toggleCierre } from "@/lib/api";
 import type { Espera, FechaCerradaWeb, Mesa, Salon, Turno, TurnoData } from "@/lib/types";
-import { excedioTolerancia } from "@/lib/tolerancia";
+import { excedioTolerancia, toleranciaDe } from "@/lib/tolerancia";
 import EsperaPanel from "./EsperaPanel";
 import MesasPanel from "./MesasPanel";
 import ReservaRow from "./ReservaRow";
@@ -85,7 +85,9 @@ export default function ShiftSection({
     const id = setInterval(() => setAhora(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
-  const reservasFueraDeTolerancia = reservas.filter((r) => excedioTolerancia(r, ahora)).length;
+  // Minutos de tolerancia de este salón (Admin → Salones).
+  const tolerancia = toleranciaDe(salones.find((s) => s.id === salonId));
+  const reservasFueraDeTolerancia = reservas.filter((r) => excedioTolerancia(r, ahora, tolerancia)).length;
 
   // Arrastrar una reserva a otra fila vacia (cambio de horario).
   const { arrastre, capas: capasArrastre } = useArrastreReservas(reservas);
@@ -122,7 +124,7 @@ export default function ShiftSection({
     setEnviandoCierre(true);
     try {
       const idsObjetivo = cerrarTodos ? salones.map((s) => s.id) : [salonId];
-      await Promise.all(idsObjetivo.map((id) => toggleCierre(fecha, turno, id, motivo || undefined)));
+      await Promise.all(idsObjetivo.map((id) => toggleCierre(fecha, turno, id, motivo || undefined, true)));
     } catch {
       // el usuario ya ve el estado sin cambios si algo falla
     } finally {
@@ -134,7 +136,7 @@ export default function ShiftSection({
     if (!(await confirmar(`¿Reabrir "${titulo}"? Vuelve a aceptar reservas.`))) return;
     setEnviandoCierre(true);
     try {
-      await toggleCierre(fecha, turno, salonId);
+      await toggleCierre(fecha, turno, salonId, undefined, false);
     } catch {
       // idem onCerrar
     } finally {
@@ -277,8 +279,8 @@ export default function ShiftSection({
             <div className="mb-3 rounded-lg bg-aviso-suave px-3 py-2 text-xs text-aviso">
               ⏰ {reservasFueraDeTolerancia}{" "}
               {reservasFueraDeTolerancia === 1
-                ? "reserva superó los 15 minutos de tolerancia y todavía no llegó"
-                : "reservas superaron los 15 minutos de tolerancia y todavía no llegaron"}
+                ? `reserva superó los ${tolerancia} minutos de tolerancia y todavía no llegó`
+                : `reservas superaron los ${tolerancia} minutos de tolerancia y todavía no llegaron`}
               : movele el horario o liberale la mesa desde su fila.
             </div>
           )}
@@ -320,6 +322,7 @@ export default function ShiftSection({
                     mesasWalkIn={data.mesasWalkIn}
                     impar={i % 2 === 1}
                     ahora={ahora}
+                    tolerancia={tolerancia}
                     arrastre={arrastre}
                     numeroLlegada={numeros.get(r.id)}
                     sectorDelGrupo={r.sectorId ? sectores.find((s) => s.sectorId === r.sectorId) : undefined}

@@ -8,6 +8,7 @@ import { esAdmin, haySesion } from "@/lib/auth";
 import type { FranjaHoraria, HorariosTurno, Salon, Turno } from "@/lib/types";
 import { useConfirm } from "@/components/ConfirmProvider";
 import SalonSelector from "@/components/SalonSelector";
+import { salonDeLaUrl } from "@/lib/enlaceAdmin";
 
 // Horarios de cada turno por salón (ver api/Models/HorarioTurno.cs): qué
 // horarios tiene la planilla y cuántas filas trae cada uno. Solo Admin. Un
@@ -65,7 +66,7 @@ export default function AdminHorariosPage() {
     getMeta()
       .then((m) => {
         setSalones(m.salones);
-        setSalonId((id) => id ?? m.salones[0]?.id ?? null);
+        setSalonId((id) => id ?? salonDeLaUrl(m.salones) ?? m.salones[0]?.id ?? null);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "No se pudieron cargar los salones"));
   }, [listo]);

@@ -39,6 +39,14 @@ export default function SalonSelector({ salones, salonId, onCambiar, salonesConA
               activo ? "bg-marca text-white" : "text-tinta-suave hover:text-tinta"
             }`}
           >
+            {s.color && (
+              // El color del salón (Admin → Salones), para reconocerlo de un vistazo.
+              <span
+                aria-hidden
+                className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle ring-1 ring-white/70"
+                style={{ background: s.color }}
+              />
+            )}
             {s.nombre}
           </button>
         );

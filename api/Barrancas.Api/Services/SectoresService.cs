@@ -49,7 +49,7 @@ public class SectoresService
     /// </summary>
     public async Task AplicarTurnoAsync(SectoresTurnoRequest req, string? usuario)
     {
-        if (await _db.CierresTurno.AnyAsync(c => c.Fecha == req.Fecha && c.Turno == req.Turno && c.SalonId == req.SalonId))
+        if (await _dia.TurnoCerradoAsync(req.Fecha, req.Turno, req.SalonId))
         {
             throw new ErrorSectores("Este turno está cerrado.");
         }

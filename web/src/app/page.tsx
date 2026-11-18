@@ -8,7 +8,7 @@ import { EVENTO_AVISOS_WEB, EVENTO_IMPRIMIR, guardarContextoPlano } from "@/comp
 import { esAdmin, haySesion } from "@/lib/auth";
 import { addDays, todayISO } from "@/lib/date";
 import { crearConexion } from "@/lib/signalr";
-import { turnoPorDefecto, turnoPorDefectoSinMerienda } from "@/lib/turno";
+import { turnoPorDefecto, turnoPorDefectoSinMerienda, turnosDelSalon } from "@/lib/turno";
 import type { Dia, Espera, FechaCerradaWeb, Mesa, Meta, Reserva, Salon, Turno, TurnoData } from "@/lib/types";
 import DateNav from "@/components/DateNav";
 import ReporteImpresion from "@/components/ReporteImpresion";
@@ -218,17 +218,18 @@ export default function HomePage() {
     };
   }, [listo, meta?.salones, fecha, salonId]);
 
-  // Si el salon elegido deja de permitir Merienda (lo cambiaron desde
-  // /admin/salones, o se cambio de salon) mientras se estaba mirando ese
-  // turno, hay que sacarlo de ahi para no dejarlo viendo una pantalla de un
-  // turno que ya no puede elegir.
+  // Si el salon elegido deja de ofrecer el turno que se estaba mirando (lo
+  // cambiaron desde /admin/salones, o se cambio de salon), hay que sacarlo
+  // de ahi para no dejarlo viendo un turno que ya no puede elegir.
   useEffect(() => {
-    if (!listo || !meta || salonId === null || turno !== "merienda") return;
+    if (!listo || !meta || salonId === null) return;
     const salon = meta.salones.find((s) => s.id === salonId);
-    if (salon && !salon.permiteMerienda) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTurno(turnoPorDefectoSinMerienda());
-    }
+    if (!salon) return;
+    const ofrecidos = turnosDelSalon(salon);
+    if (ofrecidos.includes(turno)) return;
+    const sinMerienda = turnoPorDefectoSinMerienda();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTurno(ofrecidos.includes(sinMerienda) ? sinMerienda : ofrecidos[0]);
   }, [listo, meta, salonId, turno]);
 
   const suscribirA = useCallback(async (f: string, s: number) => {
@@ -549,6 +550,7 @@ export default function HomePage() {
               turno={turno}
               onCambiar={setTurno}
               permiteMerienda={salonActual?.permiteMerienda ?? false}
+              turnos={turnosDelSalon(salonActual)}
               turnosConAviso={turnosConAviso}
             />
           </div>

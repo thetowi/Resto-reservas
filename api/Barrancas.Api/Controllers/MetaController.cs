@@ -39,7 +39,9 @@ public class MetaController : ControllerBase
         var salones = await _db.Salones
             .Where(s => s.Activo)
             .OrderBy(s => s.Orden)
-            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo))
+            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo, s.Color, s.OfreceAlmuerzo, s.OfreceCena,
+                s.DiasAlmuerzo, s.DiasMerienda, s.DiasCena, s.MostrarEnLink, s.Confirmacion, s.ConfirmaHastaPax,
+                s.PaxMaximoWeb, s.AnticipacionMinutos, s.DiasAdelante, s.ToleranciaMinutos))
             .ToListAsync();
 
         var idsSalones = salones.Select(s => s.Id).ToList();

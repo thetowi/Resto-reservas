@@ -74,13 +74,12 @@ public class DiaService
     // creadas por cada consulta anonima.
     public async Task<TurnoDataDto> GetTurnoAsync(DateOnly fecha, Turno turno, int salonId, bool sembrar = true)
     {
-        var cierre = await _db.CierresTurno
-            .FirstOrDefaultAsync(c => c.Fecha == fecha && c.Turno == turno && c.SalonId == salonId);
+        var (cerrado, motivoCierre) = await EstadoCierreAsync(fecha, turno, salonId);
 
         // Si esta cerrado no tiene sentido pre-generar las filas default del
         // turno (ver SeedTurnoSiVacioAsync): no se van a cargar reservas,
         // quedarian sin usarse hasta que alguien reabra.
-        if (cierre is null && sembrar)
+        if (!cerrado && sembrar)
         {
             await SeedTurnoSiVacioAsync(fecha, turno, salonId);
         }
@@ -202,8 +201,36 @@ public class DiaService
 
         return new TurnoDataDto(
             fecha, turno, salonId, reservas, totalPax, totalAsistio, mesasOcupadas, mesasPedidas, mesasWalkIn,
-            cierre is not null, cierre?.Motivo, mesas, sectoresDto);
+            cerrado, motivoCierre, mesas, sectoresDto);
     }
+
+    private static readonly string[] NombreDia = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos"];
+
+    /// <summary>
+    /// ¿El turno está cerrado ese día? Por «Cerrar turno» (CierreTurno), o
+    /// porque el salón no ofrece ese turno o no abre ese día de la semana
+    /// (ver Salon.AbreEl), salvo que se haya reabierto para ese día
+    /// (CierreTurno.Reabierto). Devuelve también el motivo para mostrar.
+    /// </summary>
+    public async Task<(bool Cerrado, string? Motivo)> EstadoCierreAsync(DateOnly fecha, Turno turno, int salonId)
+    {
+        var cierre = await _db.CierresTurno
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Fecha == fecha && c.Turno == turno && c.SalonId == salonId);
+        if (cierre is not null) return cierre.Reabierto ? (false, null) : (true, cierre.Motivo);
+
+        var salon = await _db.Salones.AsNoTracking().FirstOrDefaultAsync(s => s.Id == salonId);
+        if (salon is null) return (false, null);
+        if (!salon.Ofrece(turno)) return (true, $"Este salón no ofrece {turno.ToString().ToLowerInvariant()}.");
+        if (!salon.AbreEl(turno, fecha))
+        {
+            return (true, $"Este salón no abre los {NombreDia[((int)fecha.DayOfWeek + 6) % 7]} ({turno.ToString().ToLowerInvariant()}).");
+        }
+        return (false, null);
+    }
+
+    public async Task<bool> TurnoCerradoAsync(DateOnly fecha, Turno turno, int salonId) =>
+        (await EstadoCierreAsync(fecha, turno, salonId)).Cerrado;
 
     /// <summary>
     /// Qué parte del salón queda abierta para reservas nuevas en este turno

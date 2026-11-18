@@ -1,0 +1,199 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>capax · Salones</title>
+<style>
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#eef1f4;color:#13242e;padding:26px 16px 70px}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:22px}
+.wrap>*{min-width:0}
+h1{font-size:25px}
+.intro{color:#4f5c64;font-size:14.5px;line-height:1.55;max-width:96ch;margin-top:6px}
+:focus-visible{outline:3px solid #32b49d;outline-offset:2px}
+
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.app{grid-template-columns:1fr}}
+.lista{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:10px;display:grid;gap:4px}
+.lista .tit{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 8px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#56636b;font-weight:700}
+.it{display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:center;text-align:left;border:0;background:none;border-radius:11px;padding:10px;cursor:pointer;width:100%}
+.it:hover{background:#f3f6f8}
+.it.sel{background:#13242e;color:#fff}
+.it.sel small{color:#b9c6ce}
+.asa{color:#9aa6ae;cursor:grab;font-size:15px;letter-spacing:-2px}
+.it.sel .asa{color:#6f8593}
+.pt{width:12px;height:12px;border-radius:50%}
+.it b{font-size:14.5px;display:block}
+.it small{font-size:12px;color:#5b6870;display:block;margin-top:2px}
+.it.off b{opacity:.55}
+.chip-in{font-size:10.5px;font-weight:800;border-radius:99px;padding:1px 7px;background:#e3e8eb;color:#5b6870;margin-left:6px;vertical-align:1px}
+.nuevo{display:flex;gap:6px;padding:8px 6px 4px;border-top:1px solid #eef1f3;margin-top:4px}
+.nuevo input{flex:1;min-width:0;border:1px solid #d3dbe1;border-radius:9px;padding:7px 10px;font-size:13.5px}
+.btn{border:0;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13.5px}
+.btn.prim{background:#13242e;color:#fff}.btn.sec{background:#fff;border:1px solid #d3dbe1;color:#13242e}
+.btn.peligro{background:#fff;border:1px solid #f0c9c9;color:#b3261e}
+.btn.chico{padding:7px 11px;font-size:13px}
+
+.det{display:grid;gap:14px}
+.cab{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.cab h2{font-size:21px;display:flex;align-items:center;gap:10px}
+.cab .resumen{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pill{font-size:12px;border-radius:99px;padding:3px 10px;background:#eef1f3;color:#3d4a52;font-weight:600}
+.pill.ok{background:#e0f4f0;color:#1d7a69}.pill.off{background:#fdeaea;color:#b3261e}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:4px}
+.tabs button{border:0;background:none;border-radius:10px;padding:8px 14px;font-weight:600;font-size:13.5px;color:#4f5c64;cursor:pointer}
+.tabs button.on{background:#13242e;color:#fff}
+.sec{background:#fff;border:1px solid #d3dbe1;border-radius:16px;padding:18px;display:grid;gap:16px}
+.sec h3{font-size:15.5px}
+.sec .sub{font-size:13px;color:#5b6870;margin-top:-10px;line-height:1.45}
+.fila{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start;padding-top:14px;border-top:1px solid #eef1f3}
+.fila:first-of-type{border-top:0;padding-top:0}
+@media (max-width:640px){.fila{grid-template-columns:1fr;gap:6px}}
+.fila .k b{font-size:13.5px;display:block}
+.fila .k small{font-size:12px;color:#5b6870;line-height:1.4;display:block;margin-top:2px}
+.nuevo-tag{font-size:10px;font-weight:800;color:#1d7a69;background:#e0f4f0;border-radius:99px;padding:1px 6px;margin-left:6px;vertical-align:1px;letter-spacing:.03em}
+.inp{width:100%;border:1px solid #d3dbe1;border-radius:10px;padding:8px 11px;font-size:14px;background:#fff}
+textarea.inp{resize:vertical;min-height:62px;line-height:1.45}
+.colores{display:flex;gap:7px;flex-wrap:wrap}
+.colores button{width:26px;height:26px;border-radius:50%;border:0;cursor:pointer}
+.colores button.on{box-shadow:0 0 0 2px #fff,0 0 0 4px #13242e}
+.sw{position:relative;display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px}
+.sw input{position:absolute;opacity:0}
+.sw i{width:38px;height:22px;border-radius:99px;background:#c8d2da;position:relative;transition:.15s;flex:none}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.sw input:checked+i{background:#32b49d}.sw input:checked+i::after{left:19px}
+.sw input:focus-visible+i{outline:3px solid #32b49d;outline-offset:2px}
+.turnos{display:grid;gap:8px}
+.tr{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #e3e8eb;border-radius:12px;padding:10px 12px}
+@media (max-width:640px){.tr{grid-template-columns:1fr}}
+.tr.off{background:#f6f8fa}
+.tr.off .dias,.tr.off .hor{opacity:.4;pointer-events:none}
+.dias{display:flex;gap:4px;flex-wrap:wrap}
+.dias button{width:32px;height:30px;border-radius:8px;border:1px solid #d3dbe1;background:#fff;font-size:12.5px;font-weight:700;cursor:pointer;color:#5b6870}
+.dias button.on{background:#13242e;border-color:#13242e;color:#fff}
+.hor{font-size:12.5px;color:#2f6f9f;text-decoration:underline;white-space:nowrap}
+.seg{display:inline-flex;background:#eef1f3;border-radius:11px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:#4f5c64;cursor:pointer}
+.seg button.on{background:#fff;color:#13242e;box-shadow:0 1px 3px rgba(12,38,55,.18)}
+.num{display:inline-flex;align-items:center;gap:8px;font-size:13.5px}
+.num button{width:30px;height:30px;border-radius:9px;border:1px solid #d3dbe1;background:#fff;font-weight:800;cursor:pointer}
+.num output{min-width:34px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+.ayuda{font-size:12.5px;color:#5b6870;line-height:1.45;margin-top:6px}
+.prev{border:1px dashed #c8d2da;border-radius:12px;padding:12px;display:grid;gap:8px;background:#fafbfc}
+.prev .op{display:flex;gap:10px;align-items:center;border:1px solid #d3dbe1;border-radius:12px;padding:10px 12px;background:#fff}
+.prev .op b{font-size:14px}.prev .op small{display:block;font-size:12px;color:#5b6870;margin-top:2px}
+.prev .op .pt{width:10px;height:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.card{border:1px solid #e3e8eb;border-radius:12px;padding:12px;display:grid;gap:4px}
+.card b{font-size:22px;font-variant-numeric:tabular-nums}.card small{font-size:12.5px;color:#5b6870}
+.card a{font-size:12.5px;color:#2f6f9f;margin-top:4px}
+.sectores{display:flex;gap:6px;flex-wrap:wrap}
+.zona{border:1px solid #f0c9c9;background:#fffafa}
+.zona .fila{border-top-color:#f6e1e1}
+.guardar{position:sticky;bottom:12px;background:#13242e;color:#fff;border-radius:14px;padding:10px 12px 10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 18px 40px -16px rgba(12,38,55,.6)}
+.guardar span{font-size:13.5px}
+.guardar .btn.prim{background:#32b49d;color:#04221c}
+.guardar .btn.sec{background:transparent;border-color:#4b5f6c;color:#fff}
+.nota{background:#fff;border:1px solid #d3dbe1;border-radius:14px;padding:13px 16px;font-size:14px;line-height:1.55;color:#3d4a52}
+.nota b{color:#13242e}.nota ul{padding-left:18px;display:grid;gap:5px;margin-top:4px}
+</style></head><body><div class="wrap">
+
+<div><h1>Salones: todo lo de cada salón en un solo lugar</h1>
+<p class="intro">Hoy un salón solo tiene nombre, «Permite merienda» y activo. La propuesta: una lista a la izquierda (se ordena arrastrando) y, al elegir un salón, su <b>ficha completa</b> con todo lo que hoy está fijo en el código o repartido en otras pantallas. Lo marcado con <span class="nuevo-tag">NUEVO</span> no existe todavía. Todo se puede tocar.</p></div>
+
+<div class="app">
+ <div class="lista" id="lista"></div>
+ <div class="det" id="det"></div>
+</div>
+
+<div class="nota"><ul>
+ <li><b>Lo que hoy está fijo en el código y pasa a ser de cada salón:</b> qué salón confirma solo (hoy solo «Restaurant»), desde cuántos pax queda a confirmar (6), el máximo por reserva (20), la anticipación (60 min), los días hacia adelante (60) y la tolerancia de llegada (15 min).</li>
+ <li><b>Días de la semana por turno:</b> por ejemplo, Lobby Casino solo viernes y sábado a la noche. Los días cerrados no se ofrecen en el link ni abren planilla.</li>
+ <li><b>Descripción y color:</b> la descripción la ve el cliente al elegir salón en el link; el color identifica al salón en las pestañas del panel y del celular.</li>
+ <li>Horarios, mesas y sectores siguen en sus pantallas; acá se ve el resumen con el acceso directo.</li>
+</ul></div>
+
+</div>
+<script>
+const salones=[
+ {id:1,nombre:'Restaurant',color:'#13242e',activo:true,desc:'Salón principal con vista al río. Menú a la carta.',link:true,conf:'hasta',hasta:6,max:20,antic:60,adel:60,tol:15,
+  turnos:{almuerzo:{on:true,dias:[1,1,1,1,1,1,1]},merienda:{on:false,dias:[0,0,0,0,0,0,0]},cena:{on:true,dias:[1,1,1,1,1,1,1]}},mesas:26,pax:104,sectores:[['Bodega','#8a5a2b'],['Terraza','#2f7d6d']],horarios:{almuerzo:'7 horarios · 26 filas',cena:'7 horarios · 26 filas',merienda:'—'}},
+ {id:2,nombre:'Lobby bar',color:'#2f6f9f',activo:true,desc:'Barra y sillones en el lobby del hotel. Tragos y tapeo.',link:true,conf:'nunca',hasta:6,max:10,antic:30,adel:30,tol:15,
+  turnos:{almuerzo:{on:false,dias:[0,0,0,0,0,0,0]},merienda:{on:true,dias:[1,1,1,1,1,1,1]},cena:{on:true,dias:[0,0,0,1,1,1,0]}},mesas:12,pax:40,sectores:[],horarios:{almuerzo:'—',cena:'5 horarios · 10 filas',merienda:'5 horarios · 10 filas'}},
+ {id:3,nombre:'Parrilla',color:'#a33b5c',activo:true,desc:'',link:false,conf:'nunca',hasta:6,max:20,antic:120,adel:60,tol:20,
+  turnos:{almuerzo:{on:true,dias:[0,0,0,0,0,1,1]},merienda:{on:false,dias:[0,0,0,0,0,0,0]},cena:{on:true,dias:[0,0,0,0,1,1,0]}},mesas:18,pax:72,sectores:[],horarios:{almuerzo:'5 horarios · 18 filas',cena:'6 horarios · 20 filas',merienda:'—'}},
+ {id:4,nombre:'Lobby Casino',color:'#6b7a1f',activo:false,desc:'',link:false,conf:'nunca',hasta:6,max:20,antic:60,adel:60,tol:15,
+  turnos:{almuerzo:{on:false,dias:[0,0,0,0,0,0,0]},merienda:{on:false,dias:[0,0,0,0,0,0,0]},cena:{on:true,dias:[0,0,0,0,1,1,0]}},mesas:8,pax:30,sectores:[],horarios:{almuerzo:'—',cena:'4 horarios · 8 filas',merienda:'—'}},
+];
+const COLORES=['#13242e','#2f6f9f','#2f7d6d','#8a5a2b','#a33b5c','#6b7a1f','#7a4fb3','#c26a1b'];
+const DIAS=['L','M','X','J','V','S','D'];
+const NT={almuerzo:'Almuerzo',merienda:'Merienda',cena:'Cena'};
+let sel=1,tab='general',cambios=false;
+const $=id=>document.getElementById(id);
+const s=()=>salones.find(x=>x.id===sel);
+
+function resumenTurnos(x){return Object.entries(x.turnos).filter(([,t])=>t.on).map(([k])=>NT[k]).join(' · ')||'Sin turnos'}
+function lista(){
+ $('lista').innerHTML=`<div class="tit"><span class="lbl">Salones</span><span class="lbl" style="text-transform:none;letter-spacing:0;font-weight:500">Arrastrá para ordenar</span></div>`+
+ salones.map(x=>`<button class="it ${x.id===sel?'sel':''} ${x.activo?'':'off'}" data-id="${x.id}"><span class="asa" aria-hidden="true">⋮⋮</span><span class="pt" style="background:${x.color}"></span><span><b>${x.nombre}${x.activo?'':'<span class="chip-in">Inactivo</span>'}</b><small>${resumenTurnos(x)}${x.link&&x.activo?' · en el link':''}</small></span></button>`).join('')+
+ `<div class="nuevo"><input placeholder="Nombre (ej: Bar)" aria-label="Nombre del salón nuevo"><button class="btn prim chico" type="button">+ Nuevo</button></div>`;
+ $('lista').querySelectorAll('.it').forEach(b=>b.onclick=()=>{sel=+b.dataset.id;cambios=false;todo()});
+}
+function fila(k,ayuda,ctrl,nuevo){return `<div class="fila"><div class="k"><b>${k}${nuevo?'<span class="nuevo-tag">NUEVO</span>':''}</b>${ayuda?`<small>${ayuda}</small>`:''}</div><div>${ctrl}</div></div>`}
+function sw(id,on,txt){return `<label class="sw"><input type="checkbox" data-sw="${id}" ${on?'checked':''}><i></i>${txt}</label>`}
+function num(id,v,suf){return `<span class="num"><button type="button" data-num="${id}" data-d="-1" aria-label="Menos">−</button><output>${v}</output><button type="button" data-num="${id}" data-d="1" aria-label="Más">+</button>${suf}</span>`}
+
+function general(x){return `<section class="sec"><h3>General</h3>
+ ${fila('Nombre','Cómo se ve en el panel y en el link.',`<input class="inp" data-campo="nombre" value="${x.nombre}">`)}
+ ${fila('Descripción para el cliente','Se ve en el link al elegir el salón. Opcional.',`<textarea class="inp" data-campo="desc" maxlength="140" placeholder="Ej: Salón principal con vista al río.">${x.desc}</textarea>`,true)}
+ ${fila('Color','Identifica al salón en las pestañas del panel y del celular.',`<div class="colores">${COLORES.map(c=>`<button type="button" data-color="${c}" class="${x.color===c?'on':''}" style="background:${c}" aria-label="Color ${c}"></button>`).join('')}</div>`,true)}
+ ${fila('Estado','Inactivo: no aparece en el panel ni en el link, pero no se pierde nada.',sw('activo',x.activo,x.activo?'Activo':'Inactivo'))}
+</section>`}
+
+function turnos(x){return `<section class="sec"><h3>Turnos y días</h3><p class="sub">Qué turnos ofrece y qué días de la semana abre cada uno. Los días cerrados no se ofrecen en el link ni abren planilla.</p>
+ <div class="turnos">${Object.entries(x.turnos).map(([k,t])=>`<div class="tr ${t.on?'':'off'}">${sw('t-'+k,t.on,NT[k])}<div class="dias" role="group" aria-label="Días de ${NT[k]}">${DIAS.map((d,i)=>`<button type="button" data-dia="${k}-${i}" class="${t.dias[i]?'on':''}" aria-pressed="${!!t.dias[i]}">${d}</button>`).join('')}</div><a class="hor" href="#">${x.horarios[k]==='—'?'Cargar horarios':x.horarios[k]} →</a></div>`).join('')}</div>
+ <p class="ayuda">«Merienda» reemplaza al tilde «Permite merienda» de hoy. Los días de la semana son <b>NUEVO</b>: hoy todos los turnos abren todos los días.</p>
+</section>`}
+
+function link(x){const confTxt={siempre:'Toda reserva se confirma sola si hay mesa.',hasta:`Se confirma sola hasta ${x.hasta-1} personas; desde ${x.hasta}, queda a confirmar por el equipo.`,nunca:'Todas quedan como solicitud: el equipo las aprueba en Reservas web.'}[x.conf];
+ return `<section class="sec"><h3>Reservas por el link</h3>
+ ${fila('Mostrar en el link','Si está apagado, el salón no aparece para los clientes (el equipo sigue cargando reservas).',sw('link',x.link,x.link?'Se muestra':'No se muestra'),true)}
+ <div ${x.link?'':'hidden'} style="display:grid;gap:14px">
+ ${fila('Confirmación','Hoy solo «Restaurant» confirma solo, y está fijo en el código.',`<div class="seg" role="group" aria-label="Confirmación">${[['siempre','Siempre sola'],['hasta','Sola hasta…'],['nunca','Siempre a confirmar']].map(([v,t])=>`<button type="button" data-conf="${v}" class="${x.conf===v?'on':''}">${t}</button>`).join('')}</div>${x.conf==='hasta'?`<div style="margin-top:10px">${num('hasta',x.hasta,'pax o más, a confirmar')}</div>`:''}<p class="ayuda">${confTxt}</p>`,true)}
+ ${fila('Máximo por reserva','Más personas que esto: el link le pide que escriba por WhatsApp.',num('max',x.max,'personas'),true)}
+ ${fila('Anticipación mínima','No se puede reservar para dentro de menos de este tiempo.',num('antic',x.antic,'minutos'),true)}
+ ${fila('Días hacia adelante','Hasta cuándo se puede reservar.',num('adel',x.adel,'días'),true)}
+ <div class="fila"><div class="k"><b>Así lo ve el cliente</b><small>Al elegir salón en el link.</small></div><div class="prev">${salones.filter(y=>y.activo&&y.link).map(y=>`<div class="op"><span class="pt" style="background:${y.color}"></span><span><b>${y.nombre}</b>${y.desc?`<small>${y.desc}</small>`:''}</span></div>`).join('')||'<small>Ningún salón se muestra en el link.</small>'}</div></div>
+ </div>
+</section>`}
+
+function servicio(x){return `<section class="sec"><h3>Servicio</h3>
+ ${fila('Tolerancia de llegada','Después de esto la reserva se marca «tarde» en el panel y se ofrece liberar la mesa.',num('tol',x.tol,'minutos'),true)}
+ ${fila('Mesas','',`<div class="cards"><div class="card"><b>${x.mesas}</b><small>mesas · ${x.pax} pax</small><a href="#">Administrar mesas →</a></div><div class="card"><b>${x.sectores.length||'—'}</b><small>${x.sectores.length?'sectores':'sin sectores'}</small>${x.sectores.length?`<div class="sectores">${x.sectores.map(([n,c])=>`<span class="pill" style="background:${c}22;color:${c}">${n}</span>`).join('')}</div>`:''}<a href="#">${x.sectores.length?'Editar sectores':'Armar sectores'} →</a></div></div>`)}
+</section>`}
+
+function zona(x){return `<section class="sec zona"><h3>Zona delicada</h3>
+ ${fila(x.activo?'Desactivar':'Activar',x.activo?'Deja de aparecer en el panel y en el link. Se puede volver a activar.':'Vuelve a aparecer en el panel y en el link.',`<button class="btn ${x.activo?'peligro':'sec'}" type="button" data-sw-btn="activo">${x.activo?'Desactivar salón':'Activar salón'}</button>`)}
+ ${fila('Borrar','Solo si no tiene mesas, reservas ni historial. Si tiene, conviene desactivarlo.',`<button class="btn peligro" type="button" ${x.mesas?'disabled style="opacity:.5;cursor:not-allowed"':''}>Borrar salón</button>${x.mesas?`<p class="ayuda">Tiene ${x.mesas} mesas: pasalas a otro salón o borralas en Administrar mesas.</p>`:''}`)}
+</section>`}
+
+function detalle(){const x=s();
+ $('det').innerHTML=`<div class="cab"><div><h2><span class="pt" style="background:${x.color};width:14px;height:14px"></span>${x.nombre}</h2><div class="resumen"><span class="pill ${x.activo?'ok':'off'}">${x.activo?'Activo':'Inactivo'}</span><span class="pill">${resumenTurnos(x)}</span><span class="pill">${x.mesas} mesas · ${x.pax} pax</span><span class="pill ${x.link&&x.activo?'ok':''}">${x.link&&x.activo?'En el link':'No está en el link'}</span></div></div></div>
+ <div class="tabs" role="tablist">${[['general','General'],['turnos','Turnos y días'],['link','Link de reservas'],['servicio','Servicio y mesas'],['zona','Desactivar / borrar']].map(([k,t])=>`<button role="tab" aria-selected="${tab===k}" class="${tab===k?'on':''}" data-tab="${k}">${t}</button>`).join('')}</div>
+ ${{general,turnos,link,servicio,zona}[tab](x)}
+ <div class="guardar" ${cambios?'':'hidden'}><span>Cambios sin guardar en ${x.nombre}</span><span style="display:flex;gap:6px"><button class="btn sec chico" type="button" id="descartar">Descartar</button><button class="btn prim chico" type="button" id="guardarBtn">Guardar</button></span></div>`;
+ const d=$('det');
+ d.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;detalle()});
+ d.querySelectorAll('[data-campo]').forEach(i=>i.oninput=()=>{x[i.dataset.campo]=i.value;cambios=true;lista();d.querySelector('.guardar').hidden=false});
+ d.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{x.color=b.dataset.color;mod()});
+ d.querySelectorAll('[data-sw]').forEach(i=>i.onchange=()=>{const k=i.dataset.sw;if(k==='activo')x.activo=i.checked;else if(k==='link')x.link=i.checked;else x.turnos[k.slice(2)].on=i.checked;mod()});
+ d.querySelectorAll('[data-sw-btn]').forEach(b=>b.onclick=()=>{x.activo=!x.activo;mod()});
+ d.querySelectorAll('[data-dia]').forEach(b=>b.onclick=()=>{const [t,i]=b.dataset.dia.split('-');x.turnos[t].dias[+i]=x.turnos[t].dias[+i]?0:1;mod()});
+ d.querySelectorAll('[data-conf]').forEach(b=>b.onclick=()=>{x.conf=b.dataset.conf;mod()});
+ d.querySelectorAll('[data-num]').forEach(b=>b.onclick=()=>{const k=b.dataset.num,dd=+b.dataset.d;const paso={antic:15,tol:5,adel:15}[k]||1;const min={hasta:2,max:2,antic:0,adel:7,tol:5}[k];x[k]=Math.max(min,x[k]+dd*paso);mod()});
+ const g=$('guardarBtn');if(g)g.onclick=()=>{cambios=false;detalle()};const ds=$('descartar');if(ds)ds.onclick=()=>{cambios=false;detalle()};
+}
+function mod(){cambios=true;todo()}
+function todo(){lista();detalle()}
+todo();
+</script>
+</body></html>

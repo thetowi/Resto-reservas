@@ -55,7 +55,7 @@ public static class DbSeeder
         // /admin/salones.
         if (!await db.Salones.AnyAsync())
         {
-            db.Salones.Add(new Salon { Nombre = "Restaurant", Orden = 0 });
+            db.Salones.Add(new Salon { Nombre = "Restaurant", Orden = 0, Confirmacion = ConfirmacionWeb.HastaPax });
             await db.SaveChangesAsync();
         }
         var salonPrincipal = await db.Salones.OrderBy(s => s.Orden).FirstAsync();

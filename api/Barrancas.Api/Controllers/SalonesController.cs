@@ -2,6 +2,7 @@ using Barrancas.Api.Data;
 using Barrancas.Api.Dtos;
 using Barrancas.Api.Hubs;
 using Barrancas.Api.Models;
+using Barrancas.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -83,6 +84,46 @@ public class SalonesController : ControllerBase
         if (req.Orden is not null) salon.Orden = req.Orden.Value;
         if (req.PermiteMerienda is not null) salon.PermiteMerienda = req.PermiteMerienda.Value;
 
+        // Configuración del salón (ficha en /admin/salones).
+        if (req.Color is not null)
+        {
+            var color = req.Color.Trim();
+            if (color.Length > 0 && !System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$"))
+            {
+                return BadRequest(new { error = "color inválido" });
+            }
+            salon.Color = color;
+        }
+        if (req.OfreceAlmuerzo is not null) salon.OfreceAlmuerzo = req.OfreceAlmuerzo.Value;
+        if (req.OfreceCena is not null) salon.OfreceCena = req.OfreceCena.Value;
+        foreach (var (valor, asignar) in new (int?, Action<int>)[]
+                 {
+                     (req.DiasAlmuerzo, v => salon.DiasAlmuerzo = v),
+                     (req.DiasMerienda, v => salon.DiasMerienda = v),
+                     (req.DiasCena, v => salon.DiasCena = v),
+                 })
+        {
+            if (valor is null) continue;
+            if (valor < 0 || valor > Salon.TodosLosDias) return BadRequest(new { error = "días inválidos" });
+            asignar(valor.Value);
+        }
+        if (req.MostrarEnLink is not null) salon.MostrarEnLink = req.MostrarEnLink.Value;
+        if (req.Confirmacion is not null) salon.Confirmacion = req.Confirmacion.Value;
+        var rangos = new (int? Valor, int Min, int Max, string Que, Action<int> Asignar)[]
+        {
+            (req.ConfirmaHastaPax, 2, 100, "la cantidad de personas para confirmar", v => salon.ConfirmaHastaPax = v),
+            (req.PaxMaximoWeb, 1, 100, "el máximo de personas por reserva", v => salon.PaxMaximoWeb = v),
+            (req.AnticipacionMinutos, 0, 2880, "la anticipación mínima", v => salon.AnticipacionMinutos = v),
+            (req.DiasAdelante, 1, 365, "los días hacia adelante", v => salon.DiasAdelante = v),
+            (req.ToleranciaMinutos, 0, 180, "la tolerancia de llegada", v => salon.ToleranciaMinutos = v),
+        };
+        foreach (var r in rangos)
+        {
+            if (r.Valor is null) continue;
+            if (r.Valor < r.Min || r.Valor > r.Max) return BadRequest(new { error = $"Revisá {r.Que}: tiene que estar entre {r.Min} y {r.Max}." });
+            r.Asignar(r.Valor.Value);
+        }
+
         if (req.Activo is not null)
         {
             // Mismo criterio que UsuariosController al desactivar el unico
@@ -102,7 +143,26 @@ public class SalonesController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        // El link de reservas lee estos datos: que no quede con lo anterior.
+        ReservaOnlineService.InvalidarCache();
 
+        return Ok(await BroadcastAsync());
+    }
+
+    // Reordenar arrastrando en /admin/salones: los ids en el orden nuevo.
+    [HttpPost("orden")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<List<SalonDto>>> Ordenar(OrdenSalonesRequest req)
+    {
+        var salones = await _db.Salones.ToListAsync();
+        var ids = (req.Ids ?? []).Distinct().ToList();
+        if (ids.Count != salones.Count || salones.Any(s => !ids.Contains(s.Id)))
+        {
+            return BadRequest(new { error = "mandá todos los salones en el orden nuevo" });
+        }
+        foreach (var s in salones) s.Orden = ids.IndexOf(s.Id);
+        await _db.SaveChangesAsync();
+        ReservaOnlineService.InvalidarCache();
         return Ok(await BroadcastAsync());
     }
 
@@ -163,7 +223,9 @@ public class SalonesController : ControllerBase
     {
         return await _db.Salones
             .OrderBy(s => s.Orden)
-            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo))
+            .Select(s => new SalonDto(s.Id, s.Nombre, s.Orden, s.PermiteMerienda, s.Activo, s.Color, s.OfreceAlmuerzo, s.OfreceCena,
+                s.DiasAlmuerzo, s.DiasMerienda, s.DiasCena, s.MostrarEnLink, s.Confirmacion, s.ConfirmaHastaPax,
+                s.PaxMaximoWeb, s.AnticipacionMinutos, s.DiasAdelante, s.ToleranciaMinutos))
             .ToListAsync();
     }
 
